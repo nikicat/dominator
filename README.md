@@ -8,9 +8,11 @@ Distributed application deployment using Docker
 Installation
 ============
 
-Using pip
+Using pip:
+
 `pip install dominator`
-On Ubuntu
+
+On Ubuntu:
 ```
 sudo apt-add-repository ppa:yandex-sysmon/dominator
 sudo apt-get update

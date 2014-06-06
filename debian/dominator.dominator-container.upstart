@@ -1,0 +1,8 @@
+description "Start Dominator container"
+
+instance ${CONFIG}/${CONTAINER}
+
+script
+	. /etc/default/dominator
+	exec dominator run ${CONFIGDIR}/${CONFIG}.yaml $CONTAINER
+end script

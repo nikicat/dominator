@@ -1,0 +1,10 @@
+# Defaults for python-dominator initscript
+# sourced by /etc/init/dominator
+# installed at /etc/default/dominator by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+# Additional options that are passed to the Daemon.
+CONFIG=""

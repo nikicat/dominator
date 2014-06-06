@@ -1,0 +1,17 @@
+Source: dominator
+Section: python
+Priority: optional
+Maintainer: Nikolay Bryskin <devel.niks@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), python3, python3-setuptools
+Standards-Version: 3.9.5
+Homepage: https://github.com/nikicat/dominator
+Vcs-Git: git://github.com/nikicat/dominator.git
+Vcs-Browser: https://github.com/nikicat/dominator
+X-Python3-Version: >= 3.3
+
+Package: dominator
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3-setuptools
+Description: Cloud provisioning tool for Docker
+ Dominator is a tools to generate config for provisioning
+ cloud services using Docker.

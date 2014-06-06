@@ -1,0 +1,11 @@
+/build
+/.tox
+/dist
+/*.egg-info
+__pycache__
+/debian/*.debhelper*
+/debian/files
+/debian/*.substvars
+/debian/dominator/
+*.swp
+*.swo

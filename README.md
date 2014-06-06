@@ -1,7 +1,7 @@
-[![Build Status](https://travis-ci.org/yandex-sysmon/dominator.svg)](https://travis-ci.org/yandex-sysmon/dominator)
-
-dominator
+Dominator
 =========
+
+[![Build Status](https://travis-ci.org/yandex-sysmon/dominator.svg)](https://travis-ci.org/yandex-sysmon/dominator)
 
 Distributed application deployment using Docker
 

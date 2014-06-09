@@ -1,9 +1,14 @@
 import functools
 import os
+import itertools
 
 
 def cached(fun):
     return functools.lru_cache(100)(fun)
+
+
+def groupby(objects, key):
+    return itertools.groupby(sorted(objects, key=key), key=key)
 
 
 def ships_from_conductor(name):

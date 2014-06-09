@@ -1,0 +1,34 @@
+username: &username !!python/object/apply:os.getenv [OS_USERNAME]
+password: &password !!python/object/apply:os.getenv [OS_PASSWORD]
+deploy-image: nikicat/dominator
+configvolumedir: ~/.config/dominator/config
+
+logging:
+    version: 1
+    incremental: true
+    loggers:
+        requests.packages.urllib3.connectionpool:
+            level: WARN
+
+nova:
+    haze:
+        client:
+            username: *username
+            api_key: *password
+            project_id: MONITORING
+            auth_url: http://identity.haze.yandex-team.ru/v2.0
+            region_name: myt5
+        domain: haze.yandex.net
+    fog:
+        client:
+            username: *username
+            api_key: *password
+            project_id: yandex_infra_stat_mon
+            auth_url: http://sas-openstack001.search.yandex.net:5000/v2.0
+            insecure: true
+        domain: i.fog.yandex.net
+
+racktables:
+    url: https://racktables.yandex.net/
+    user: *username
+    password: *password

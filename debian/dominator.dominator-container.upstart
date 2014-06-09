@@ -4,5 +4,5 @@ instance ${CONFIG}/${CONTAINER}
 
 script
 	. /etc/default/dominator
-	exec dominator run ${CONFIGDIR}/${CONFIG}.yaml $CONTAINER
+	exec dominator run ${CONFIGDIR}/${CONFIG}.yaml $CONTAINER --remove
 end script

@@ -3,32 +3,40 @@ import os.path
 import os
 import socket
 
-from .utils import cached, get_memory_from_nova, get_memory_from_bot
+from .utils import cached, ship_memory_from_nova, ship_memory_from_bot
+from .settings import settings
 
 _logger = logging.getLogger(__name__)
 
 
 class Ship:
-    def __init__(self, name, fqdn, datacenter):
+    def __init__(self, name, fqdn, **kwargs):
         self.name = name
         self.fqdn = fqdn
-        self.datacenter = datacenter
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     def __lt__(self, other):
         return self.fqdn < other.fqdn
 
+    def __repr__(self):
+        return 'Ship(name={})'.format(self.name)
+
     @property
     @cached
     def memory(self):
-        if self.fqdn.endswith('.i.fog.yandex.net') or self.fqdn.endswith('.haze.yandex.net'):
-            return get_memory_from_nova(self.name)
+        if hasattr(self, 'novacluster'):
+            return ship_memory_from_nova(self)
         else:
-            return get_memory_from_bot(self.fqdn)
+            return ship_memory_from_bot(self.fqdn)
 
     @property
     @cached
     def islocal(self):
         return self.name == os.uname()[1]
+
+    def containers(self, containers):
+        return [c for c in containers if c.ship == self]
 
 
 class LocalShip(Ship):
@@ -58,6 +66,9 @@ class Container:
         self.memory = memory
         self.env = env
 
+    def __repr__(self):
+        return 'Container(name={name}, repository={repository}, tag={tag})'.format(**vars(self))
+
     def getvolume(self, volumename):
         for volume in self.volumes:
             if volume.name == volumename:
@@ -71,8 +82,8 @@ class Volume:
         self.name = name
         self.dest = dest
 
-    def makedir(self, path):
-        os.makedirs(path, exist_ok=True)
+    def __repr__(self):
+        return '{}(name={name}, dest={dest})'.format(type(self).__name__, **vars(self))
 
 
 class DataVolume(Volume):
@@ -80,9 +91,6 @@ class DataVolume(Volume):
         super(DataVolume, self).__init__(name, dest)
         self.path = path
         self.ro = ro
-
-    def prepare(self, _container):
-        self.makedir(self.path)
 
     def getpath(self, _container):
         return self.path
@@ -95,16 +103,8 @@ class ConfigVolume(Volume):
         self.files = files
 
     def getpath(self, container):
-        return os.path.expanduser(os.path.join('~', 'dominator', container.ship.name, container.name, self.name))
-
-    def prepare(self, container):
-        path = self.getpath(container)
-        self.makedir(path)
-
-        for filename in os.listdir(path):
-            os.remove(os.path.join(path, filename))
-        for file in self.files:
-            file.dump(container, self)
+        return os.path.expanduser(os.path.join(settings['configvolumedir'],
+                                               container.ship.name, container.name, self.name))
 
     @property
     def ro(self):
@@ -124,7 +124,9 @@ class TextFile:
         self._write(volume.getpath(container), self.content)
 
     def _write(self, volumepath, data):
-        with open(os.path.join(volumepath, self.name), 'w+') as f:
+        path = os.path.join(volumepath, self.name)
+        _logger.debug('writing file to %s', path)
+        with open(path, 'w+', encoding='utf8') as f:
             f.write(data)
 
 

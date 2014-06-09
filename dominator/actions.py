@@ -196,7 +196,8 @@ def status(containers, ship: str):
                 if len(matched) == 0:
                     print('  {:20} not found'.format(c.name))
                 else:
-                    print('  {:20} {}'.format(c.name, matched[0]['Status']))
+                    print('  {:20} {:20} {:.7}'.format(c.name, matched[0]['Status'],
+                                                       dock.inspect_container(matched[0])['Image']))
 
 
 def lines(records):

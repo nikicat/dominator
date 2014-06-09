@@ -1,0 +1,9 @@
+deploy-image: nikicat/dominator
+configvolumedir: /var/lib/dominator/
+
+logging:
+    version: 1
+    incremental: true
+    loggers:
+        requests.packages.urllib3.connectionpool:
+            level: WARN

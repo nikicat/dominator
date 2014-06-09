@@ -11,6 +11,15 @@ def groupby(objects, key):
     return itertools.groupby(sorted(objects, key=key), key=key)
 
 
+def aslist(fun):
+    @functools.wraps(fun)
+    def wrapper(*args, **kwargs):
+        return list(fun(*args, **kwargs))
+
+    return wrapper
+
+
+@aslist
 def ships_from_conductor(name):
     import conductor_client
     from .entities import Ship
@@ -28,6 +37,7 @@ def _nova_client(cluster):
     return client.Client(**novaconfig)
 
 
+@aslist
 def ships_from_nova(cluster, metadata):
     from .entities import Ship
     nova = _nova_client(cluster)

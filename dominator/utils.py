@@ -1,6 +1,6 @@
 import functools
-import os
 import itertools
+from .settings import settings
 
 
 def cached(fun):
@@ -22,6 +22,27 @@ def ships_from_conductor(name):
         )
 
 
+def _nova_client(cluster):
+    from novaclient.v1_1 import client
+    novaconfig = settings['nova'][cluster]['client']
+    return client.Client(**novaconfig)
+
+
+def ships_from_nova(cluster, metadata):
+    from .entities import Ship
+    nova = _nova_client(cluster)
+    for server in nova.servers.findall():
+        for k, v in metadata.items():
+            if server.metadata.get(k) != v:
+                break
+        else:
+            yield Ship(
+                name=server.name,
+                fqdn='{}.{}'.format(server.name, settings['nova'][cluster]['domain']),
+                novacluster=cluster,
+            )
+
+
 def ship_memory_from_bot(fqdn):
     import requests
     # BOT response format: 'ok:64GB'
@@ -31,8 +52,6 @@ def ship_memory_from_bot(fqdn):
     return int(r.text.split(':')[1][:-3]) * 1024**3
 
 
-def ship_memory_from_nova(name):
-    from novaclient.v1_1 import client
-    c = client.Client(os.environ['OS_USERNAME'], os.environ['OS_PASSWORD'], os.environ['OS_TENANT_NAME'],
-                      os.environ['OS_AUTH_URL'], tenant_id=os.environ['OS_TENANT_ID'], insecure=True)
-    return c.flavors.get(c.servers.find(name=name).flavor['id']).ram * 1024**2
+def ship_memory_from_nova(ship):
+    c = _nova_client(ship.novacluster)
+    return c.flavors.get(c.servers.find(name=ship.name).flavor['id']).ram * 1024**2

@@ -9,7 +9,7 @@ export DH_VERBOSE=1
 
 override_dh_auto_clean:
 	python3 setup.py clean -a
-	rm -r .tox
+	rm -fr .tox
 
 override_dh_auto_build:
 	python3 setup.py build --force

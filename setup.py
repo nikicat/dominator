@@ -12,6 +12,7 @@ if __name__ == '__main__':
         platforms='linux',
         packages=['dominator'],
         entry_points={'console_scripts': ['dominator = dominator:main']},
+        package_data={'dominator': ['settings.yaml']},
         classifiers=[
             'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
             'Operating System :: POSIX :: Linux',

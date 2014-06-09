@@ -43,6 +43,17 @@ def ships_from_nova(cluster, metadata):
             )
 
 
+def datacenter_from_racktables(hostname):
+    import requests
+    import pyquery
+    r = requests.get(
+        url=settings['racktables']['url'],
+        auth=(settings['racktables']['user'], settings['racktables']['password']),
+        params={'page': 'search', 'q': hostname},
+    )
+    return pyquery.PyQuery(r.text)('a.tag-279').text()
+
+
 def ship_memory_from_bot(fqdn):
     import requests
     # BOT response format: 'ok:64GB'

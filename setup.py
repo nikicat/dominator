@@ -22,9 +22,10 @@ if __name__ == '__main__':
         ],
         install_requires=[
             'docker-py',
-            'argh',
+            'docopt',
             'pyyaml',
             'mako',
+            'structlog',
         ],
         install_recommends=[
             'requests',

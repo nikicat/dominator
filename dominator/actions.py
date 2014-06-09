@@ -1,6 +1,13 @@
 """
 Usage: dominator [options] <command> [<args>...]
 
+Commands:
+    dump                dump config in yaml format
+    list-containers     list local containers (used by upstart script)
+    run                 run container(s) locally
+    deploy              deploy containers to ships
+    status              show containers' status
+
 Options:
     -s, --settings <settings>  yaml file to load settings
     -l, --loglevel <loglevel>  log level [default: warn]

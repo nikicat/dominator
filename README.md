@@ -23,4 +23,4 @@ sudo apt-get install dominator
 Usage
 ======
 
-TODO
+See [dominator-elasticlog](https://github.com/yandex-sysmon/dominator-elasticlog) for example.

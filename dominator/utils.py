@@ -1,6 +1,11 @@
 import functools
 import itertools
+import json
+import structlog
+
 from .settings import settings
+
+_logger = structlog.get_logger()
 
 
 def cached(fun):
@@ -11,12 +16,46 @@ def groupby(objects, key):
     return itertools.groupby(sorted(objects, key=key), key=key)
 
 
-def aslist(fun):
-    @functools.wraps(fun)
-    def wrapper(*args, **kwargs):
-        return list(fun(*args, **kwargs))
+def _as(agg):
+    aggfun = agg
 
-    return wrapper
+    def decorator(fun):
+        @functools.wraps(fun)
+        def wrapper(*args, **kwargs):
+            return aggfun(fun(*args, **kwargs))
+        return wrapper
+    return decorator
+
+asdict = _as(dict)
+aslist = _as(list)
+
+
+@asdict
+def get_tags(dock, repo):
+    images = dock.images(repo, all=True)
+    for image in images:
+        yield image['RepoTags'][0].split(':')[-1], image['Id']
+
+
+def get_image(repo, tag):
+    import docker
+    dock = docker.Client()
+    if tag not in get_tags(dock, repo):
+        pull_repo(dock, repo, tag)
+    return get_tags(dock, repo)[tag]
+
+
+def pull_repo(dock, repo, tag=None):
+    logger = _logger.bind(repo=repo, tag=tag)
+    logger.info('pulling repo')
+    for line in dock.pull(repo, tag, stream=True):
+        if line != '':
+            logger.debug('received line', line=line)
+            resp = json.loads(line)
+            if 'status' in resp:
+                logger.debug(resp['status'])
+            elif 'error' in resp:
+                raise RuntimeError('could not pull {} ({})'.format(repo, resp['error']))
 
 
 @aslist

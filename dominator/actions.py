@@ -180,10 +180,13 @@ def status(containers, ship: str):
             for c in s.containers(containers):
                 matched = list([cinfo for cinfo in ship_containers if cinfo['Names'][0][1:] == c.name])
                 if len(matched) == 0:
-                    print('  {:20} not found'.format(c.name))
+                    print('  {:20.20} not found'.format(c.name))
                 else:
-                    print('  {:20} {:20} {:.7}'.format(c.name, matched[0]['Status'],
-                                                       dock.inspect_container(matched[0])['Image']))
+                    print('  {:20.20} {:30.30} {:.7}'.format(
+                        c.name,
+                        matched[0]['Status'],
+                        dock.inspect_container(matched[0])['Image']
+                    ))
 
 
 def lines(records):

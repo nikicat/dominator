@@ -2,6 +2,9 @@ import logging
 import os.path
 import os
 import socket
+import inspect
+
+import pkg_resources
 
 from .utils import cached, ship_memory_from_nova, ship_memory_from_bot
 from .settings import settings
@@ -117,8 +120,12 @@ class TextFile:
         if text is not None:
             self.content = text
         else:
-            with open(filename) as f:
-                self.content = f.read()
+            parent_frame = inspect.stack()[1]
+            parent_module = inspect.getmodule(parent_frame[0])
+            self.content = pkg_resources.resource_string(parent_module.__name__, filename).decode()
+
+    def __str__(self):
+        return 'TextFile(name={})'.format(self.name)
 
     def dump(self, container, volume):
         self._write(volume.getpath(container), self.content)
@@ -130,16 +137,19 @@ class TextFile:
             f.write(data)
 
 
-class TemplateFile(TextFile):
-    def __init__(self, filename: str, **kwargs):
-        super(TemplateFile, self).__init__(filename)
+class TemplateFile:
+    def __init__(self, file: TextFile, **kwargs):
+        self.file = file
         self.context = kwargs
+
+    def __str__(self):
+        return 'TemplateFile(file={file}, context={context})'.format(vars(self))
 
     def dump(self, container, volume):
         _logger.debug('rendering file %s', self.name)
         import mako.template
-        template = mako.template.Template(self.content)
+        template = mako.template.Template(self.file.content)
         context = {'this': container}
         context.update(self.context)
         _logger.debug('context is %s', context)
-        self._write(volume.getpath(container), template.render(**context))
+        self.file._write(volume.getpath(container), template.render(**context))

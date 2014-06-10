@@ -20,7 +20,6 @@ import logging.config
 import os
 import sys
 import importlib
-import json
 from contextlib import contextmanager
 
 import yaml
@@ -32,6 +31,7 @@ from structlog.threadlocal import tmp_bind
 import dominator
 from .entities import ConfigVolume
 from .settings import settings
+from .utils import pull_repo
 
 _logger = structlog.get_logger()
 
@@ -70,19 +70,6 @@ def _ps(dock, name, **kwargs):
     return list([cont for cont in dock.containers(**kwargs) if cont['Names'][0][1:] == name])
 
 
-def _pull(dock, repo, tag=None):
-    logger = _logger.bind(repo=repo, tag=tag)
-    logger.info('pulling repo')
-    for line in dock.pull(repo, tag, stream=True):
-        if line != '':
-            logger.debug('received line', line=line)
-            resp = json.loads(line)
-            if 'status' in resp:
-                logger.debug(resp['status'])
-            elif 'error' in resp:
-                raise RuntimeError('could not pull {} ({})'.format(repo, resp['error']))
-
-
 def run_container(cont, remove, pull, detach):
     logger = _logger.bind(container=cont)
     logger.info('starting container')
@@ -107,7 +94,7 @@ def run_container(cont, remove, pull, detach):
                     file.dump(cont, volume)
 
     if pull or len(dock.images(name=cont.repository)) == 0:
-        _pull(dock, cont.repository, cont.tag)
+        pull_repo(dock, cont.repository, cont.tag)
 
     running = _ps(dock, cont.name)
     if len(running) > 0:
@@ -209,7 +196,8 @@ def status(containers, ship: str):
                 if len(matched) == 0:
                     print('  {:20} not found'.format(c.name))
                 else:
-                    print('  {:20} {}'.format(c.name, matched[0]['Status']))
+                    print('  {:20} {:20} {:.7}'.format(c.name, matched[0]['Status'],
+                                                       dock.inspect_container(matched[0])['Image']))
 
 
 def lines(records):
@@ -246,7 +234,7 @@ def deploy_to_ship(ship, containers, keep, pull):
     image = settings['deploy-image']
 
     if pull or len(dock.images(name=image)) == 0:
-        _pull(dock, image)
+        pull_repo(dock, image)
 
     cinfo = dock.create_container(
         image=image,

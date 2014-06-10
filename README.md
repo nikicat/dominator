@@ -3,7 +3,9 @@ Dominator
 
 [![Build Status](https://travis-ci.org/yandex-sysmon/dominator.svg)](https://travis-ci.org/yandex-sysmon/dominator)
 
-Distributed application deployment using Docker
+Distributed application deployment and orchestration using Docker.
+Describe your cloud services using Pyhton.
+Best suitable for complicated configurations.
 
 Installation
 ============

@@ -154,23 +154,6 @@ def list_containers(containers):
             print(container.name)
 
 
-def load(filename):
-    logger = _logger.bind(config=filename)
-    logger.info('loading config')
-    if filename is None:
-        return yaml.load(sys.stdin)
-    if '.py:' in filename:
-        filename, func = filename.split(':')
-    else:
-        func = 'main'
-    if filename.endswith('.py'):
-        return load_python(filename, func)
-    elif filename.endswith('.yaml'):
-        return load_yaml(filename)
-    else:
-        raise RuntimeError('unknown file type {}'.format(filename))
-
-
 def load_module(modulename, func):
     _logger.info("loading config from module", module=modulename, func=func)
     module = importlib.import_module(modulename)

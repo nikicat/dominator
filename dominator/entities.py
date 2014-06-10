@@ -156,6 +156,7 @@ class TemplateFile:
         logger.debug('context', context=context)
         self.file._write(volume.getpath(container), template.render(**context))
 
+
 class YamlFile:
     def __init__(self, name: str, data: dict):
         self.name = name

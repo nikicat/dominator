@@ -73,6 +73,7 @@ def ships_from_conductor(name):
 def _nova_client(cluster):
     from novaclient.v1_1 import client
     novaconfig = settings['nova'][cluster]['client']
+    _logger.debug('creating nova client', **novaconfig)
     return client.Client(**novaconfig)
 
 

@@ -4,6 +4,7 @@ import os
 import socket
 import inspect
 
+import yaml
 import pkg_resources
 
 from .utils import cached, ship_memory_from_nova, ship_memory_from_bot
@@ -153,3 +154,15 @@ class TemplateFile:
         context.update(self.context)
         _logger.debug('context is %s', context)
         self.file._write(volume.getpath(container), template.render(**context))
+
+class YamlFile:
+    def __init__(self, name: str, data: dict):
+        self.name = name
+        self.data = data
+
+    def __str__(self):
+        return 'YamlFile(name={name})'.format(vars(self))
+
+    def dump(self, container, volume):
+        with open(os.path.join(volume.getpath(container), self.name), 'w+') as f:
+            yaml.dump(self.data, f)

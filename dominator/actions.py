@@ -162,8 +162,11 @@ def load_module(modulename, func):
 
 def load_yaml(filename):
     _logger.info("loading config from yaml", filename=filename)
-    with open(filename) as f:
-        return yaml.load(f)
+    if filename == '-':
+        return yaml.load(sys.stdin)
+    else:
+        with open(filename) as f:
+            return yaml.load(f)
 
 
 def status(containers, ship: str):

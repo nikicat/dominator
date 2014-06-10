@@ -1,6 +1,6 @@
 import logging
 import os.path
-from pkg_resources import Requirement, resource_filename
+from pkg_resources import resource_stream
 import yaml
 
 _logger = logging.getLogger(__name__)
@@ -11,15 +11,15 @@ class Settings(dict):
         if filename is None:
             for filename in ['settings.yaml',
                              os.path.expanduser('~/.config/dominator/settings.yaml'),
-                             '/etc/dominator/settings.yaml',
-                             resource_filename(Requirement.parse('dominator'), 'dominator/settings.yaml')]:
+                             '/etc/dominator/settings.yaml']:
                 _logger.debug("checking existense of %s", filename)
                 if os.path.exists(filename):
+                    _logger.info("loading settings from %s", filename)
+                    stream = open(filename)
                     break
             else:
-                _logger.warning("could not find any settings file")
-                return
-        _logger.info("loading settings from %s", filename)
-        self.update(yaml.load(open(filename)))
+                _logger.warning("could not find any settings file, using default")
+                stream = resource_stream('settings.yaml')
+        self.update(yaml.load(stream))
 
 settings = Settings()

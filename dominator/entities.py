@@ -1,4 +1,3 @@
-import logging
 import os.path
 import os
 import socket
@@ -6,11 +5,12 @@ import inspect
 
 import yaml
 import pkg_resources
+import structlog
 
 from .utils import cached, ship_memory_from_nova, ship_memory_from_bot
 from .settings import settings
 
-_logger = logging.getLogger(__name__)
+_logger = structlog.get_logger()
 
 
 class Ship:
@@ -133,7 +133,7 @@ class TextFile:
 
     def _write(self, volumepath, data):
         path = os.path.join(volumepath, self.name)
-        _logger.debug('writing file to %s', path)
+        _logger.debug("writing file", path=path)
         with open(path, 'w+', encoding='utf8') as f:
             f.write(data)
 
@@ -147,12 +147,13 @@ class TemplateFile:
         return 'TemplateFile(file={file}, context={context})'.format(vars(self))
 
     def dump(self, container, volume):
-        _logger.debug('rendering file %s', self.name)
+        logger = _logger.bind(file=self)
+        logger.debug("rendering file")
         import mako.template
         template = mako.template.Template(self.file.content)
         context = {'this': container}
         context.update(self.context)
-        _logger.debug('context is %s', context)
+        logger.debug('context', context=context)
         self.file._write(volume.getpath(container), template.render(**context))
 
 class YamlFile:
@@ -164,5 +165,6 @@ class YamlFile:
         return 'YamlFile(name={name})'.format(vars(self))
 
     def dump(self, container, volume):
+        _logger.debug("rendering file", file=self)
         with open(os.path.join(volume.getpath(container), self.name), 'w+') as f:
             yaml.dump(self.data, f)

@@ -4,3 +4,13 @@ python:
   - "3.4"
 install: "pip install tox"
 script: tox
+deploy:
+  provider: pypi
+  user: nikicat
+  password:
+    secure: i9zNWTqaqWjKp4hHVXA0wWvCFS5ic7ne3nc6WP7fanQLC5y1/tQxsnmMVN02aThfpNoCZKh82rWjs/wXXxUq5Q4egXFaOjMPoyIsb8EGHFi4y1FMW/wSnw/iBXFYruWf/k+JQz2t+dj1/EpHj4sLGMPRjANdK2+fwrDFNIlUIBs=
+  distributions: sdist bdist
+  on:
+    tags: true
+    python: 3.4
+    repo: yandex-sysmon/dominator

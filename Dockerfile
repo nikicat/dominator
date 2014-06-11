@@ -11,4 +11,4 @@ ADD settings.docker.yaml /root/
 VOLUME /var/lib/dominator
 VOLUME /run/docker.sock
 
-CMD dominator -l debug -s /root/settings.docker.yaml run
+CMD dominator -l debug -s /root/settings.docker.yaml -c - run

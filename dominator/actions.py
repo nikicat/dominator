@@ -1,5 +1,5 @@
 """
-Usage: dominator [options] <command> [<args>...]
+Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) <command> [<args>...]
 
 Commands:
     dump                dump config in yaml format
@@ -9,9 +9,11 @@ Commands:
     status              show containers' status
 
 Options:
-    -s, --settings <settings>  yaml file to load settings
-    -l, --loglevel <loglevel>  log level [default: warn]
-    -c, --config <config>      config file
+    -s, --settings <settings>   yaml file to load settings
+    -l, --loglevel <loglevel>   log level [default: warn]
+    -c, --config <config>       yaml config file
+    -m, --module <modulename>   python module name
+    -f, --function <funcname>   python function name
 """
 
 
@@ -152,32 +154,19 @@ def list_containers(containers):
             print(container.name)
 
 
-def load(filename):
-    logger = _logger.bind(config=filename)
-    logger.info('loading config')
-    if filename is None:
-        return yaml.load(sys.stdin)
-    if '.py:' in filename:
-        filename, func = filename.split(':')
-    else:
-        func = 'main'
-    if filename.endswith('.py'):
-        return load_python(filename, func)
-    elif filename.endswith('.yaml'):
-        return load_yaml(filename)
-    else:
-        raise RuntimeError('unknown file type {}'.format(filename))
-
-
-def load_python(filename, func):
-    sys.path.append(os.path.dirname(filename))
-    module = importlib.import_module(os.path.basename(filename)[:-3])
+def load_module(modulename, func):
+    _logger.info("loading config from module", module=modulename, func=func)
+    module = importlib.import_module(modulename)
     return getattr(module, func)()
 
 
 def load_yaml(filename):
-    with open(filename) as f:
-        return yaml.load(f)
+    _logger.info("loading config from yaml", filename=filename)
+    if filename == '-':
+        return yaml.load(sys.stdin)
+    else:
+        with open(filename) as f:
+            return yaml.load(f)
 
 
 def status(containers, ship: str):
@@ -194,10 +183,13 @@ def status(containers, ship: str):
             for c in s.containers(containers):
                 matched = list([cinfo for cinfo in ship_containers if cinfo['Names'][0][1:] == c.name])
                 if len(matched) == 0:
-                    print('  {:20} not found'.format(c.name))
+                    print('  {:20.20} not found'.format(c.name))
                 else:
-                    print('  {:20} {:20} {:.7}'.format(c.name, matched[0]['Status'],
-                                                       dock.inspect_container(matched[0])['Image']))
+                    print('  {:20.20} {:30.30} {:.7}'.format(
+                        c.name,
+                        matched[0]['Status'],
+                        dock.inspect_container(matched[0])['Image']
+                    ))
 
 
 def lines(records):
@@ -294,7 +286,10 @@ def main():
         logging.basicConfig(level=getattr(logging, args['--loglevel'].upper()))
         settings.load(args['--settings'])
         logging.config.dictConfig(settings.get('logging', {}))
-        containers = load(args['--config'])
+        if args['--config'] is not None:
+            containers = load_yaml(args['--config'])
+        else:
+            containers = load_module(args['--module'], args['--function'])
         action_args = docopt.docopt(action.__doc__, argv=argv)
 
         def pythonize_arg(arg):

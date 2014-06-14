@@ -74,7 +74,7 @@ class Container:
         self.portproto = portproto
 
     def __repr__(self):
-        return 'Container(name={name}, repository={repository}, tag={tag})'.format(**vars(self))
+        return 'Container(name={name}, repository={repository}, tag={tag:.7})'.format(**vars(self))
 
     def getvolume(self, volumename):
         for volume in self.volumes:

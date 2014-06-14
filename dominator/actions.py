@@ -1,5 +1,5 @@
 """
-Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) <command> [<args>...]
+Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) [-n <namespace>] <command> [<args>...]
 
 Commands:
     dump                dump config in yaml format
@@ -9,11 +9,12 @@ Commands:
     status              show containers' status
 
 Options:
-    -s, --settings <settings>   yaml file to load settings
-    -l, --loglevel <loglevel>   log level [default: warn]
-    -c, --config <config>       yaml config file
-    -m, --module <modulename>   python module name
-    -f, --function <funcname>   python function name
+    -s, --settings <settings>    yaml file to load settings
+    -l, --loglevel <loglevel>    log level [default: warn]
+    -c, --config <config>        yaml config file
+    -m, --module <modulename>    python module name
+    -f, --function <funcname>    python function name
+    -n, --namespace <namespace>  docker namespace to use if not set (overrides config)
 """
 
 
@@ -288,6 +289,8 @@ def main():
         )
         logging.basicConfig(level=getattr(logging, args['--loglevel'].upper()))
         settings.load(args['--settings'])
+        if args['--namespace']:
+            settings['docker-namespace'] = args['--namespace']
         logging.config.dictConfig(settings.get('logging', {}))
         if args['--config'] is not None:
             containers = load_yaml(args['--config'])

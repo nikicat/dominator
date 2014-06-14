@@ -40,6 +40,8 @@ def get_tags(dock, repo):
 def get_image(repo, tag='latest'):
     import docker
     dock = docker.Client()
+    if '/' not in repo and 'docker-namespace' in settings:
+        repo = settings['docker-namespace'] + '/' + repo
     if tag not in get_tags(dock, repo):
         pull_repo(dock, repo, tag)
     return get_tags(dock, repo)[tag]

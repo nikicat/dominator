@@ -60,7 +60,8 @@ class LocalShip(Ship):
 
 class Container:
     def __init__(self, name: str, ship: Ship, repository: str, tag: str,
-                 volumes: list, ports: dict, memory: int, env: dict={}):
+                 volumes: list, ports: dict, memory: int, env: dict={},
+                 extports: dict={}, portproto: dict={}):
         self.name = name
         self.ship = ship
         self.repository = repository
@@ -69,6 +70,8 @@ class Container:
         self.ports = ports
         self.memory = memory
         self.env = env
+        self.extports = extports
+        self.portproto = portproto
 
     def __repr__(self):
         return 'Container(name={name}, repository={repository}, tag={tag})'.format(**vars(self))

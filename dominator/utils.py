@@ -45,6 +45,14 @@ def get_image(repo, tag='latest'):
     return get_tags(dock, repo)[tag]
 
 
+@aslist
+def image_ports(image):
+    import docker
+    dock = docker.Client()
+    for port in dock.inspect_image(image)['config']['ExposedPorts'].keys():
+        yield int(port.split('/')[0])
+
+
 def pull_repo(dock, repo, tag=None):
     logger = _logger.bind(repo=repo, tag=tag)
     logger.info('pulling repo')

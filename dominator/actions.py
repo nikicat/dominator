@@ -122,7 +122,10 @@ def run_container(cont, remove, pull, detach):
     logger.info('starting container')
     dock.start(
         cont_info,
-        port_bindings={'{}/tcp'.format(v): ('::', v) for v in cont.ports.values()},
+        port_bindings={
+            '{}/{}'.format(port, cont.portproto.get(name, 'tcp')): ('::', cont.extports.get(name, port))
+            for name, port in cont.ports.items()
+        },
         binds={v.getpath(cont): {'bind': v.dest, 'ro': v.ro} for v in cont.volumes},
     )
 

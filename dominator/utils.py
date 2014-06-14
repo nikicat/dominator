@@ -37,7 +37,7 @@ def get_tags(dock, repo):
         yield image['RepoTags'][0].split(':')[-1], image['Id']
 
 
-def get_image(repo, tag):
+def get_image(repo, tag='latest'):
     import docker
     dock = docker.Client()
     if tag not in get_tags(dock, repo):

@@ -94,13 +94,14 @@ class Volume:
 
 
 class DataVolume(Volume):
-    def __init__(self, dest: str, path: str, name: str='data', ro=False):
+    def __init__(self, dest: str, path: str=None, name: str='data', ro=False):
         super(DataVolume, self).__init__(name, dest)
         self.path = path
         self.ro = ro
 
-    def getpath(self, _container):
-        return self.path
+    def getpath(self, container):
+        return self.path or os.path.expanduser(os.path.join(settings['datavolumedir'],
+                                                            container.name, self.name))
 
 
 class ConfigVolume(Volume):
@@ -111,7 +112,7 @@ class ConfigVolume(Volume):
 
     def getpath(self, container):
         return os.path.expanduser(os.path.join(settings['configvolumedir'],
-                                               container.ship.name, container.name, self.name))
+                                               container.name, self.name))
 
     @property
     def ro(self):

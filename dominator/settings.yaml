@@ -2,6 +2,7 @@ username: &username !!python/object/apply:os.getenv [OS_USERNAME]
 password: &password !!python/object/apply:os.getenv [OS_PASSWORD]
 deploy-image: nikicat/dominator
 configvolumedir: ~/.config/dominator/config
+datavolumedir: ~/.config/dominator/data
 
 logging:
     version: 1

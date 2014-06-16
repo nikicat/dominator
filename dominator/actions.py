@@ -185,7 +185,7 @@ def load_yaml(filename):
             return yaml.load(f)
 
 
-def status(containers, ship: str):
+def status(containers, ship: str=None):
     """Show containers' status
     usage: dominator status [options] [<ship>]
 

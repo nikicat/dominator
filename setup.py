@@ -3,12 +3,12 @@ import setuptools
 from setuptools.command.test import test as TestCommand
 
 
-class Tox(TestCommand):
-    user_options = [('tox-args=', 'a', "Arguments to pass to tox")]
+class PyTest(TestCommand):
+    user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
 
     def initialize_options(self):
         TestCommand.initialize_options(self)
-        self.tox_args = None
+        self.pytest_args = None
 
     def finalize_options(self):
         TestCommand.finalize_options(self)
@@ -16,9 +16,10 @@ class Tox(TestCommand):
         self.test_suite = True
 
     def run_tests(self):
-        import tox
-        import shlex
-        tox.cmdline(args=shlex.split(self.tox_args))
+        # import here, cause outside the eggs aren't loaded
+        import pytest
+        errno = pytest.main(self.pytest_args)
+        sys.exit(errno)
 
 
 if __name__ == '__main__':
@@ -57,9 +58,9 @@ if __name__ == '__main__':
             'pyquery',
         ],
         tests_require=[
-            'tox',
             'pytest',
-            'pytest-cov',
+            'vcrpy',
+            'colorama',
         ],
-        cmdclass={'test': Tox},
+        cmdclass={'test': PyTest},
     )

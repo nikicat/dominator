@@ -53,36 +53,40 @@ def dump(containers):
     print(yaml.dump(containers))
 
 
-def run(containers, container: str, remove: bool, pull: bool, detach: bool):
+def run(containers, container: str=None, remove: bool=False, pull: bool=False, detach: bool=True, dockerurl: str=None):
     """
     Run locally all or specified containers from config
 
     usage: dominator run [options] [<container>]
 
         -h, --help
-        -p, --pull    # pull repositories before start [default: false]
-        -r, --remove  # remove container after stop [default: false]
-        -d, --detach  # do not follow container logs
+        -p, --pull       # pull repositories before start [default: false]
+        -r, --remove     # remove container after stop [default: false]
+        -u, --dockerurl  # Docker API endpoint [default: null]
+        -d, --detach     # do not follow container logs
     """
     for c in containers:
         if c.ship.islocal and (container is None or c.name == container):
-            run_container(c, remove, pull, detach if container is not None else True)
+            run_container(c, remove, pull, detach if container is not None else True, dockerurl)
 
 
 def _ps(dock, name, **kwargs):
     return list([cont for cont in dock.containers(**kwargs) if cont['Names'][0][1:] == name])
 
 
-def run_container(cont, remove, pull, detach):
+def run_container(cont, remove: bool=False, pull: bool=False, detach: bool=True, dockerurl: str=None):
     logger = get_logger(container=cont)
     logger.info('starting container')
     import docker
 
-    if cont.ship.islocal:
-        logger.info('connecting to local docker')
-        dock = docker.Client()
+    if dockerurl is not None:
+        dock = docker.Client(dockerurl)
     else:
-        raise RuntimeError('could only run containers on local docker (because of volumes)')
+        if cont.ship.islocal:
+            logger.info('connecting to local docker')
+            dock = docker.Client()
+        else:
+            raise RuntimeError('could only run containers on local docker (because of volumes)')
 
     for volume in cont.volumes:
         if isinstance(volume, ConfigVolume):

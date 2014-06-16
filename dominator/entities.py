@@ -7,7 +7,7 @@ import yaml
 import pkg_resources
 import structlog
 
-from .utils import cached, ship_memory_from_nova, ship_memory_from_bot
+from .utils import cached, ship_memory_from_nova, ship_memory_from_bot, get_image
 from .settings import settings
 
 _logger = structlog.get_logger()
@@ -58,20 +58,36 @@ class LocalShip(Ship):
         return psutil.avail_phymem()
 
 
-class Container:
-    def __init__(self, name: str, ship: Ship, repository: str, tag: str,
-                 volumes: list, ports: dict, memory: int, env: dict={}):
-        self.name = name
-        self.ship = ship
+class Image:
+    def __init__(self, repository: str, tag: str='latest', id: str=None):
         self.repository = repository
         self.tag = tag
+        self.id = id or self.getid()
+
+    def __repr__(self):
+        return 'Image(repository={repository}, tag={tag}, id={id:.7})'.format(**vars(self))
+
+    def getid(self):
+        return get_image(self.repository, self.tag)
+
+
+class Container:
+    def __init__(self, name: str, ship: Ship, image: Image, command: str=None,
+                 ports: dict={}, memory: int=0, volumes: list=[],
+                 env: dict={}, extports: dict={}, portproto: dict={}):
+        self.name = name
+        self.ship = ship
+        self.image = image
+        self.command = command
         self.volumes = volumes
         self.ports = ports
         self.memory = memory
         self.env = env
+        self.extports = extports
+        self.portproto = portproto
 
     def __repr__(self):
-        return 'Container(name={name}, repository={repository}, tag={tag})'.format(**vars(self))
+        return 'Container(name={name}, ship={ship}, Image={image}, env={env})'.format(**vars(self))
 
     def getvolume(self, volumename):
         for volume in self.volumes:
@@ -91,13 +107,14 @@ class Volume:
 
 
 class DataVolume(Volume):
-    def __init__(self, dest: str, path: str, name: str='data', ro=False):
+    def __init__(self, dest: str, path: str=None, name: str='data', ro=False):
         super(DataVolume, self).__init__(name, dest)
         self.path = path
         self.ro = ro
 
-    def getpath(self, _container):
-        return self.path
+    def getpath(self, container):
+        return self.path or os.path.expanduser(os.path.join(settings['datavolumedir'],
+                                                            container.name, self.name))
 
 
 class ConfigVolume(Volume):
@@ -108,7 +125,7 @@ class ConfigVolume(Volume):
 
     def getpath(self, container):
         return os.path.expanduser(os.path.join(settings['configvolumedir'],
-                                               container.ship.name, container.name, self.name))
+                                               container.name, self.name))
 
     @property
     def ro(self):

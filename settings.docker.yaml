@@ -1,5 +1,6 @@
 deploy-image: nikicat/dominator
 configvolumedir: /var/lib/dominator/
+datavolumedir: /var/lib/dominator/
 
 logging:
     version: 1

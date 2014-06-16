@@ -1,5 +1,6 @@
 """
-Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) <command> [<args>...]
+Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) [-n <namespace>] \
+ <command> [<args>...]
 
 Commands:
     dump                dump config in yaml format
@@ -9,11 +10,12 @@ Commands:
     status              show containers' status
 
 Options:
-    -s, --settings <settings>   yaml file to load settings
-    -l, --loglevel <loglevel>   log level [default: warn]
-    -c, --config <config>       yaml config file
-    -m, --module <modulename>   python module name
-    -f, --function <funcname>   python function name
+    -s, --settings <settings>    yaml file to load settings
+    -l, --loglevel <loglevel>    log level [default: warn]
+    -c, --config <config>        yaml config file
+    -m, --module <modulename>    python module name
+    -f, --function <funcname>    python function name
+    -n, --namespace <namespace>  docker namespace to use if not set (overrides config)
 """
 
 
@@ -27,15 +29,14 @@ from contextlib import contextmanager
 import yaml
 import docopt
 import structlog
-import structlog.threadlocal
+from structlog import get_logger
 from structlog.threadlocal import tmp_bind
+from colorama import Fore
 
 import dominator
 from .entities import ConfigVolume
 from .settings import settings
 from .utils import pull_repo
-
-_logger = structlog.get_logger()
 
 
 def literal_str_representer(dumper, data):
@@ -52,36 +53,39 @@ def dump(containers):
     print(yaml.dump(containers))
 
 
-def run(containers, container: str, remove: bool, pull: bool, detach: bool):
+def run(containers, container: str=None, remove: bool=False, detach: bool=True, dockerurl: str=None):
     """
     Run locally all or specified containers from config
 
     usage: dominator run [options] [<container>]
 
         -h, --help
-        -p, --pull    # pull repositories before start [default: false]
-        -r, --remove  # remove container after stop [default: false]
-        -d, --detach  # do not follow container logs
+        -r, --remove     # remove container after stop [default: false]
+        -u, --dockerurl  # Docker API endpoint [default: null]
+        -d, --detach     # do not follow container logs
     """
     for c in containers:
         if c.ship.islocal and (container is None or c.name == container):
-            run_container(c, remove, pull, detach if container is not None else True)
+            run_container(c, remove, detach if container is not None else True, dockerurl)
 
 
 def _ps(dock, name, **kwargs):
     return list([cont for cont in dock.containers(**kwargs) if cont['Names'][0][1:] == name])
 
 
-def run_container(cont, remove, pull, detach):
-    logger = _logger.bind(container=cont)
+def run_container(cont, remove: bool=False, detach: bool=True, dockerurl: str=None):
+    logger = get_logger(container=cont)
     logger.info('starting container')
     import docker
 
-    if cont.ship.islocal:
-        logger.info('connecting to local docker')
-        dock = docker.Client()
+    if dockerurl is not None:
+        dock = docker.Client(dockerurl)
     else:
-        raise RuntimeError('could only run containers on local docker (because of volumes)')
+        if cont.ship.islocal:
+            logger.info('connecting to local docker')
+            dock = docker.Client()
+        else:
+            raise RuntimeError('could only run containers on local docker (because of volumes)')
 
     for volume in cont.volumes:
         if isinstance(volume, ConfigVolume):
@@ -95,13 +99,20 @@ def run_container(cont, remove, pull, detach):
                 for file in volume.files:
                     file.dump(cont, volume)
 
-    if pull or len(dock.images(name=cont.repository)) == 0:
-        pull_repo(dock, cont.repository, cont.tag)
+    image = cont.image
+    # Check if ship has needed image
+    if image.id not in [iinfo['Id'] for iinfo in dock.images(name=image.repository)]:
+        logger.info('could not find requested image, pulling repo')
+        pull_repo(dock, image.repository, image.id)
 
     running = _ps(dock, cont.name)
     if len(running) > 0:
-        logger.info('found running container with the same name, stopping')
-        dock.stop(running[0])
+        logger.info('found running container with the same name, checking environment')
+        # TODO: compare the environment
+        if running[0]['Image'] != image.id[:12]:
+            logger.info('running container image id doesn\'t match with requested id, stopping',
+                        runningimage=running[0]['Image'])
+            dock.stop(running[0])
 
     stopped = _ps(dock, cont.name, all=True)
     if len(stopped):
@@ -110,8 +121,9 @@ def run_container(cont, remove, pull, detach):
 
     logger.info('creating container')
     cont_info = dock.create_container(
-        image='{}:{}'.format(cont.repository, cont.tag),
+        image='{}:{}'.format(image.repository, image.id),
         hostname='{}-{}'.format(cont.name, cont.ship.name),
+        command=cont.command,
         mem_limit=cont.memory,
         environment=cont.env,
         name=cont.name,
@@ -122,7 +134,10 @@ def run_container(cont, remove, pull, detach):
     logger.info('starting container')
     dock.start(
         cont_info,
-        port_bindings={'{}/tcp'.format(v): ('::', v) for v in cont.ports.values()},
+        port_bindings={
+            '{}/{}'.format(port, cont.portproto.get(name, 'tcp')): ('::', cont.extports.get(name, port))
+            for name, port in cont.ports.items()
+        },
         binds={v.getpath(cont): {'bind': v.dest, 'ro': v.ro} for v in cont.volumes},
     )
 
@@ -155,13 +170,13 @@ def list_containers(containers):
 
 
 def load_module(modulename, func):
-    _logger.info("loading config from module", module=modulename, func=func)
+    get_logger().info("loading config from module", module=modulename, func=func)
     module = importlib.import_module(modulename)
     return getattr(module, func)()
 
 
 def load_yaml(filename):
-    _logger.info("loading config from yaml", filename=filename)
+    get_logger().info("loading config from yaml", filename=filename)
     if filename == '-':
         return yaml.load(sys.stdin)
     else:
@@ -169,7 +184,7 @@ def load_yaml(filename):
             return yaml.load(f)
 
 
-def status(containers, ship: str):
+def status(containers, ship: str=None):
     """Show containers' status
     usage: dominator status [options] [<ship>]
 
@@ -185,11 +200,17 @@ def status(containers, ship: str):
                 if len(matched) == 0:
                     print('  {:20.20} not found'.format(c.name))
                 else:
-                    print('  {:20.20} {:30.30} {:.7}'.format(
-                        c.name,
-                        matched[0]['Status'],
-                        dock.inspect_container(matched[0])['Image']
-                    ))
+                    runningimage = dock.inspect_container(matched[0])['Image']
+                    if runningimage != c.image.id:
+                        color = Fore.RED
+                    else:
+                        color = Fore.GREEN
+                    print('  {name:20.20} {status:30.30} {color}{id:.7}'.format(
+                        name=c.name,
+                        status=matched[0]['Status'],
+                        color=color,
+                        id=runningimage,
+                    )+Fore.RESET)
 
 
 def lines(records):
@@ -220,7 +241,7 @@ def deploy(containers, ship: str, keep: bool, pull: bool):
 
 
 def deploy_to_ship(ship, containers, keep, pull):
-    logger = _logger.bind(ship=ship)
+    logger = get_logger().bind(ship=ship)
     logger.info('deploying')
     dock = _connect_to_ship(ship)
     image = settings['deploy-image']
@@ -263,6 +284,21 @@ def makedeb():
     pass
 
 
+def initlog():
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.KeyValueRenderer(sort_keys=True, key_order=['event'])
+        ],
+        context_class=structlog.threadlocal.wrap_dict(dict),
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+
+
 def main():
     args = docopt.docopt(__doc__, version=dominator.__version__, options_first=True)
     command = args['<command>']
@@ -271,20 +307,11 @@ def main():
     if not callable(action) or not hasattr(action, '__doc__'):
         exit("no such command, see 'dominator help'.")
     else:
-        structlog.configure(
-            processors=[
-                structlog.stdlib.filter_by_level,
-                structlog.processors.StackInfoRenderer(),
-                structlog.processors.format_exc_info,
-                structlog.processors.KeyValueRenderer(sort_keys=True, key_order=['event'])
-            ],
-            context_class=structlog.threadlocal.wrap_dict(dict),
-            logger_factory=structlog.stdlib.LoggerFactory(),
-            wrapper_class=structlog.stdlib.BoundLogger,
-            cache_logger_on_first_use=True,
-        )
+        initlog()
         logging.basicConfig(level=getattr(logging, args['--loglevel'].upper()))
         settings.load(args['--settings'])
+        if args['--namespace']:
+            settings['docker-namespace'] = args['--namespace']
         logging.config.dictConfig(settings.get('logging', {}))
         if args['--config'] is not None:
             containers = load_yaml(args['--config'])

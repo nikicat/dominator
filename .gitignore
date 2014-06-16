@@ -2,10 +2,12 @@
 /.tox
 /dist
 /*.egg-info
-__pycache__
+/.coverage
 /debian/*.debhelper*
 /debian/files
 /debian/*.substvars
 /debian/dominator/
+__pycache__/
 *.swp
 *.swo
+/pytestdebug.log

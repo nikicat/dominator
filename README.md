@@ -2,6 +2,8 @@ Dominator
 =========
 
 [![Build Status](https://travis-ci.org/yandex-sysmon/dominator.svg)](https://travis-ci.org/yandex-sysmon/dominator)
+[![Coverage Status](https://img.shields.io/coveralls/yandex-sysmon/dominator.svg)](https://coveralls.io/r/yandex-sysmon/dominator)
+[![Gitter Chat](https://badges.gitter.im/yandex-sysmon/dominator.png)](https://gitter.im/yandex-sysmon/dominator)
 
 Distributed application deployment and orchestration using Docker.
 Describe your cloud services using Pyhton.

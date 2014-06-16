@@ -37,9 +37,13 @@ def get_tags(dock, repo):
         yield image['RepoTags'][0].split(':')[-1], image['Id']
 
 
-def get_image(repo, tag='latest'):
+def get_docker(url=None):
     import docker
-    dock = docker.Client()
+    return docker.Client(url or settings.get('dockerurl'))
+
+
+def get_image(repo, tag='latest'):
+    dock = get_docker()
     if '/' not in repo and 'docker-namespace' in settings:
         repo = settings['docker-namespace'] + '/' + repo
     if tag not in get_tags(dock, repo):
@@ -49,8 +53,7 @@ def get_image(repo, tag='latest'):
 
 @aslist
 def image_ports(image):
-    import docker
-    dock = docker.Client()
+    dock = get_docker()
     for port in dock.inspect_image(image)['config']['ExposedPorts'].keys():
         yield int(port.split('/')[0])
 

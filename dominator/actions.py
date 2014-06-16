@@ -36,7 +36,7 @@ from colorama import Fore
 import dominator
 from .entities import ConfigVolume
 from .settings import settings
-from .utils import pull_repo
+from .utils import pull_repo, get_docker
 
 
 def literal_str_representer(dumper, data):
@@ -76,16 +76,8 @@ def _ps(dock, name, **kwargs):
 def run_container(cont, remove: bool=False, detach: bool=True, dockerurl: str=None):
     logger = get_logger(container=cont)
     logger.info('starting container')
-    import docker
 
-    if dockerurl is not None:
-        dock = docker.Client(dockerurl)
-    else:
-        if cont.ship.islocal:
-            logger.info('connecting to local docker')
-            dock = docker.Client()
-        else:
-            raise RuntimeError('could only run containers on local docker (because of volumes)')
+    dock = get_docker(dockerurl)
 
     for volume in cont.volumes:
         if isinstance(volume, ConfigVolume):

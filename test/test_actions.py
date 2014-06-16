@@ -30,11 +30,10 @@ def ships():
 
 @pytest.fixture
 def containers():
-    return [Container(
-            name='testcont',
-            ship=ship,
-            image=Image('busybox'),
-            command='sleep 10') for ship in ships()]
+    return [Container(name='testcont',
+                      ship=ship,
+                      image=Image('busybox'),
+                      command='sleep 10') for ship in ships()]
 
 
 @pytest.fixture

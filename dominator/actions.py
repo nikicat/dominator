@@ -30,6 +30,7 @@ import docopt
 import structlog
 import structlog.threadlocal
 from structlog.threadlocal import tmp_bind
+from colorama import Fore
 
 import dominator
 from .entities import ConfigVolume
@@ -96,13 +97,20 @@ def run_container(cont, remove, pull, detach):
                 for file in volume.files:
                     file.dump(cont, volume)
 
-    if pull or len(dock.images(name=cont.repository)) == 0:
-        pull_repo(dock, cont.repository, cont.tag)
+    image = cont.image
+    # Check if ship has needed image
+    if image.id not in [iinfo['Id'] for iinfo in dock.images(name=image.repository)]:
+        logger.info('could not find requested image, pulling repo')
+        pull_repo(dock, image.repository, image.id)
 
     running = _ps(dock, cont.name)
     if len(running) > 0:
-        logger.info('found running container with the same name, stopping')
-        dock.stop(running[0])
+        logger.info('found running container with the same name, checking environment')
+        # TODO: compare the environment
+        if running[0]['Image'] != image.id[:12]:
+            logger.info('running container image id doesn\'t match with requested id, stopping',
+                        runningimage=running[0]['Image'])
+            dock.stop(running[0])
 
     stopped = _ps(dock, cont.name, all=True)
     if len(stopped):
@@ -111,8 +119,9 @@ def run_container(cont, remove, pull, detach):
 
     logger.info('creating container')
     cont_info = dock.create_container(
-        image='{}:{}'.format(cont.repository, cont.tag),
+        image='{}:{}'.format(image.repository, image.id),
         hostname='{}-{}'.format(cont.name, cont.ship.name),
+        command=cont.command,
         mem_limit=cont.memory,
         environment=cont.env,
         name=cont.name,
@@ -189,11 +198,17 @@ def status(containers, ship: str):
                 if len(matched) == 0:
                     print('  {:20.20} not found'.format(c.name))
                 else:
-                    print('  {:20.20} {:30.30} {:.7}'.format(
-                        c.name,
-                        matched[0]['Status'],
-                        dock.inspect_container(matched[0])['Image']
-                    ))
+                    runningimage = dock.inspect_container(matched[0])['Image']
+                    if runningimage != c.image.id:
+                        color = Fore.RED
+                    else:
+                        color = Fore.GREEN
+                    print('  {name:20.20} {status:30.30} {color}{id:.7}'.format(
+                        name=c.name,
+                        status=matched[0]['Status'],
+                        color=color,
+                        id=runningimage,
+                    )+Fore.RESET)
 
 
 def lines(records):

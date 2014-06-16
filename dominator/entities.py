@@ -7,7 +7,7 @@ import yaml
 import pkg_resources
 import structlog
 
-from .utils import cached, ship_memory_from_nova, ship_memory_from_bot
+from .utils import cached, ship_memory_from_nova, ship_memory_from_bot, get_image
 from .settings import settings
 
 _logger = structlog.get_logger()
@@ -58,14 +58,27 @@ class LocalShip(Ship):
         return psutil.avail_phymem()
 
 
-class Container:
-    def __init__(self, name: str, ship: Ship, repository: str, tag: str,
-                 volumes: list, ports: dict, memory: int, env: dict={},
-                 extports: dict={}, portproto: dict={}):
-        self.name = name
-        self.ship = ship
+class Image:
+    def __init__(self, repository: str, tag: str='latest', id: str=None):
         self.repository = repository
         self.tag = tag
+        self.id = id or self.getid()
+
+    def __repr__(self):
+        return 'Image(repository={repository}, tag={tag}, id={id:.7})'.format(**vars(self))
+
+    def getid(self):
+        return get_image(self.repository, self.tag)
+
+
+class Container:
+    def __init__(self, name: str, ship: Ship, image: Image, command: str=None,
+                 ports: dict={}, memory: int=0, volumes: list=[],
+                 env: dict={}, extports: dict={}, portproto: dict={}):
+        self.name = name
+        self.ship = ship
+        self.image = image
+        self.command = command
         self.volumes = volumes
         self.ports = ports
         self.memory = memory
@@ -74,7 +87,7 @@ class Container:
         self.portproto = portproto
 
     def __repr__(self):
-        return 'Container(name={name}, repository={repository}, tag={tag:.7})'.format(**vars(self))
+        return 'Container(name={name}, ship={ship}, Image={image}, env={env})'.format(**vars(self))
 
     def getvolume(self, volumename):
         for volume in self.volumes:

@@ -54,10 +54,11 @@ if __name__ == '__main__':
             'python_novaclient',
             'conductor_client',
             'psutil',
+            'colorama',
+            'pyquery',
         ],
         tests_require=[
             'tox',
-            'coveralls',
             'pytest',
             'pytest-cov',
         ],

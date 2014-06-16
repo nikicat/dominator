@@ -1,5 +1,6 @@
 """
-Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) [-n <namespace>] <command> [<args>...]
+Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) [-n <namespace>] \
+ <command> [<args>...]
 
 Commands:
     dump                dump config in yaml format

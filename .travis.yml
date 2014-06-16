@@ -17,6 +17,7 @@ deploy:
     repo: yandex-sysmon/dominator
 after_success:
 - coveralls
+- tox -e pylint
 notifications:
   hipchat:
     rooms:

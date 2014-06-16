@@ -17,6 +17,8 @@ vcr = VCR(cassette_library_dir='test/fixtures/vcr_cassettes')
 def settings():
     with tempfile.TemporaryDirectory() as configdir:
         _settings['configvolumedir'] = configdir
+        # FIXME: use https endpoint because vcrpy doesn't handle UnixHTTPConnection
+        _settings['dockerurl'] = 'http://localhost:4243'
         yield _settings
 
 
@@ -32,6 +34,7 @@ def ships():
 
 
 @pytest.fixture
+@vcr.use_cassette('images.yaml')
 def containers():
     return [Container(name='testcont',
                       ship=ship,
@@ -47,8 +50,7 @@ def docker():
 
 @vcr.use_cassette('run.yaml')
 def test_run(capsys, containers):
-    # FIXME: use https endpoint because vcrpy doesn't handle UnixHTTPConnection
-    run(containers, dockerurl='http://localhost:4243')
+    run(containers)
     _, _ = capsys.readouterr()
     status(containers)
     out, _ = capsys.readouterr()

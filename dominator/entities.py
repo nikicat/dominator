@@ -1,6 +1,5 @@
 import os.path
 import os
-import socket
 import inspect
 
 import yaml

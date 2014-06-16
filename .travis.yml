@@ -1,9 +1,10 @@
 language: python
 python:
-  - "3.3"
-  - "3.4"
-install: "pip install tox"
-script: tox
+- '3.3'
+- '3.4'
+install:
+- pip install tox coveralls
+script: tox -v
 deploy:
   provider: pypi
   user: nikicat
@@ -14,3 +15,9 @@ deploy:
     tags: true
     python: 3.4
     repo: yandex-sysmon/dominator
+after_success:
+- coveralls
+notifications:
+  hipchat:
+    rooms:
+      secure: PafUqqru2uzvMt+lMC6zjHNskguNbvK6o8P2ChjlZ9pEqs0UNRH8gRQGAQKErRfC1baUrjz2zjfqdXFvQUIIYZS9X6h9GXReX+wfaU9/ZTCL4e/TDaauXIyVKTjSgmMsk2N9XkorDHexkrHDFOENbU5YWABbnuOcXcYTEJ/VhvM=

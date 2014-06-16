@@ -53,28 +53,27 @@ def dump(containers):
     print(yaml.dump(containers))
 
 
-def run(containers, container: str=None, remove: bool=False, pull: bool=False, detach: bool=True, dockerurl: str=None):
+def run(containers, container: str=None, remove: bool=False, detach: bool=True, dockerurl: str=None):
     """
     Run locally all or specified containers from config
 
     usage: dominator run [options] [<container>]
 
         -h, --help
-        -p, --pull       # pull repositories before start [default: false]
         -r, --remove     # remove container after stop [default: false]
         -u, --dockerurl  # Docker API endpoint [default: null]
         -d, --detach     # do not follow container logs
     """
     for c in containers:
         if c.ship.islocal and (container is None or c.name == container):
-            run_container(c, remove, pull, detach if container is not None else True, dockerurl)
+            run_container(c, remove, detach if container is not None else True, dockerurl)
 
 
 def _ps(dock, name, **kwargs):
     return list([cont for cont in dock.containers(**kwargs) if cont['Names'][0][1:] == name])
 
 
-def run_container(cont, remove: bool=False, pull: bool=False, detach: bool=True, dockerurl: str=None):
+def run_container(cont, remove: bool=False, detach: bool=True, dockerurl: str=None):
     logger = get_logger(container=cont)
     logger.info('starting container')
     import docker

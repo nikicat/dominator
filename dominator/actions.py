@@ -29,7 +29,7 @@ from contextlib import contextmanager
 import yaml
 import docopt
 import structlog
-import structlog.threadlocal
+from structlog import get_logger
 from structlog.threadlocal import tmp_bind
 from colorama import Fore
 
@@ -37,8 +37,6 @@ import dominator
 from .entities import ConfigVolume
 from .settings import settings
 from .utils import pull_repo
-
-_logger = structlog.get_logger()
 
 
 def literal_str_representer(dumper, data):
@@ -76,7 +74,7 @@ def _ps(dock, name, **kwargs):
 
 
 def run_container(cont, remove, pull, detach):
-    logger = _logger.bind(container=cont)
+    logger = get_logger(container=cont)
     logger.info('starting container')
     import docker
 
@@ -169,13 +167,13 @@ def list_containers(containers):
 
 
 def load_module(modulename, func):
-    _logger.info("loading config from module", module=modulename, func=func)
+    get_logger().info("loading config from module", module=modulename, func=func)
     module = importlib.import_module(modulename)
     return getattr(module, func)()
 
 
 def load_yaml(filename):
-    _logger.info("loading config from yaml", filename=filename)
+    get_logger().info("loading config from yaml", filename=filename)
     if filename == '-':
         return yaml.load(sys.stdin)
     else:
@@ -240,7 +238,7 @@ def deploy(containers, ship: str, keep: bool, pull: bool):
 
 
 def deploy_to_ship(ship, containers, keep, pull):
-    logger = _logger.bind(ship=ship)
+    logger = get_logger().bind(ship=ship)
     logger.info('deploying')
     dock = _connect_to_ship(ship)
     image = settings['deploy-image']
@@ -283,6 +281,21 @@ def makedeb():
     pass
 
 
+def initlog():
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.KeyValueRenderer(sort_keys=True, key_order=['event'])
+        ],
+        context_class=structlog.threadlocal.wrap_dict(dict),
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+
+
 def main():
     args = docopt.docopt(__doc__, version=dominator.__version__, options_first=True)
     command = args['<command>']
@@ -291,18 +304,7 @@ def main():
     if not callable(action) or not hasattr(action, '__doc__'):
         exit("no such command, see 'dominator help'.")
     else:
-        structlog.configure(
-            processors=[
-                structlog.stdlib.filter_by_level,
-                structlog.processors.StackInfoRenderer(),
-                structlog.processors.format_exc_info,
-                structlog.processors.KeyValueRenderer(sort_keys=True, key_order=['event'])
-            ],
-            context_class=structlog.threadlocal.wrap_dict(dict),
-            logger_factory=structlog.stdlib.LoggerFactory(),
-            wrapper_class=structlog.stdlib.BoundLogger,
-            cache_logger_on_first_use=True,
-        )
+        initlog()
         logging.basicConfig(level=getattr(logging, args['--loglevel'].upper()))
         settings.load(args['--settings'])
         if args['--namespace']:

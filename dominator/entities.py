@@ -1,6 +1,5 @@
 import os.path
 import os
-import socket
 import inspect
 
 import yaml
@@ -47,7 +46,7 @@ class LocalShip(Ship):
     def __init__(self):
         super(LocalShip, self).__init__(
             name=os.uname()[1],
-            fqdn=socket.gethostbyname(socket.gethostname()),
+            fqdn='localhost',
             datacenter='local',
         )
 

@@ -2,7 +2,7 @@ import tempfile
 import logging
 import re
 import pytest
-import vcr
+from vcr import VCR
 from colorama import Fore
 
 from dominator.entities import LocalShip, Container, Image
@@ -10,10 +10,15 @@ from dominator.actions import dump, run, status, initlog, load_yaml
 from dominator.settings import settings as _settings
 
 
+vcr = VCR(cassette_library_dir='test/fixtures/vcr_cassettes')
+
+
 @pytest.yield_fixture(autouse=True)
 def settings():
     with tempfile.TemporaryDirectory() as configdir:
         _settings['configvolumedir'] = configdir
+        # FIXME: use https endpoint because vcrpy doesn't handle UnixHTTPConnection
+        _settings['dockerurl'] = 'http://localhost:4243'
         yield _settings
 
 
@@ -29,12 +34,12 @@ def ships():
 
 
 @pytest.fixture
+@vcr.use_cassette('images.yaml')
 def containers():
-    return [Container(
-            name='testcont',
-            ship=ship,
-            image=Image('busybox'),
-            command='sleep 10') for ship in ships()]
+    return [Container(name='testcont',
+                      ship=ship,
+                      image=Image('busybox'),
+                      command='sleep 10') for ship in ships()]
 
 
 @pytest.fixture
@@ -43,10 +48,9 @@ def docker():
     return docker.Client()
 
 
-@vcr.use_cassette('fixtures/vcr_cassettes/run.yaml')
+@vcr.use_cassette('run.yaml')
 def test_run(capsys, containers):
-    # FIXME: use https endpoint because vcrpy doesn't handle UnixHTTPConnection
-    run(containers, dockerurl='http://localhost:4243')
+    run(containers)
     _, _ = capsys.readouterr()
     status(containers)
     out, _ = capsys.readouterr()

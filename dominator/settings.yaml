@@ -3,6 +3,8 @@ password: &password !!python/object/apply:os.getenv [OS_PASSWORD]
 deploy-image: nikicat/dominator
 configvolumedir: ~/.config/dominator/config
 datavolumedir: ~/.config/dominator/data
+# Uncomment to connect using tcp socket instead of unix-socket
+#dockerurl: http://localhost:4243
 
 logging:
     version: 1

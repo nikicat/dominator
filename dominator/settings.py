@@ -19,7 +19,7 @@ class Settings(dict):
                     break
             else:
                 _logger.warning("could not find any settings file, using default")
-                stream = resource_stream('settings.yaml')
+                stream = resource_stream(__name__, 'settings.yaml')
         else:
             stream = open(filename)
         self.update(yaml.load(stream))

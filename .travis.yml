@@ -1,7 +1,12 @@
 language: python
 python:
-- '3.3'
-- '3.4'
+- 3.4
+env:
+- TOXENV=py33
+- TOXENV=py34
+- TOXENV=flake8
+- TOXENV=pylint
+- TOXENV=cover
 install:
 - pip install tox coveralls
 script: tox -v
@@ -16,8 +21,7 @@ deploy:
     python: 3.4
     repo: yandex-sysmon/dominator
 after_success:
-- coveralls
-- tox -e pylint
+- if [ "$TOXENV" = 'cover' ]; then coveralls; fi
 notifications:
   hipchat:
     rooms:

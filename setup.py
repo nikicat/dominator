@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
-        version='0.1',
+        version='0.2',
         url='https://github.com/nikicat/dominator',
         license='GPLv3',
         author='Nikolay Bryskin',

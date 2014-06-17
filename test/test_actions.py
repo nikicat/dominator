@@ -54,8 +54,8 @@ def test_run(capsys, containers):
     _, _ = capsys.readouterr()
     status(containers)
     out, _ = capsys.readouterr()
-    assert re.match(r'  testcont[ \t]+Up Less than a second[ \t]+{color}{id:.7}'.format(
-        color=re.escape(Fore.GREEN), id=containers[0].image.id), out.split('\n')[-2])
+    assert re.match(r'  testcont[ \t]+[a-f0-9]{{7}}[ \t]+{color}Up Less than a second'.format(
+        color=re.escape(Fore.GREEN)), out.split('\n')[-2])
 
 
 def test_dump(capsys, containers):

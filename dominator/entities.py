@@ -4,12 +4,10 @@ import inspect
 
 import yaml
 import pkg_resources
-import structlog
+from structlog import get_logger
 
-from .utils import cached, ship_memory_from_nova, ship_memory_from_bot, get_image
+from . import utils
 from .settings import settings
-
-_logger = structlog.get_logger()
 
 
 class Ship:
@@ -26,15 +24,15 @@ class Ship:
         return 'Ship(name={})'.format(self.name)
 
     @property
-    @cached
+    @utils.cached
     def memory(self):
         if hasattr(self, 'novacluster'):
-            return ship_memory_from_nova(self)
+            return utils.ship_memory_from_nova(self)
         else:
-            return ship_memory_from_bot(self.fqdn)
+            return utils.ship_memory_from_bot(self.fqdn)
 
     @property
-    @cached
+    @utils.cached
     def islocal(self):
         return self.name == os.uname()[1]
 
@@ -51,7 +49,7 @@ class LocalShip(Ship):
         )
 
     @property
-    @cached
+    @utils.cached
     def memory(self):
         import psutil
         return psutil.avail_phymem()
@@ -59,7 +57,7 @@ class LocalShip(Ship):
 
 class Image:
     def __init__(self, repository: str, tag: str='latest', id: str=None):
-        self.repository = repository
+        self.repository = utils.get_repo(repository)
         self.tag = tag
         self.id = id or self.getid()
 
@@ -67,7 +65,19 @@ class Image:
         return 'Image(repository={repository}, tag={tag}, id={id:.7})'.format(**vars(self))
 
     def getid(self):
-        return get_image(self.repository, self.tag)
+        return utils.get_image(self.repository, self.tag)
+
+    @property
+    def ports(self):
+        return utils.image_ports(self.id)
+
+    @property
+    def command(self):
+        return utils.image_command(self.id)
+
+    @property
+    def env(self):
+        return utils.image_env(self.id)
 
 
 class Container:
@@ -131,9 +141,31 @@ class ConfigVolume(Volume):
         return True
 
 
-class TextFile:
+class BaseFile:
+    def __init__(self, name):
+        self.name = name
+
+    def getpath(self, container, volume):
+        return os.path.join(volume.getpath(container), self.name)
+
+    def dump(self, container, volume, data):
+        if data is None:
+            data = self.data(container)
+        path = self.getpath(container, volume)
+        get_logger().debug("writing file", file=self, path=path)
+        with open(path, 'w+', encoding='utf8') as f:
+            f.write(data)
+
+    def load(self, container, volume):
+        path = self.getpath(container, volume)
+        get_logger().debug('loading text file contents', path=path)
+        with open(path) as f:
+            return f.read()
+
+
+class TextFile(BaseFile):
     def __init__(self, filename: str, text: str=None):
-        self.name = filename
+        BaseFile.__init__(self, filename)
         if text is not None:
             self.content = text
         else:
@@ -144,18 +176,12 @@ class TextFile:
     def __str__(self):
         return 'TextFile(name={})'.format(self.name)
 
-    def dump(self, container, volume):
-        self._write(volume.getpath(container), self.content)
-
-    def _write(self, volumepath, data):
-        path = os.path.join(volumepath, self.name)
-        _logger.debug("writing file", path=path)
-        with open(path, 'w+', encoding='utf8') as f:
-            f.write(data)
+    def data(self, _container):
+        return self.content
 
 
 class TemplateFile:
-    def __init__(self, file: TextFile, **kwargs):
+    def __init__(self, file: BaseFile, **kwargs):
         self.file = file
         self.context = kwargs
 
@@ -163,25 +189,29 @@ class TemplateFile:
         return 'TemplateFile(file={file}, context={context})'.format(vars(self))
 
     def dump(self, container, volume):
-        logger = _logger.bind(file=self)
+        logger = get_logger(file=self)
         logger.debug("rendering file")
+        self.file.dump(container, volume, self.data(container))
+
+    def data(self, container):
         import mako.template
-        template = mako.template.Template(self.file.content)
+        template = mako.template.Template(self.file.data(container))
         context = {'this': container}
         context.update(self.context)
-        logger.debug('context', context=context)
-        self.file._write(volume.getpath(container), template.render(**context))
+        get_logger().debug('rendering template file', context=context)
+        return template.render(**context)
+
+    def load(self, container, volume):
+        return self.file.load(container, volume)
 
 
-class YamlFile:
+class YamlFile(BaseFile):
     def __init__(self, name: str, data: dict):
-        self.name = name
-        self.data = data
+        BaseFile.__init__(self, name)
+        self.content = data
 
     def __str__(self):
         return 'YamlFile(name={name})'.format(vars(self))
 
-    def dump(self, container, volume):
-        _logger.debug("rendering file", file=self)
-        with open(os.path.join(volume.getpath(container), self.name), 'w+') as f:
-            yaml.dump(self.data, f)
+    def data(self, _container):
+        return yaml.dump(self.content)

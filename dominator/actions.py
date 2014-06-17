@@ -36,7 +36,7 @@ from colorama import Fore
 import dominator
 from .entities import ConfigVolume
 from .settings import settings
-from .utils import pull_repo, get_docker
+from .utils import pull_repo, get_docker, compare_container
 
 
 def literal_str_representer(dumper, data):
@@ -99,12 +99,14 @@ def run_container(cont, remove: bool=False, detach: bool=True, dockerurl: str=No
 
     running = _ps(dock, cont.name)
     if len(running) > 0:
-        logger.info('found running container with the same name, checking environment')
-        # TODO: compare the environment
-        if running[0]['Image'] != image.id[:12]:
-            logger.info('running container image id doesn\'t match with requested id, stopping',
-                        runningimage=running[0]['Image'])
+        logger.info('found running container with the same name, comparing config with requested')
+        diff = compare_container(cont, dock.inspect_container(running[0]))
+        if len(diff) > 0:
+            logger.info('running container config differs from requested, stopping', diff=diff)
             dock.stop(running[0])
+        else:
+            logger.info('running container config identical to requested, keeping')
+            return
 
     stopped = _ps(dock, cont.name, all=True)
     if len(stopped):
@@ -176,11 +178,12 @@ def load_yaml(filename):
             return yaml.load(f)
 
 
-def status(containers, ship: str=None):
+def status(containers, ship: str=None, showdiff: bool=False):
     """Show containers' status
     usage: dominator status [options] [<ship>]
 
         -h, --help
+        -d, --showdiff  # show diff with running container [default: false]
     """
     for s in set([c.ship for c in containers]):
         if s.name == ship or ship is None:
@@ -189,20 +192,49 @@ def status(containers, ship: str=None):
             ship_containers = dock.containers(all=True)
             for c in s.containers(containers):
                 matched = list([cinfo for cinfo in ship_containers if cinfo['Names'][0][1:] == c.name])
+                color = Fore.RED
                 if len(matched) == 0:
-                    print('  {:20.20} not found'.format(c.name))
+                    status = 'not found'
+                    contid = ''
                 else:
-                    runningimage = dock.inspect_container(matched[0])['Image']
-                    if runningimage != c.image.id:
-                        color = Fore.RED
-                    else:
-                        color = Fore.GREEN
-                    print('  {name:20.20} {status:30.30} {color}{id:.7}'.format(
-                        name=c.name,
-                        status=matched[0]['Status'],
-                        color=color,
-                        id=runningimage,
-                    )+Fore.RESET)
+                    cinfo = matched[0]
+                    status = cinfo['Status']
+                    contid = cinfo['Id']
+                    if 'Up' in status:
+                        diff = compare_container(c, dock.inspect_container(cinfo))
+                        get_logger().debug('compare result', diff=diff)
+                        if len(diff) > 0:
+                            color = Fore.YELLOW
+                        else:
+                            color = Fore.GREEN
+                print('  {name:20.20} {id:10.7} {color}{status:30.30}{reset}'.format(
+                    name=c.name,
+                    status=status,
+                    color=color,
+                    id=contid,
+                    reset=Fore.RESET,
+                ))
+                if len(matched) > 0 and showdiff:
+                    print_diff(2, diff)
+
+
+def print_diff(indent, diff):
+    indentstr = '  '*indent
+    for item in diff:
+        if isinstance(item, str):
+            # diff line
+            color = {'- ': Fore.RED, '+ ': Fore.GREEN, '? ': Fore.BLUE}.get(item[:2], '')
+            print('{indent}{color}{item}{reset}'.format(indent=indentstr, item=item, color=color, reset=Fore.RESET))
+        elif len(item) == 3:
+            # (key, expected, actual) tuple
+            print('{indent}{key:20.20} {expected:20.20} {actual:20.20}'.format(indent=indentstr,
+                  key=item[0]+':', expected=str(item[1]), actual=str(item[2])))
+        elif len(item) == 2 and len(item[1]) > 0:
+            # (key, list-of-subkeys) tuple
+            print('{indent}{key:20.20}'.format(indent=indentstr, key=item[0]+':'))
+            print_diff(indent+1, item[1])
+        else:
+            assert False, "invalid item {} in diff {}".format(item, diff)
 
 
 def lines(records):

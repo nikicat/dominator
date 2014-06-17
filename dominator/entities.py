@@ -10,18 +10,23 @@ from . import utils
 from .settings import settings
 
 
-class Ship:
-    def __init__(self, name, fqdn, **kwargs):
-        self.name = name
-        self.fqdn = fqdn
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
+class BaseShip:
     def __lt__(self, other):
         return self.fqdn < other.fqdn
 
     def __repr__(self):
-        return 'Ship(name={})'.format(self.name)
+        return '{}(name={})'.format(self.__class__, self.name)
+
+    def containers(self, containers):
+        return [c for c in containers if c.ship == self]
+
+class Ship(BaseShip):
+    def __init__(self, name, fqdn, datacenter, **kwargs):
+        self.name = name
+        self.fqdn = fqdn
+        self.datacenter = datacenter
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     @property
     @utils.cached
@@ -36,17 +41,23 @@ class Ship:
     def islocal(self):
         return self.name == os.uname()[1]
 
-    def containers(self, containers):
-        return [c for c in containers if c.ship == self]
 
+class LocalShip(BaseShip):
+    @property
+    def datacenter(self):
+        return 'localdc'
 
-class LocalShip(Ship):
-    def __init__(self):
-        super(LocalShip, self).__init__(
-            name=os.uname()[1],
-            fqdn='localhost',
-            datacenter='local',
-        )
+    @property
+    def name(self):
+        return 'localship'
+
+    @property
+    def fqdn(self):
+        return settings.get('localship-fqdn', 'localhost')
+
+    @property
+    def islocal(self):
+        return True
 
     @property
     @utils.cached
@@ -145,10 +156,10 @@ class BaseFile:
     def __init__(self, name):
         self.name = name
 
-    def getpath(self, container, volume):
+    def getpath(self, container: Container, volume: Volume):
         return os.path.join(volume.getpath(container), self.name)
 
-    def dump(self, container, volume, data):
+    def dump(self, container: Container, volume: Volume, data: str=None):
         if data is None:
             data = self.data(container)
         path = self.getpath(container, volume)
@@ -156,7 +167,7 @@ class BaseFile:
         with open(path, 'w+', encoding='utf8') as f:
             f.write(data)
 
-    def load(self, container, volume):
+    def load(self, container: Container, volume: Volume):
         path = self.getpath(container, volume)
         get_logger().debug('loading text file contents', path=path)
         with open(path) as f:

@@ -20,6 +20,7 @@ class BaseShip:
     def containers(self, containers):
         return [c for c in containers if c.ship == self]
 
+
 class Ship(BaseShip):
     def __init__(self, name, fqdn, datacenter, **kwargs):
         self.name = name

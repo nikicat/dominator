@@ -1,14 +1,23 @@
-username: &username !!python/object/apply:os.getenv [OS_USERNAME]
-password: &password !!python/object/apply:os.getenv [OS_PASSWORD]
+# Global settings for Dominator
+# Copy this file to ~/.config/dominator/settings.yaml and edit
+
+# Image for deploying config files to remote ships
 deploy-image: nikicat/dominator
+
+# Directory to place config files
 configvolumedir: ~/.config/dominator/config
+
+# Directory to place data
 datavolumedir: ~/.config/dominator/data
+
 # Uncomment to connect using tcp socket instead of unix-socket
 #dockerurl: http://localhost:4243
 
 # FQDN for LocalShip's - used for developing. Put here some local ip
 # different from 127.0.0.1/::1 that local containers could reach
 #localship-fqdn: localhost
+
+# Logging config (https://docs.python.org/3.4/library/logging.config.html#dictionary-schema-details)
 logging:
     version: 1
     incremental: true
@@ -16,6 +25,12 @@ logging:
         requests.packages.urllib3.connectionpool:
             level: WARN
 
+# FIXME: next options should be moved to separate sub-package
+
+username: &username !!python/object/apply:os.getenv [OS_USERNAME]
+password: &password !!python/object/apply:os.getenv [OS_PASSWORD]
+
+# Openstack installations endpoints and credentials
 nova:
     haze:
         client:
@@ -34,6 +49,7 @@ nova:
             insecure: true
         domain: i.fog.yandex.net
 
+# Racktables endpoint and credentials
 racktables:
     url: https://racktables.yandex.net/
     user: *username

@@ -227,11 +227,12 @@ def print_diff(indent, diff):
             print('{indent}{color}{item}{reset}'.format(indent=indentstr, item=item, color=color, reset=Fore.RESET))
         elif len(item) == 3:
             # (key, expected, actual) tuple
-            print('{indent}{key:20.20} {expected:20.20} {actual:20.20}'.format(indent=indentstr,
-                  key=item[0]+':', expected=str(item[1]), actual=str(item[2])))
+            print('{indent}{key:30.30} {fore.RED}{actual:20.20}{fore.RESET} \
+{fore.GREEN}{expected:20.20}{fore.RESET}'.format(indent=indentstr, fore=Fore,
+                  key=item[0], expected=str(item[1]), actual=str(item[2])))
         elif len(item) == 2 and len(item[1]) > 0:
             # (key, list-of-subkeys) tuple
-            print('{indent}{key:20.20}'.format(indent=indentstr, key=item[0]+':'))
+            print('{indent}{key:30.30}'.format(indent=indentstr, key=item[0]+':'))
             print_diff(indent+1, item[1])
         else:
             assert False, "invalid item {} in diff {}".format(item, diff)

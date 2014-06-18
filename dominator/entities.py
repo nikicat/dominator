@@ -15,7 +15,7 @@ class BaseShip:
         return self.fqdn < other.fqdn
 
     def __repr__(self):
-        return '{}(name={})'.format(self.__class__, self.name)
+        return '{}(name={})'.format(type(self).__name__, self.name)
 
     def containers(self, containers):
         return [c for c in containers if c.ship == self]

@@ -14,19 +14,24 @@ install:
 - pip install tox coveralls bumpversion
 script: tox -v
 before_deploy:
-- bumpversion minor
+- git checkout master
+- git config user.email "travisbot@travis-ci.org"
+- git config user.name "Travis-CI Bot"
+- (git log -1 --pretty=%B | grep 'Merge pull request') && bumpversion --verbose minor || true
 - git remote remove origin
-- git remove add origin git@github.com:yandex-sysmon/dominator
-- openssl rsa -in .deploy.pem -passin env:DEPLOYKEYPASS | ssh-add -
-- git push --tags
+- git remote add origin git@github.com:yandex-sysmon/dominator
+- openssl rsa -in .deploy.pem -passin env:DEPLOYKEYPASS >> ~/.ssh/id_rsa
+- chmod 0600 ~/.ssh/id_rsa
+- git push origin master
+- git push --tags --force
 deploy:
   provider: pypi
   user: nikicat
   password:
     secure: i9zNWTqaqWjKp4hHVXA0wWvCFS5ic7ne3nc6WP7fanQLC5y1/tQxsnmMVN02aThfpNoCZKh82rWjs/wXXxUq5Q4egXFaOjMPoyIsb8EGHFi4y1FMW/wSnw/iBXFYruWf/k+JQz2t+dj1/EpHj4sLGMPRjANdK2+fwrDFNIlUIBs=
-  distributions: sdist bdist
+  distributions: sdist
   on:
-    python: 3.4
+    condition: "$TOXENV = py34"
     repo: yandex-sysmon/dominator
 after_success:
 - if [ "$TOXENV" = 'cover' ]; then coveralls; fi

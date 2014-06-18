@@ -44,6 +44,12 @@ def literal_str_representer(dumper, data):
 yaml.add_representer(str, literal_str_representer)
 
 
+def command(func):
+    func.iscommand = True
+    return func
+
+
+@command
 def dump(containers):
     """
     Dump config as YAML
@@ -53,6 +59,7 @@ def dump(containers):
     print(yaml.dump(containers))
 
 
+@command
 def run(containers, container: str=None, remove: bool=False, detach: bool=True, dockerurl: str=None):
     """
     Run locally all or specified containers from config
@@ -152,6 +159,7 @@ def run_container(cont, remove: bool=False, detach: bool=True, dockerurl: str=No
             dock.remove_container(cont_info)
 
 
+@command
 def list_containers(containers):
     """ list containers for local ship
     usage: dominator list-containers [-h]
@@ -178,6 +186,7 @@ def load_yaml(filename):
             return yaml.load(f)
 
 
+@command
 def status(containers, ship: str=None, showdiff: bool=False):
     """Show containers' status
     usage: dominator status [options] [<ship>]
@@ -252,6 +261,7 @@ def _connect_to_ship(ship):
     return docker.Client('http://{}:4243/'.format(ship.fqdn))
 
 
+@command
 def deploy(containers, ship: str, keep: bool, pull: bool):
     """Deploy containers to ship[s]
     usage: dominator deploy [options] [<ship>]
@@ -298,7 +308,7 @@ def deploy_to_ship(ship, containers, keep, pull):
 
 @contextmanager
 def docker_attach(dock, cinfo):
-    '''some hacks to workaround docker-py bugs'''
+    """some hacks to workaround docker-py bugs"""
     u = dock._url('/containers/{0}/attach'.format(cinfo['Id']))
     r = dock._post(u, params={'stdin': 1, 'stream': 1}, stream=True)
     yield r.raw._fp.fp.raw._sock
@@ -324,8 +334,8 @@ def main():
     args = docopt.docopt(__doc__, version=dominator.__version__, options_first=True)
     command = args['<command>']
     argv = [command] + args['<args>']
-    action = getattr(sys.modules[__name__], command.replace('-', '_'), None)
-    if not callable(action) or not hasattr(action, '__doc__'):
+    commandfunc = getattr(sys.modules[__name__], command.replace('-', '_'), None)
+    if not hasattr(commandfunc, 'iscommand'):
         exit("no such command, see 'dominator help'.")
     else:
         initlog()
@@ -338,9 +348,9 @@ def main():
             containers = load_yaml(args['--config'])
         else:
             containers = load_module(args['--module'], args['--function'])
-        action_args = docopt.docopt(action.__doc__, argv=argv)
+        commandargs = docopt.docopt(commandfunc.__doc__, argv=argv)
 
         def pythonize_arg(arg):
             return arg.replace('--', '').replace('<', '').replace('>', '')
-        action(containers, **{pythonize_arg(k): v for k, v in action_args.items()
-                              if k not in ['--help', command]})
+        commandfunc(containers, **{pythonize_arg(k): v for k, v in commandargs.items()
+                                   if k not in ['--help', command]})

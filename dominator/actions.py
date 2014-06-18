@@ -260,7 +260,7 @@ def deploy(containers, ship: str, keep: bool, pull: bool):
         -k, --keep  # keep configuration container after deploy
         -p, --pull  # pull deploy image before running
     """
-    for s in set([c.ship for c in containers]):
+    for s in {c.ship for c in containers}:
         if ship is None or s.name == ship:
             deploy_to_ship(s, containers, keep, pull)
 

@@ -305,10 +305,6 @@ def docker_attach(dock, cinfo):
     r.close()
 
 
-def makedeb():
-    pass
-
-
 def initlog():
     structlog.configure(
         processors=[

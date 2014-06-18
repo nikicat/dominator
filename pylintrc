@@ -8,14 +8,15 @@ attr-rgx=^[a-zA-Z_][a-zA-Z0-9_]*$
 argument-rgx=^[a-z_][a-z0-9_]*$
 
 [MESSAGES CONTROL]
-# C0111 Missing docstring
-# R0903 Too few public methods
-# W0142 Used * or ** magic
-# E1101 Instance of 'x' has no 'y' member
-# E1102 Instance of 'x' has no 'y' member (but some types could not be inferred)
-# R0201 Method could be a function
-# W0120 Else clause on loop without a break statement
-disable=C0111,R0903,W0142,E1101,E1103,R0201,W0120
+# C0111 Missing docstring -- oops
+# R0903 Too few public methods -- useless warning
+# W0142 Used * or ** magic -- useless warning
+# E1101 Instance of 'x' has no 'y' member -- pylint bug
+# E1102 Instance of 'x' has no 'y' member (but some types could not be inferred) -- pylint bug
+# R0201 Method could be a function -- but is could not
+# W0120 Else clause on loop without a break statement -- because there is "return"
+# C0330 Wrong hanging indentation -- flake8 takes care of it
+disable=C0111,R0903,W0142,E1101,E1103,R0201,W0120,C0330
 
 [REPORTS]
 msg-template={msg_id}: {path}:{line}({obj}): {msg}

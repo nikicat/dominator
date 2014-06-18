@@ -2,14 +2,23 @@ language: python
 python:
 - 3.4
 env:
-- TOXENV=py33
-- TOXENV=py34
-- TOXENV=flake8
-- TOXENV=pylint
-- TOXENV=cover
+  matrix:
+  - TOXENV=py33
+  - TOXENV=py34
+  - TOXENV=flake8
+  - TOXENV=pylint
+  - TOXENV=cover
+  global:
+    secure: A8Qehgzhnq4lYqi8c3HkRB5AYRJGIpfSRWsUJm2VdHwDTuSA8bNEeuvZKBTIbf2Y4CivfZwzJxUY583sthD8fTiPBv1ZhqBPiD5QWvFDwQh0YMmwuGKQfrbwR+euIo7YnDpg7nwhDhWmgVWW6cGDFt6cGQDkCoK/c6owJEwnYjE=
 install:
-- pip install tox coveralls
+- pip install tox coveralls bumpversion
 script: tox -v
+before_deploy:
+- bumpversion minor
+- git remote remove origin
+- git remove add origin git@github.com:yandex-sysmon/dominator
+- openssl rsa -in .deploy.pem -passin env:DEPLOYKEYPASS | ssh-add -
+- git push --tags
 deploy:
   provider: pypi
   user: nikicat
@@ -17,7 +26,6 @@ deploy:
     secure: i9zNWTqaqWjKp4hHVXA0wWvCFS5ic7ne3nc6WP7fanQLC5y1/tQxsnmMVN02aThfpNoCZKh82rWjs/wXXxUq5Q4egXFaOjMPoyIsb8EGHFi4y1FMW/wSnw/iBXFYruWf/k+JQz2t+dj1/EpHj4sLGMPRjANdK2+fwrDFNIlUIBs=
   distributions: sdist bdist
   on:
-    tags: true
     python: 3.4
     repo: yandex-sysmon/dominator
 after_success:

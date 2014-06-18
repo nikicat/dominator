@@ -105,8 +105,8 @@ def compare_ports(cont, actual: dict):
         extport_expected = cont.extports.get(name, port_expected)
         proto_expected = cont.portproto.get(name, 'tcp')
 
-        matched_actual = list(info for name, info in actual.items()
-                              if name == '{}/{}'.format(port_expected, proto_expected))
+        matched_actual = [info for name, info in actual.items()
+                          if name == '{}/{}'.format(port_expected, proto_expected)]
 
         if len(matched_actual) == 0:
             yield name, [('int', port_expected, ''),
@@ -118,8 +118,8 @@ def compare_ports(cont, actual: dict):
                 yield name, [('ext', extport_expected, extport_actual)]
 
     for portname, portinfo in actual.items():
-        matched_expected = list(name for name, port in cont.ports.items()
-                                if portname == '{}/{}'.format(port, cont.portproto.get(name, 'tcp')))
+        matched_expected = [name for name, port in cont.ports.items()
+                            if portname == '{}/{}'.format(port, cont.portproto.get(name, 'tcp'))]
         if len(matched_expected) == 0:
             port, proto = portname.split('/')
             yield port, [('int', '', port),
@@ -131,7 +131,7 @@ def compare_ports(cont, actual: dict):
 def compare_volumes(cont, cinfo):
     for dest, path in cinfo['Volumes'].items():
         ro = not cinfo['VolumesRW'][dest]
-        matched_expected = list([volume for volume in cont.volumes if volume.dest == dest])
+        matched_expected = [volume for volume in cont.volumes if volume.dest == dest]
         if len(matched_expected) == 0:
             if not path.startswith('/var/lib/docker/vfs/dir'):
                 yield dest, [('path', '', path),
@@ -152,7 +152,7 @@ def compare_volumes(cont, cinfo):
                 yield dest, diffs
 
     for volume in cont.volumes:
-        matched_actual_path = list([path for dest, path in cinfo['Volumes'].items() if dest == volume.dest])
+        matched_actual_path = [path for dest, path in cinfo['Volumes'].items() if dest == volume.dest]
         if len(matched_actual_path) == 0:
             yield volume.dest, [('path', volume.getpath(cont), ''),
                                 ('ro', volume.ro, '')]
@@ -165,7 +165,7 @@ def compare_files(container, volume):
         expected = file.data(container)
         if actual != expected:
             diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
-            yield file.name, list(line for line in diff if line[:2] != '  ')
+            yield file.name, [line for line in diff if line[:2] != '  ']
 
 
 @aslist
@@ -183,7 +183,7 @@ def compare_container(cont, cinfo):
             yield key, expected, actual
 
     for key, subkeys in [('env', compare_env(dict(list(cont.image.env.items()) + list(cont.env.items())),
-                                             dict([var.split('=', 1) for var in cinfo['Config']['Env']]))),
+                                             dict(var.split('=', 1) for var in cinfo['Config']['Env']))),
                          ('ports', compare_ports(cont, cinfo['NetworkSettings']['Ports'])),
                          ('volumes', compare_volumes(cont, cinfo))]:
         if len(subkeys) > 0:

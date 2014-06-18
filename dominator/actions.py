@@ -77,7 +77,7 @@ def run(containers, container: str=None, remove: bool=False, detach: bool=True, 
 
 
 def _ps(dock, name, **kwargs):
-    return list([cont for cont in dock.containers(**kwargs) if cont['Names'][0][1:] == name])
+    return [cont for cont in dock.containers(**kwargs) if cont['Names'][0][1:] == name]
 
 
 def run_container(cont, remove: bool=False, detach: bool=True, dockerurl: str=None):
@@ -142,6 +142,8 @@ def run_container(cont, remove: bool=False, detach: bool=True, dockerurl: str=No
         binds={v.getpath(cont): {'bind': v.dest, 'ro': v.ro} for v in cont.volumes},
     )
 
+    logger.info('container started')
+
     if not detach:
         logger.info('attaching to container')
         try:
@@ -200,7 +202,7 @@ def status(containers, ship: str=None, showdiff: bool=False):
             print('{}:'.format(s.name))
             ship_containers = dock.containers(all=True)
             for c in s.containers(containers):
-                matched = list([cinfo for cinfo in ship_containers if cinfo['Names'][0][1:] == c.name])
+                matched = [cinfo for cinfo in ship_containers if cinfo['Names'][0][1:] == c.name]
                 color = Fore.RED
                 if len(matched) == 0:
                     status = 'not found'

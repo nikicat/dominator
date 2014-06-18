@@ -22,10 +22,9 @@ class BaseShip:
 
 
 class Ship(BaseShip):
-    def __init__(self, name, fqdn, datacenter, **kwargs):
+    def __init__(self, name, fqdn, **kwargs):
         self.name = name
         self.fqdn = fqdn
-        self.datacenter = datacenter
         for k, v in kwargs.items():
             setattr(self, k, v)
 

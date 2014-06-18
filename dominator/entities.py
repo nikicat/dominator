@@ -119,17 +119,14 @@ class Container:
 
 
 class Volume:
-    def __init__(self, name: str, dest: str):
-        self.name = name
-        self.dest = dest
-
     def __repr__(self):
         return '{}(name={name}, dest={dest})'.format(type(self).__name__, **vars(self))
 
 
 class DataVolume(Volume):
     def __init__(self, dest: str, path: str=None, name: str='data', ro=False):
-        super(DataVolume, self).__init__(name, dest)
+        self.name = name
+        self.dest = dest
         self.path = path
         self.ro = ro
 
@@ -140,7 +137,7 @@ class DataVolume(Volume):
 
 class ConfigVolume(Volume):
     def __init__(self, dest: str, files: dict={}, name: str='config'):
-        super(ConfigVolume, self).__init__(name, dest)
+        self.name = name
         self.dest = dest
         self.files = files
 

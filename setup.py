@@ -47,7 +47,6 @@ if __name__ == '__main__':
             'docopt',
             'pyyaml == 3.11nikicat',
             'mako',
-            'structlog',
             'colorlog',
         ],
         dependency_links=[

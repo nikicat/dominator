@@ -21,22 +21,18 @@ Options:
 
 import logging
 import logging.config
-import os
 import sys
 import importlib
 from contextlib import contextmanager
 
 import yaml
 import docopt
-import structlog
-from structlog import get_logger
-from structlog.threadlocal import tmp_bind
 from colorama import Fore
 
 import dominator
-from .entities import ConfigVolume
+from .entities import Container, Image, DataVolume, LocalShip
 from .settings import settings
-from .utils import pull_repo, get_docker, compare_container
+from .utils import compare_container, aslist, getlogger
 
 
 def literal_str_representer(dumper, data):
@@ -60,7 +56,7 @@ def dump(containers):
 
 
 @command
-def run(containers, container: str=None, remove: bool=False, detach: bool=True, dockerurl: str=None):
+def run(containers, container: str=None, remove: bool=False, attach: bool=False):
     """
     Run locally all or specified containers from config
 
@@ -68,97 +64,45 @@ def run(containers, container: str=None, remove: bool=False, detach: bool=True, 
 
         -h, --help
         -r, --remove     # remove container after stop [default: false]
-        -u, --dockerurl  # Docker API endpoint [default: null]
-        -d, --detach     # do not follow container logs
+        -a, --attach     # attach to container logs
     """
-    for c in containers:
-        if c.ship.islocal and (container is None or c.name == container):
-            run_container(c, remove, detach if container is not None else True, dockerurl)
+    matched = False
+    for cont in containers:
+        if cont.ship.islocal and (container is None or cont.name == container):
+            matched = True
+            cont.run()
+            if attach and container is not None:
+                cont.attach()
+                if remove:
+                    cont.remove()
+    if not matched:
+        getlogger(ship=LocalShip().name).error('no matched containers')
 
 
-def _ps(dock, name, **kwargs):
-    return [cont for cont in dock.containers(**kwargs) if cont['Names'][0][1:] == name]
+@command
+def stop(containers, ship: str=None, container: str=None):
+    """
+    Stop container(s) on ship(s)
+
+    Usage: dominator stop [options] [<ship> [<container>]]
+
+    Options:
+        -h, --help
+    """
+    for cont in _filter_containers(containers, ship, container):
+        cont.check()
+        cont.stop()
 
 
-def run_container(cont, remove: bool=False, detach: bool=True, dockerurl: str=None):
-    logger = get_logger(container=cont)
-    logger.info('starting container')
-
-    dock = get_docker(dockerurl)
-
-    for volume in cont.volumes:
-        if isinstance(volume, ConfigVolume):
-            with tmp_bind(logger, volume=volume) as logger:
-                logger.debug('rendering config volume')
-                path = volume.getpath(cont)
-                os.makedirs(path, exist_ok=True)
-
-                for filename in os.listdir(path):
-                    os.remove(os.path.join(path, filename))
-                for file in volume.files:
-                    file.dump(cont, volume)
-
-    image = cont.image
-    # Check if ship has needed image
-    if image.id not in [iinfo['Id'] for iinfo in dock.images(name=image.repository)]:
-        logger.info('could not find requested image, pulling repo')
-        pull_repo(dock, image.repository, image.id)
-
-    running = _ps(dock, cont.name)
-    if len(running) > 0:
-        logger.info('found running container with the same name, comparing config with requested')
-        diff = compare_container(cont, dock.inspect_container(running[0]))
-        if len(diff) > 0:
-            logger.info('running container config differs from requested, stopping', diff=diff)
-            dock.stop(running[0])
-        else:
-            logger.info('running container config identical to requested, keeping')
-            return
-
-    stopped = _ps(dock, cont.name, all=True)
-    if len(stopped):
-        logger.info('found stopped container with the same name, removing')
-        dock.remove_container(stopped[0])
-
-    logger.info('creating container')
-    cont_info = dock.create_container(
-        image='{}:{}'.format(image.repository, image.id),
-        hostname='{}-{}'.format(cont.name, cont.ship.name),
-        command=cont.command,
-        mem_limit=cont.memory,
-        environment=cont.env,
-        name=cont.name,
-        ports=list(cont.ports.values()),
-    )
-
-    logger = logger.bind(contid=cont_info['Id'][:7])
-    logger.info('starting container')
-    dock.start(
-        cont_info,
-        port_bindings={
-            '{}/{}'.format(port, cont.portproto.get(name, 'tcp')): ('::', cont.extports.get(name, port))
-            for name, port in cont.ports.items()
-        },
-        binds={v.getpath(cont): {'bind': v.dest, 'ro': v.ro} for v in cont.volumes},
-    )
-
-    logger.info('container started')
-
-    if not detach:
-        logger.info('attaching to container')
-        try:
-            logger = logging.getLogger(cont.name)
-            for line in lines(dock.logs(cont_info, stream=True)):
-                logger.debug(line)
-        except KeyboardInterrupt:
-            logger.info('received keyboard interrupt')
-
-        logger.info('stopping container')
-        dock.stop(cont_info, timeout=2)
-
-        if remove:
-            logger.info('removing container')
-            dock.remove_container(cont_info)
+@aslist
+def _filter_containers(containers, ship, container):
+    notfound = True
+    for cont in containers:
+        if (ship is None or cont.ship.name == ship) and (container is None or cont.name == container):
+            notfound = False
+            yield cont
+    if notfound:
+        getlogger(shipname=ship, containername=container).error('no containers matched')
 
 
 @command
@@ -174,13 +118,13 @@ def list_containers(containers):
 
 
 def load_module(modulename, func):
-    get_logger().info("loading config from module", module=modulename, func=func)
+    getlogger().info("loading config from module", configmodule=modulename, configfunc=func)
     module = importlib.import_module(modulename)
     return getattr(module, func)()
 
 
 def load_yaml(filename):
-    get_logger().info("loading config from yaml", filename=filename)
+    getlogger().info("loading config from yaml", path=filename)
     if filename == '-':
         return yaml.load(sys.stdin)
     else:
@@ -196,36 +140,27 @@ def status(containers, ship: str=None, showdiff: bool=False):
         -h, --help
         -d, --showdiff  # show diff with running container [default: false]
     """
-    for s in set([c.ship for c in containers]):
+    for s in {c.ship for c in containers}:
         if s.name == ship or ship is None:
-            dock = _connect_to_ship(s)
+            getlogger(ship=s).debug("processing ship")
             print('{}:'.format(s.name))
-            ship_containers = dock.containers(all=True)
             for c in s.containers(containers):
-                matched = [cinfo for cinfo in ship_containers if cinfo['Names'][0][1:] == c.name]
-                color = Fore.RED
-                if len(matched) == 0:
-                    status = 'not found'
-                    contid = ''
+                c.check()
+                if c.running:
+                    diff = compare_container(c, s.docker.inspect_container(c.id))
+                    getlogger().debug('compare result', diff=diff)
+                    if len(diff) > 0:
+                        color = Fore.YELLOW
+                    else:
+                        color = Fore.GREEN
                 else:
-                    cinfo = matched[0]
-                    status = cinfo['Status']
-                    contid = cinfo['Id']
-                    if 'Up' in status:
-                        diff = compare_container(c, dock.inspect_container(cinfo))
-                        get_logger().debug('compare result', diff=diff)
-                        if len(diff) > 0:
-                            color = Fore.YELLOW
-                        else:
-                            color = Fore.GREEN
-                print('  {name:20.20} {id:10.7} {color}{status:30.30}{reset}'.format(
-                    name=c.name,
-                    status=status,
+                    color = Fore.RED
+                print('  {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'.format(
+                    c=c,
                     color=color,
-                    id=contid,
                     reset=Fore.RESET,
                 ))
-                if len(matched) > 0 and showdiff:
+                if c.running and showdiff:
                     print_diff(2, diff)
 
 
@@ -238,8 +173,8 @@ def print_diff(indent, diff):
             print('{indent}{color}{item}{reset}'.format(indent=indentstr, item=item, color=color, reset=Fore.RESET))
         elif len(item) == 3:
             # (key, expected, actual) tuple
-            print('{indent}{key:30.30} {fore.RED}{actual:20.20}{fore.RESET} \
-{fore.GREEN}{expected:20.20}{fore.RESET}'.format(indent=indentstr, fore=Fore,
+            print('{indent}{key:30.30} {fore.RED}{actual:30.30}{fore.RESET} \
+{fore.GREEN}{expected:30.30}{fore.RESET}'.format(indent=indentstr, fore=Fore,
                   key=item[0], expected=str(item[1]), actual=str(item[2])))
         elif len(item) == 2 and len(item[1]) > 0:
             # (key, list-of-subkeys) tuple
@@ -249,87 +184,74 @@ def print_diff(indent, diff):
             assert False, "invalid item {} in diff {}".format(item, diff)
 
 
-def lines(records):
-    buf = ''
-    for record in records:
-        buf += record.decode()
-        while '\n' in buf:
-            line, buf = buf.split('\n', 1)
-            yield line
-
-
-def _connect_to_ship(ship):
-    import docker
-    return docker.Client('http://{}:4243/'.format(ship.fqdn))
-
-
 @command
-def deploy(containers, ship: str, keep: bool, pull: bool):
+def deploy(containers, ship: str=None, container: str=None, keep: bool=False):
     """Deploy containers to ship[s]
-    usage: dominator deploy [options] [<ship>]
+    Usage: dominator deploy [options] [<ship> [<container>]]
 
+    Options:
         -h, --help
-        -k, --keep  # keep configuration container after deploy
-        -p, --pull  # pull deploy image before running
+        -k, --keep  # keep ambassador container after deploy
     """
     for s in {c.ship for c in containers}:
         if ship is None or s.name == ship:
-            deploy_to_ship(s, containers, keep, pull)
+            deploy_to_ship(s, _filter_containers(containers, s.name, container), keep)
 
 
-def deploy_to_ship(ship, containers, keep, pull):
-    logger = get_logger().bind(ship=ship)
-    logger.info('deploying')
-    dock = _connect_to_ship(ship)
-    image = settings['deploy-image']
+def ambassadors(ships):
+    return [Container(
+            name='dominator-ambassador',
+            image=Image(settings['deploy-image']),
+            ship=ship,
+            hostname=ship.name,
+            volumes=[
+                DataVolume(path='/var/lib/dominator', dest='/var/lib/dominator'),
+                DataVolume(path='/run/docker.sock', dest='/run/docker.sock'),
+            ]) for ship in ships]
 
-    if pull or len(dock.images(name=image)) == 0:
-        pull_repo(dock, image)
 
-    cinfo = dock.create_container(
-        image=image,
-        hostname=ship.name,
-        stdin_open=True,
-        detach=False,
-    )
+def deploy_to_ship(ship, containers, keep):
+    logger = getlogger(ship=ship)
+    logger.info('deploying containers to ship')
 
-    dock.start(
-        cinfo,
-        binds={path: {'bind': path} for path in ['/var/lib/dominator', '/run/docker.sock']}
-    )
-    with docker_attach(dock, cinfo) as stdin:
+    deploycont = ambassadors([ship])[0]
+
+    deploycont.run()
+
+    with _docker_attach(ship.docker, deploycont) as stdin:
+        logger.debug('attached to stdin, sending config')
         stdin.send(yaml.dump(containers).encode())
+        logger.debug('config sent, detaching stdin')
 
-    for line in lines(dock.logs(cinfo, stream=True)):
-        logger.info(line)
+    deploycont.attach()
 
-    dock.wait(cinfo)
     if not keep:
-        dock.remove_container(cinfo)
+        deploycont.stop()
+        deploycont.remove()
 
 
 @contextmanager
-def docker_attach(dock, cinfo):
+def _docker_attach(dock, cont):
     """some hacks to workaround docker-py bugs"""
-    u = dock._url('/containers/{0}/attach'.format(cinfo['Id']))
+    u = dock._url('/containers/{0}/attach'.format(cont.id))
     r = dock._post(u, params={'stdin': 1, 'stream': 1}, stream=True)
     yield r.raw._fp.fp.raw._sock
     r.close()
 
 
-def initlog():
-    structlog.configure(
-        processors=[
-            structlog.stdlib.filter_by_level,
-            structlog.processors.StackInfoRenderer(),
-            structlog.processors.format_exc_info,
-            structlog.processors.KeyValueRenderer(sort_keys=True, key_order=['event'])
-        ],
-        context_class=structlog.threadlocal.wrap_dict(dict),
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        wrapper_class=structlog.stdlib.BoundLogger,
-        cache_logger_on_first_use=True,
-    )
+@command
+def logs(containers, ship: str=None, container: str=None):
+    """
+    Fetch logs for container(s) on ship(s)
+
+    Usage: dominator logs [options] [<ship>] [<container>]
+
+    Options:
+        -h, --help
+    """
+    for cont in _filter_containers(containers, ship, container):
+        cont.check()
+        cont.attach()
 
 
 def main():
@@ -340,19 +262,28 @@ def main():
     if not hasattr(commandfunc, 'iscommand'):
         exit("no such command, see 'dominator help'.")
     else:
-        initlog()
-        logging.basicConfig(level=getattr(logging, args['--loglevel'].upper()))
+        loglevel = getattr(logging, args['--loglevel'].upper())
+        logging.basicConfig(level=loglevel)
         settings.load(args['--settings'])
         if args['--namespace']:
             settings['docker-namespace'] = args['--namespace']
         logging.config.dictConfig(settings.get('logging', {}))
-        if args['--config'] is not None:
-            containers = load_yaml(args['--config'])
-        else:
-            containers = load_module(args['--module'], args['--function'])
+        logging.disable(level=loglevel-1)
+        try:
+            if args['--config'] is not None:
+                containers = load_yaml(args['--config'])
+            else:
+                containers = load_module(args['--module'], args['--function'])
+        except:
+            getlogger().exception("failed to load config")
+            return
         commandargs = docopt.docopt(commandfunc.__doc__, argv=argv)
 
         def pythonize_arg(arg):
             return arg.replace('--', '').replace('<', '').replace('>', '')
-        commandfunc(containers, **{pythonize_arg(k): v for k, v in commandargs.items()
-                                   if k not in ['--help', command]})
+        try:
+            commandfunc(containers, **{pythonize_arg(k): v for k, v in commandargs.items()
+                                       if k not in ['--help', command]})
+        except:
+            getlogger(command=command).exception("failed to execute command")
+            return

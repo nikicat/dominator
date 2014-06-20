@@ -1,10 +1,47 @@
-deploy-image: nikicat/dominator
-configvolumedir: /var/lib/dominator/
-datavolumedir: /var/lib/dominator/
+configvolumedir: /var/lib/dominator/config
+datavolumedir: /var/lib/dominator/data
 
 logging:
     version: 1
-    incremental: true
+    disable_existing_loggers: false
     loggers:
-        requests.packages.urllib3.connectionpool:
+        urllib3.connectionpool:
             level: WARN
+        dominator:
+            level: DEBUG
+            handlers: [dominator]
+            propagate: false
+        dominator.docker.pull:
+            level: DEBUG
+            handlers: [dominator.docker.pull]
+            propagate: false
+    formatters:
+        default:
+            (): colorlog.ColoredFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20}{reset}  {message}"
+        dominator:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {cyan}{ship.name:10.10} {blue}{container.name:15.15} {green}{volume.name:10.10}{white} {file.name:15.15}{reset}  {message} {red}{_extra}"
+        dominator.docker.pull:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {cyan}{ship.name:10.10} {blue}{image.repository:25.25}{reset}  {response[status]} {response[id]}: {response[progress]}"
+    handlers:
+        default:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: default
+        dominator:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator
+        dominator.docker.pull:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator.docker.pull
+    root:
+        level: DEBUG
+        handlers: [default]
+

@@ -43,11 +43,16 @@ if __name__ == '__main__':
             'Topic :: System :: Distributed Computing',
         ],
         install_requires=[
-            'docker-py',
+            'docker-py >= 0.3.2-dev',
             'docopt',
-            'pyyaml',
+            'pyyaml == 3.11nikicat',
             'mako',
             'structlog',
+            'colorlog',
+        ],
+        dependency_links=[
+            'hg+https://bitbucket.org/nikicat/pyyaml#egg=pyyaml-3.11nikicat',
+            'git+https://github.com/dotcloud/docker-py#egg=docker-py-0.3.2-dev',
         ],
         install_recommends=[
             'requests',

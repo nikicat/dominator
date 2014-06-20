@@ -6,7 +6,7 @@ from vcr import VCR
 from colorama import Fore
 
 from dominator.entities import LocalShip, Container, Image
-from dominator.actions import dump, run, status, initlog, load_yaml
+from dominator.actions import dump, run, status, load_yaml
 from dominator.settings import settings as _settings
 
 
@@ -24,7 +24,6 @@ def settings():
 
 @pytest.fixture(autouse=True)
 def logs():
-    initlog()
     logging.basicConfig(level=logging.DEBUG)
 
 
@@ -54,7 +53,7 @@ def test_run(capsys, containers):
     _, _ = capsys.readouterr()
     status(containers)
     out, _ = capsys.readouterr()
-    assert re.match(r'  testcont[ \t]+[a-f0-9]{{7}}[ \t]+{color}Up Less than a second'.format(
+    assert re.match(r'  testcont[ \t]+{color}[a-f0-9]{{7}}[ \t]+Up Less than a second'.format(
         color=re.escape(Fore.GREEN)), out.split('\n')[-2])
 
 

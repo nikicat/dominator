@@ -23,6 +23,7 @@ import logging
 import logging.config
 import sys
 import importlib
+import itertools
 from contextlib import contextmanager
 
 import yaml
@@ -32,7 +33,8 @@ from colorama import Fore
 import dominator
 from .entities import Container, Image, DataVolume, LocalShip
 from .settings import settings
-from .utils import compare_container, aslist, getlogger
+from . import utils
+from .utils import getlogger
 
 
 def literal_str_representer(dumper, data):
@@ -66,17 +68,12 @@ def run(containers, container: str=None, remove: bool=False, attach: bool=False)
         -r, --remove     # remove container after stop [default: false]
         -a, --attach     # attach to container logs
     """
-    matched = False
-    for cont in containers:
-        if cont.ship.islocal and (container is None or cont.name == container):
-            matched = True
-            cont.run()
-            if attach and container is not None:
-                cont.attach()
-                if remove:
-                    cont.remove()
-    if not matched:
-        getlogger(ship=LocalShip().name).error('no matched containers')
+    for cont in _filter_containers(containers, LocalShip().name, container):
+        cont.run()
+        if attach and container is not None:
+            cont.attach()
+            if remove:
+                cont.remove()
 
 
 @command
@@ -94,15 +91,15 @@ def stop(containers, ship: str=None, container: str=None):
         cont.stop()
 
 
-@aslist
-def _filter_containers(containers, ship, container):
+@utils.makesorted(lambda c: (c.ship.name, c.name))
+def _filter_containers(containers, shipname: str, containername: str=None):
     notfound = True
     for cont in containers:
-        if (ship is None or cont.ship.name == ship) and (container is None or cont.name == container):
+        if (shipname is None or cont.ship.name == shipname) and (containername is None or cont.name == containername):
             notfound = False
             yield cont
     if notfound:
-        getlogger(shipname=ship, containername=container).error('no containers matched')
+        getlogger(shipname=shipname, containername=containername).error('no containers matched')
 
 
 @command
@@ -140,28 +137,27 @@ def status(containers, ship: str=None, showdiff: bool=False):
         -h, --help
         -d, --showdiff  # show diff with running container [default: false]
     """
-    for s in {c.ship for c in containers}:
-        if s.name == ship or ship is None:
-            getlogger(ship=s).debug("processing ship")
-            print('{}:'.format(s.name))
-            for c in s.containers(containers):
-                c.check()
-                if c.running:
-                    diff = compare_container(c, s.docker.inspect_container(c.id))
-                    getlogger().debug('compare result', diff=diff)
-                    if len(diff) > 0:
-                        color = Fore.YELLOW
-                    else:
-                        color = Fore.GREEN
+    for s, containers in itertools.groupby(_filter_containers(containers, ship), lambda c: c.ship):
+        getlogger(ship=s).debug("processing ship")
+        print('{}:'.format(s.name))
+        for c in containers:
+            c.check()
+            if c.running:
+                diff = utils.compare_container(c, s.docker.inspect_container(c.id))
+                getlogger().debug('compare result', diff=diff)
+                if len(diff) > 0:
+                    color = Fore.YELLOW
                 else:
-                    color = Fore.RED
-                print('  {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'.format(
-                    c=c,
-                    color=color,
-                    reset=Fore.RESET,
-                ))
-                if c.running and showdiff:
-                    print_diff(2, diff)
+                    color = Fore.GREEN
+            else:
+                color = Fore.RED
+            print('  {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'.format(
+                c=c,
+                color=color,
+                reset=Fore.RESET,
+            ))
+            if c.running and showdiff:
+                print_diff(2, diff)
 
 
 def print_diff(indent, diff):

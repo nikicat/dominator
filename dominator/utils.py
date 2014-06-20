@@ -92,6 +92,15 @@ def groupby(objects, key):
     return itertools.groupby(sorted(objects, key=key), key=key)
 
 
+def makesorted(keyfunc):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            return sorted(func(*args, **kwargs), key=keyfunc)
+        return wrapper
+    return decorator
+
+
 def _as(agg):
     aggfun = agg
 

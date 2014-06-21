@@ -265,7 +265,7 @@ class Container:
         if self.id:
             if self.running:
                 self.logger.info('found running container with the same name, comparing config with requested')
-                diff = utils.compare_container(self, self.ship.docker.inspect_container(self.id))
+                diff = utils.compare_container(self, self.inspect())
                 if diff:
                     self.logger.info('running container config differs from requested, stopping', diff=diff)
                     self.stop()
@@ -291,6 +291,12 @@ class Container:
         )
         self.check({'Status': 'Up'})
         self.logger.debug('container started')
+
+    def inspect(self):
+        return self.ship.docker.inspect_container(self.id)
+
+    def wait(self):
+        return self.ship.docker.wait(self.id)
 
 
 class Volume:

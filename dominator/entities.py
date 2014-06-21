@@ -133,7 +133,11 @@ class Image:
             yield image['RepoTags'][0].split(':')[-1], image['Id']
 
     def inspect(self):
-        return utils.getdocker().inspect_image(self.id)['config']
+        result = utils.getdocker().inspect_image(self.id)
+        if 'config' in result:
+            return result['config']
+        else:
+            return result['Config']
 
     @property
     def ports(self):

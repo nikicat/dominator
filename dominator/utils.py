@@ -72,6 +72,11 @@ class BoundLogger(logging.Logger):
         self.level = logger.level
         self.parent = logger.parent
 
+    def bind(self, **kwargs):
+        context = self.context.copy()
+        context.update(kwargs)
+        return BoundLogger(self.logger, context)
+
     def _log(self, level, msg, args, exc_info=None, stack_info=False, **kwargs):
         extra = kwargs.copy()
         extra.update(self.context)

@@ -7,6 +7,7 @@ import os.path
 import os
 import inspect
 import json
+import contextlib
 
 import yaml
 import pkg_resources
@@ -211,19 +212,38 @@ class Container:
             self.id = ''
             self.status = 'not found'
 
-    def logs(self):
-        self.logger.debug('attaching to container')
+    @contextlib.contextmanager
+    def execute(self):
+        self.logger.debug('executing')
+        self.check()
+        if self.id:
+            if self.running:
+                self.stop()
+            self.remove()
         try:
-            firsttime = True
-            logger = utils.getlogger('dominator.docker.logs', container=self)
-            for line in utils.docker_lines(self.ship.docker.logs(self.id, stream=True)):
-                if firsttime:
-                    for line in self.ship.docker.logs(self.id).split(b'\n'):
-                        logger.info(line)
-                    firsttime = False
-                logger.info(line)
+            self.create()
+            self.logger.debug('attaching to stdout/stderr')
+            logs = utils.docker_lines(self.ship.docker.attach(
+                self.id, stdout=True, stderr=True, logs=True, stream=True))
+            self.start()
+            yield logs
+        finally:
+            try:
+                self.stop()
+            except:
+                self.logger.debug('could not stop container, ignoring')
+
+    def logs(self, follow):
+        self.logger.bind(follow=follow).debug('getting logs from container')
+        try:
+            if follow:
+                lines = utils.docker_lines(self.ship.docker.logs(self.id, stream=True))
+            else:
+                lines = self.ship.docker.logs(self.id).decode().split('\n')
+            for line in lines:
+                print(line)
         except KeyboardInterrupt:
-            logger.debug('received keyboard interrupt')
+            self.logger.debug('received keyboard interrupt')
 
     def stop(self):
         self.logger.debug('stopping container')

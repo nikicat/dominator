@@ -225,22 +225,36 @@ def compare_files(container, volume):
             yield file.name, [line for line in diff if line[:2] != '  ']
 
 
+def compare_values(key, expected, actual):
+    if expected != actual:
+        yield key, expected, actual
+
+
 @aslist
 def compare_container(cont, cinfo):
     getlogger().debug('comparing container')
-    imagerepo, imageid = cinfo['Config']['Image'].split(':')
+    imageinfo = cinfo['Config']['Image'].split(':')
+    imageid = imageinfo[-1]
+    imagerepo = ':'.join(imageinfo[:-1])
 
     for key, expected, actual in [
         ('name', cont.name, cinfo['Name'][1:]),
         ('image.repo', cont.image.repository, imagerepo),
         ('image.id', cont.image.id, imageid),
-        ('command', cont.command or cont.image.command, ' '.join(cinfo['Config']['Cmd'])),
         ('memory', cont.memory, cinfo['Config']['Memory']),
     ]:
-        if expected != actual:
-            yield key, expected, actual
+        yield from compare_values(key, expected, actual)
 
-    for key, subkeys in [('env', compare_env(dict(list(cont.image.env.items()) + list(cont.env.items())),
+    expected_env = {}
+
+    if cont.image.id == imageid:
+        # get command and env from image only if images are same because expected image could not even exist
+        yield from compare_values('command', cont.command or cont.image.command, ' '.join(cinfo['Config']['Cmd']))
+        expected_env.update(cont.image.env)
+
+    expected_env.update(cont.env)
+
+    for key, subkeys in [('env', compare_env(expected_env,
                                              dict(var.split('=', 1) for var in cinfo['Config']['Env']))),
                          ('ports', compare_ports(cont, cinfo['NetworkSettings']['Ports'])),
                          ('volumes', compare_volumes(cont, cinfo))]:

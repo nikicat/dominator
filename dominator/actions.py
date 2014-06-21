@@ -71,7 +71,7 @@ def run(containers, container: str=None, remove: bool=False, attach: bool=False)
     for cont in _filter_containers(containers, LocalShip().name, container):
         cont.run()
         if attach and container is not None:
-            cont.attach()
+            cont.logs()
             if remove:
                 cont.remove()
 
@@ -219,7 +219,7 @@ def deploy_to_ship(ship, containers, keep):
         stdin.send(yaml.dump(containers).encode())
         logger.debug('config sent, detaching stdin')
 
-    deploycont.attach()
+    deploycont.logs()
 
     if not keep:
         deploycont.stop()
@@ -247,7 +247,7 @@ def logs(containers, ship: str=None, container: str=None):
     """
     for cont in _filter_containers(containers, ship, container):
         cont.check()
-        cont.attach()
+        cont.logs()
 
 
 def main():

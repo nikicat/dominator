@@ -207,12 +207,17 @@ class Container:
             self.id = ''
             self.status = 'not found'
 
-    def attach(self):
+    def logs(self):
         self.logger.debug('attaching to container')
         try:
+            firsttime = True
             logger = utils.getlogger('dominator.docker.logs', container=self)
             for line in utils.docker_lines(self.ship.docker.logs(self.id, stream=True)):
-                logger.debug(line)
+                if firsttime:
+                    for line in self.ship.docker.logs(self.id).split(b'\n'):
+                        logger.info(line)
+                    firsttime = False
+                logger.info(line)
         except KeyboardInterrupt:
             logger.debug('received keyboard interrupt')
 

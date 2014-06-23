@@ -142,13 +142,13 @@ def compare_env(expected: dict, actual: dict):
     getlogger().debug('comparing environment')
     for name, value in actual.items():
         if name not in expected:
-            yield name, '', value or '""'
+            yield ('env', name), ('', value or '""')
         elif expected[name] != value:
-            yield name, expected[name], value or '""'
+            yield ('env', name), (expected[name], value or '""')
 
     for name, value in expected.items():
         if name not in actual:
-            yield name, value or '""', ''
+            yield ('env', name), (value or '""', '')
 
 
 @aslist
@@ -162,22 +162,16 @@ def compare_ports(cont, actual: dict):
                           if name == '{}/{}'.format(port_expected, proto_expected)]
 
         if len(matched_actual) == 0:
-            yield name, [('int', port_expected, ''),
-                         ('ext', extport_expected, ''),
-                         ('proto', proto_expected, '')]
+            yield ('ports',), (name, '')
         else:
-            extport_actual = int(matched_actual[0][0]['HostPort'])
-            if extport_actual != extport_expected:
-                yield name, [('ext', extport_expected, extport_actual)]
+            yield from compare_values(('ports', name, 'ext'), extport_expected, int(matched_actual[0][0]['HostPort']))
 
     for portname, portinfo in actual.items():
         matched_expected = [name for name, port in cont.ports.items()
                             if portname == '{}/{}'.format(port, cont.portproto.get(name, 'tcp'))]
         if len(matched_expected) == 0:
             port, proto = portname.split('/')
-            yield port, [('int', '', port),
-                         ('ext', '', portinfo[0]['HostPort']),
-                         ('proto', '', proto)]
+            yield ('ports',), ('', port)
 
 
 @aslist
@@ -188,31 +182,23 @@ def compare_volumes(cont, cinfo):
         matched_expected = [volume for volume in cont.volumes if volume.dest == dest]
         if len(matched_expected) == 0:
             if not path.startswith('/var/lib/docker/vfs/dir'):
-                yield dest, [('path', '', path),
-                             ('ro', '', ro)]
+                yield ('volumes',), ('', dest)
         else:
             volume = matched_expected[0]
             getlogger(volume=volume).debug('comparing volume')
-            diffs = []
 
             if volume.getpath(cont) != path:
-                diffs.append(('path', volume.getpath(cont), path))
+                yield ('volumes', dest, 'path'), (volume.getpath(cont), path)
             elif hasattr(volume, 'files'):
-                configdiff = compare_files(cont, volume)
-                if len(configdiff) > 0:
-                    diffs.append(('files', configdiff))
+                yield from compare_files(cont, volume)
 
             if volume.ro != ro:
-                diffs.append(('ro', volume.ro, ro))
-
-            if len(diffs) > 0:
-                yield dest, diffs
+                yield ('volumes', dest, 'ro'), (volume.ro, ro)
 
     for volume in cont.volumes:
         matched_actual_path = [path for dest, path in cinfo['Volumes'].items() if dest == volume.dest]
         if len(matched_actual_path) == 0:
-            yield volume.dest, [('path', volume.getpath(cont), ''),
-                                ('ro', volume.ro, '')]
+            yield ('volumes',), (volume.dest, '')
 
 
 @aslist
@@ -226,12 +212,12 @@ def compare_files(container, volume):
         expected = file.data(container)
         if actual != expected:
             diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
-            yield file.name, [line for line in diff if line[:2] != '  ']
+            yield ('volumes', volume.name, 'files', file.name), [line for line in diff if line[:2] != '  ']
 
 
 def compare_values(key, expected, actual):
     if expected != actual:
-        yield key, expected, actual
+        yield key, (expected, actual)
 
 
 @aslist
@@ -247,23 +233,17 @@ def compare_container(cont, cinfo):
         ('image.id', cont.image.id, imageid),
         ('memory', cont.memory, cinfo['Config']['Memory']),
     ]:
-        yield from compare_values(key, expected, actual)
-
-    expected_env = {}
+        yield from compare_values((key,), expected, actual)
 
     if cont.image.id == imageid:
         # get command and env from image only if images are same because expected image could not even exist
-        yield from compare_values('command', cont.command or cont.image.command, ' '.join(cinfo['Config']['Cmd']))
-        expected_env.update(cont.image.env)
+        yield from compare_values(('command',), cont.command or cont.image.command, ' '.join(cinfo['Config']['Cmd']))
+        env = cont.image.env.copy()
+        env.update(cont.env)
+        yield from compare_env(env, dict(var.split('=', 1) for var in cinfo['Config']['Env']))
 
-    expected_env.update(cont.env)
-
-    for key, subkeys in [('env', compare_env(expected_env,
-                                             dict(var.split('=', 1) for var in cinfo['Config']['Env']))),
-                         ('ports', compare_ports(cont, cinfo['NetworkSettings']['Ports'])),
-                         ('volumes', compare_volumes(cont, cinfo))]:
-        if len(subkeys) > 0:
-            yield key, subkeys
+    yield from compare_ports(cont, cinfo['NetworkSettings']['Ports'])
+    yield from compare_volumes(cont, cinfo)
 
 
 @aslist

@@ -154,7 +154,7 @@ def localstatus(containers, ship: str=None, container: str=None, showdiff: bool=
     for c in filter_containers(containers, ship, container):
         c.check()
         if c.running:
-            diff = utils.compare_container(c, c.inspect())
+            diff = list(utils.compare_container(c, c.inspect()))
             getlogger().debug('compare result', diff=diff)
             if len(diff) > 0:
                 color = Fore.YELLOW
@@ -168,7 +168,7 @@ def localstatus(containers, ship: str=None, container: str=None, showdiff: bool=
             reset=Fore.RESET,
         ))
         if c.running and showdiff:
-            print_diff(2, diff)
+            print_diff(diff)
 
 
 @command
@@ -185,24 +185,21 @@ def status(containers, ship: str=None, container: str=None, showdiff: bool=False
         runremotely(containers, s, 'localstatus' + (' -d' if showdiff else ''), keep, printlogs=True)
 
 
-def print_diff(indent, diff):
-    indentstr = '  '*indent
-    for item in diff:
-        if isinstance(item, str):
-            # diff line
-            color = {'- ': Fore.RED, '+ ': Fore.GREEN, '? ': Fore.BLUE}.get(item[:2], '')
-            print('{indent}{color}{item}{reset}'.format(indent=indentstr, item=item, color=color, reset=Fore.RESET))
-        elif len(item) == 3:
-            # (key, expected, actual) tuple
-            print('{indent}{key:30.30} {fore.RED}{actual:30.30}{fore.RESET} \
-{fore.GREEN}{expected:30.30}{fore.RESET}'.format(indent=indentstr, fore=Fore,
-                  key=item[0], expected=str(item[1]), actual=str(item[2])))
-        elif len(item) == 2 and len(item[1]) > 0:
-            # (key, list-of-subkeys) tuple
-            print('{indent}{key:30.30}'.format(indent=indentstr, key=item[0]+':'))
-            print_diff(indent+1, item[1])
+def print_diff(difflist):
+    fore = Fore
+    for key, diff in difflist:
+        keystr = ' '.join(key)
+        if isinstance(diff, list):
+            # files diff
+            for line in diff:
+                color = {'- ': Fore.RED, '+ ': Fore.GREEN, '? ': Fore.BLUE}.get(line[:2], '')
+                print('  {keystr:60.60} {color}{line}{fore.RESET}'.format(**locals()))
+        elif len(diff) == 2:
+            expected, actual = diff
+            print('  {keystr:60.60} {fore.RED}{actual!s:30.30}{fore.RESET} \
+{fore.GREEN}{expected!s:30.30}{fore.RESET}'.format(**locals()))
         else:
-            assert False, "invalid item {} in diff {}".format(item, diff)
+            assert False, "invalid diff format for {key}: {diff}".format(**locals())
 
 
 @command

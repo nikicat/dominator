@@ -86,7 +86,7 @@ class LocalShip(BaseShip):
     @utils.cached
     def memory(self):
         import psutil
-        return psutil.avail_phymem()
+        return psutil.virtual_memory().total
 
     @property
     @utils.cached

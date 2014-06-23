@@ -5,6 +5,8 @@ import inspect
 import string
 import pprint
 import logging
+import re
+
 import colorlog
 import docker
 
@@ -130,6 +132,8 @@ def getdocker(url=None):
 def getrepo(repo):
     if '/' not in repo and 'docker-namespace' in settings:
         repo = '{}/{}'.format(settings['docker-namespace'], repo)
+    if 'docker-registry' in settings and not re.match('/.*/', repo):
+        repo = '{}/{}'.format(settings['docker-registry'], repo)
     return repo
 
 

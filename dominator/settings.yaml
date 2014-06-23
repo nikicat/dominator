@@ -17,6 +17,9 @@ datavolumedir: ~/.config/dominator/data
 # different from 127.0.0.1/::1 that local containers could reach
 #localship-fqdn: localhost
 
+# Put here local registry address to speed up pull
+#docker-registry: <host:port>
+
 # Logging config (https://docs.python.org/3.4/library/logging.config.html#dictionary-schema-details)
 logging:
     version: 1

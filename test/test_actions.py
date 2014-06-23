@@ -6,7 +6,7 @@ from vcr import VCR
 from colorama import Fore
 
 from dominator.entities import LocalShip, Container, Image
-from dominator.actions import dump, run, status, load_yaml
+from dominator.actions import dump, localstatus, load_yaml, localstart
 from dominator.settings import settings as _settings
 
 
@@ -19,12 +19,13 @@ def settings():
         _settings['configvolumedir'] = configdir
         # FIXME: use https endpoint because vcrpy doesn't handle UnixHTTPConnection
         _settings['dockerurl'] = 'http://localhost:4243'
+        _settings['deploy-image'] = 'nikicat/dominator'
         yield _settings
 
 
 @pytest.fixture(autouse=True)
 def logs():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.disable(level=logging.DEBUG-1)
 
 
 @pytest.fixture
@@ -47,13 +48,13 @@ def docker():
     return docker.Client()
 
 
-@vcr.use_cassette('run.yaml')
-def test_run(capsys, containers):
-    run(containers)
+@vcr.use_cassette('localstart.yaml')
+def test_localstart(capsys, containers):
+    localstart(containers)
     _, _ = capsys.readouterr()
-    status(containers)
+    localstatus(containers)
     out, _ = capsys.readouterr()
-    assert re.match(r'  testcont[ \t]+{color}[a-f0-9]{{7}}[ \t]+Up Less than a second'.format(
+    assert re.match(r'localship[ \t]+testcont[ \t]+{color}[a-f0-9]{{7}}[ \t]+Up Less than a second'.format(
         color=re.escape(Fore.GREEN)), out.split('\n')[-2])
 
 

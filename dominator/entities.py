@@ -7,6 +7,7 @@ import os.path
 import os
 import inspect
 import json
+import contextlib
 
 import yaml
 import pkg_resources
@@ -85,7 +86,7 @@ class LocalShip(BaseShip):
     @utils.cached
     def memory(self):
         import psutil
-        return psutil.avail_phymem()
+        return psutil.virtual_memory().total
 
     @property
     @utils.cached
@@ -109,6 +110,7 @@ class Image:
         return utils.getlogger(image=self, bindto=3)
 
     def getid(self):
+        self.logger.debug('retrieving id')
         dock = utils.getdocker()
         if self.tag not in self.tags:
             self.pull(dock)
@@ -124,18 +126,27 @@ class Image:
                     raise RuntimeError('could not pull {} ({})'.format(self.repository, resp['error']))
                 else:
                     logger.debug('', response=resp)
+        Image.tags.fget.cache_clear()
 
     @property
+    @utils.cached
     @utils.asdict
     def tags(self):
+        self.logger.debug('retrieving tags')
         images = utils.getdocker().images(self.repository, all=True)
         for image in images:
             yield image['RepoTags'][0].split(':')[-1], image['Id']
 
     def inspect(self):
-        return utils.getdocker().inspect_image(self.id)['config']
+        result = utils.getdocker().inspect_image(self.id)
+        # Workaround: Docker sometimes returns "config" key in different casing
+        if 'config' in result:
+            return result['config']
+        else:
+            return result['Config']
 
     @property
+    @utils.cached
     def ports(self):
         return [int(port.split('/')[0]) for port in self.inspect()['ExposedPorts'].keys()]
 
@@ -207,23 +218,50 @@ class Container:
             self.id = ''
             self.status = 'not found'
 
-    def attach(self):
-        self.logger.debug('attaching to container')
+    @contextlib.contextmanager
+    def execute(self):
+        self.logger.debug('executing')
         try:
-            logger = utils.getlogger('dominator.docker.logs', container=self)
-            for line in utils.docker_lines(self.ship.docker.logs(self.id, stream=True)):
-                logger.debug(line)
+            try:
+                self.create()
+            except docker.errors.APIError as e:
+                if e.response.status_code != 409:
+                    raise
+                self.check()
+                self.remove(force=True)
+                self.create()
+
+            self.logger.debug('attaching to stdout/stderr')
+            logs = utils.docker_lines(self.ship.docker.attach(
+                self.id, stdout=True, stderr=True, logs=True, stream=True))
+            self.start()
+            yield logs
+        finally:
+            try:
+                self.stop()
+            except:
+                self.logger.debug('could not stop container, ignoring')
+
+    def logs(self, follow):
+        self.logger.bind(follow=follow).debug('getting logs from container')
+        try:
+            if follow:
+                lines = utils.docker_lines(self.ship.docker.logs(self.id, stream=True))
+            else:
+                lines = self.ship.docker.logs(self.id).decode().split('\n')
+            for line in lines:
+                print(line)
         except KeyboardInterrupt:
-            logger.debug('received keyboard interrupt')
+            self.logger.debug('received keyboard interrupt')
 
     def stop(self):
         self.logger.debug('stopping container')
         self.ship.docker.stop(self.id, timeout=2)
         self.check({'Status': 'stopped'})
 
-    def remove(self):
+    def remove(self, force=False):
         self.logger.debug('removing container')
-        self.ship.docker.remove_container(self.id)
+        self.ship.docker.remove_container(self.id, force=force)
         self.check({'Id': '', 'Status': 'not found'})
 
     def create(self):
@@ -231,13 +269,24 @@ class Container:
 
         for volume in self.volumes:
             volume.render(self)
-        # Check if ship has needed image
-        if self.image.id not in [iinfo['Id'] for iinfo in self.ship.docker.images(name=self.image.repository)]:
+
+        try:
+            cinfo = self._create()
+        except docker.errors.APIError as e:
+            if e.response.status_code != 404:
+                raise
+            # image not found - pull repo and try again
+            # Check if ship has needed image
             self.logger.info('could not find requested image, pulling repo')
             self.image.pull(self.ship.docker)
+            cinfo = self._create()
 
+        self.check(cinfo)
+        self.logger.debug('container created')
+
+    def _create(self):
         self.logger.debug('creating container')
-        cinfo = self.ship.docker.create_container(
+        return self.ship.docker.create_container(
             image='{}:{}'.format(self.image.repository, self.image.id),
             hostname=self.hostname,
             command=self.command,
@@ -248,26 +297,29 @@ class Container:
             stdin_open=True,
             detach=False,
         )
-        self.check(cinfo)
-        self.logger.debug('container created')
 
     def run(self):
-        self.check()
-        if self.id:
-            if self.running:
-                self.logger.info('found running container with the same name, comparing config with requested')
-                diff = utils.compare_container(self, self.ship.docker.inspect_container(self.id))
-                if diff:
-                    self.logger.info('running container config differs from requested, stopping', diff=diff)
-                    self.stop()
-                else:
-                    self.logger.info('running container config identical to requested, keeping')
-                    return
+        try:
+            self.create()
+        except docker.errors.APIError as e:
+            if e.response.status_code != 409:
+                raise
+            self.check()
+            if self.id:
+                if self.running:
+                    self.logger.info('found running container with the same name, comparing config with requested')
+                    diff = utils.compare_container(self, self.inspect())
+                    if diff:
+                        self.logger.info('running container config differs from requested, stopping', diff=diff)
+                        self.stop()
+                    else:
+                        self.logger.info('running container config identical to requested, keeping')
+                        return
 
-            self.logger.info('found stopped container with the same name, removing')
-            self.remove()
+                self.logger.info('found stopped container with the same name, removing')
+                self.remove()
+            self.create()
 
-        self.create()
         self.start()
 
     def start(self):
@@ -282,6 +334,12 @@ class Container:
         )
         self.check({'Status': 'Up'})
         self.logger.debug('container started')
+
+    def inspect(self):
+        return self.ship.docker.inspect_container(self.id)
+
+    def wait(self):
+        return self.ship.docker.wait(self.id)
 
 
 class Volume:

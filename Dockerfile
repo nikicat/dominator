@@ -1,4 +1,4 @@
-FROM yandex/ubuntu:14.04
+FROM yandex/trusty
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -yyq python3-pip strace git mercurial
 ADD . /root/dominator

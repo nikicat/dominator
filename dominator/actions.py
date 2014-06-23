@@ -31,7 +31,7 @@ import docopt
 from colorama import Fore
 
 import dominator
-from .entities import Container, Image, DataVolume, LocalShip
+from .entities import Container, Image, DataVolume
 from .settings import settings
 from . import utils
 from .utils import getlogger
@@ -58,22 +58,31 @@ def dump(containers):
 
 
 @command
-def run(containers, container: str=None, remove: bool=False, attach: bool=False):
+def localstart(containers, container: str=None):
     """
-    Run locally all or specified containers from config
+    Start locally all or specified containers
 
-    usage: dominator run [options] [<container>]
+    usage: dominator localstart [options] [<container>]
 
         -h, --help
-        -r, --remove     # remove container after stop [default: false]
-        -a, --attach     # attach to container logs
     """
-    for cont in _filter_containers(containers, LocalShip().name, container):
+    for cont in filter_containers(containers, container):
         cont.run()
-        if attach and container is not None:
-            cont.attach()
-            if remove:
-                cont.remove()
+
+
+@command
+def localexec(containers, container: str, keep: bool=False):
+    """
+    Execute local container until it stops
+
+    Usage: dominator localexec [options] <container>
+    """
+    for cont in filter_containers(containers, container):
+        with cont.execute() as logs:
+            for line in logs:
+                print(line)
+        if not keep:
+            cont.remove()
 
 
 @command
@@ -86,13 +95,18 @@ def stop(containers, ship: str=None, container: str=None):
     Options:
         -h, --help
     """
-    for cont in _filter_containers(containers, ship, container):
+    for cont in filter_containers(containers, ship, container):
         cont.check()
         cont.stop()
 
 
+def group_containers(containers, shipname: str=None, containername: str=None):
+    return [(s, list(sconts)) for s, sconts in itertools.groupby(
+        filter_containers(containers, shipname, containername), lambda c: c.ship)]
+
+
 @utils.makesorted(lambda c: (c.ship.name, c.name))
-def _filter_containers(containers, shipname: str, containername: str=None):
+def filter_containers(containers, shipname: str=None, containername: str=None):
     notfound = True
     for cont in containers:
         if (shipname is None or cont.ship.name == shipname) and (containername is None or cont.name == containername):
@@ -130,100 +144,121 @@ def load_yaml(filename):
 
 
 @command
-def status(containers, ship: str=None, showdiff: bool=False):
-    """Show containers' status
-    usage: dominator status [options] [<ship>]
+def localstatus(containers, ship: str=None, container: str=None, showdiff: bool=False):
+    """Show local containers' status
+    usage: dominator localstatus [options] [<ship>] [<container>]
 
         -h, --help
         -d, --showdiff  # show diff with running container [default: false]
     """
-    for s, containers in itertools.groupby(_filter_containers(containers, ship), lambda c: c.ship):
-        getlogger(ship=s).debug("processing ship")
-        print('{}:'.format(s.name))
-        for c in containers:
-            c.check()
-            if c.running:
-                diff = utils.compare_container(c, s.docker.inspect_container(c.id))
-                getlogger().debug('compare result', diff=diff)
-                if len(diff) > 0:
-                    color = Fore.YELLOW
-                else:
-                    color = Fore.GREEN
+    for c in filter_containers(containers, ship, container):
+        c.check()
+        if c.running:
+            diff = list(utils.compare_container(c, c.inspect()))
+            getlogger().debug('compare result', diff=diff)
+            if len(diff) > 0:
+                color = Fore.YELLOW
             else:
-                color = Fore.RED
-            print('  {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'.format(
-                c=c,
-                color=color,
-                reset=Fore.RESET,
-            ))
-            if c.running and showdiff:
-                print_diff(2, diff)
-
-
-def print_diff(indent, diff):
-    indentstr = '  '*indent
-    for item in diff:
-        if isinstance(item, str):
-            # diff line
-            color = {'- ': Fore.RED, '+ ': Fore.GREEN, '? ': Fore.BLUE}.get(item[:2], '')
-            print('{indent}{color}{item}{reset}'.format(indent=indentstr, item=item, color=color, reset=Fore.RESET))
-        elif len(item) == 3:
-            # (key, expected, actual) tuple
-            print('{indent}{key:30.30} {fore.RED}{actual:30.30}{fore.RESET} \
-{fore.GREEN}{expected:30.30}{fore.RESET}'.format(indent=indentstr, fore=Fore,
-                  key=item[0], expected=str(item[1]), actual=str(item[2])))
-        elif len(item) == 2 and len(item[1]) > 0:
-            # (key, list-of-subkeys) tuple
-            print('{indent}{key:30.30}'.format(indent=indentstr, key=item[0]+':'))
-            print_diff(indent+1, item[1])
+                color = Fore.GREEN
         else:
-            assert False, "invalid item {} in diff {}".format(item, diff)
+            color = Fore.RED
+        print('{c.ship.name:10.10} {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'.format(
+            c=c,
+            color=color,
+            reset=Fore.RESET,
+        ))
+        if c.running and showdiff:
+            print_diff(diff)
 
 
 @command
-def deploy(containers, ship: str=None, container: str=None, keep: bool=False):
-    """Deploy containers to ship[s]
-    Usage: dominator deploy [options] [<ship> [<container>]]
+def status(containers, ship: str=None, container: str=None, showdiff: bool=False, keep: bool=True):
+    """Show local containers' status
+    usage: dominator status [options] [<ship>] [<container>]
+
+        -h, --help
+        -d, --showdiff  # show diff with running container [default: false]
+        -k, --keep      # keep ambassador container [default: false]
+    """
+    for s, containers in group_containers(containers, ship, container):
+        getlogger(ship=s).debug("processing ship")
+        runremotely(containers, s, 'localstatus' + (' -d' if showdiff else ''), keep, printlogs=True)
+
+
+def print_diff(difflist):
+    fore = Fore
+    for key, diff in difflist:
+        keystr = ' '.join(key)
+        if isinstance(diff, list):
+            # files diff
+            for line in diff:
+                color = {'- ': Fore.RED, '+ ': Fore.GREEN, '? ': Fore.BLUE}.get(line[:2], '')
+                print('  {keystr:60.60} {color}{line}{fore.RESET}'.format(**locals()))
+        elif len(diff) == 2:
+            expected, actual = diff
+            print('  {keystr:60.60} {fore.RED}{actual!s:30.30}{fore.RESET} \
+{fore.GREEN}{expected!s:30.30}{fore.RESET}'.format(**locals()))
+        else:
+            assert False, "invalid diff format for {key}: {diff}".format(**locals())
+
+
+@command
+def start(containers, ship: str=None, container: str=None, keep: bool=False):
+    """Start containers on ship[s]
+    Usage: dominator start [options] [<ship> [<container>]]
 
     Options:
         -h, --help
-        -k, --keep  # keep ambassador container after deploy
+        -k, --keep  # keep ambassador container after run
     """
-    for s in {c.ship for c in containers}:
-        if ship is None or s.name == ship:
-            deploy_to_ship(s, _filter_containers(containers, s.name, container), keep)
+    for s, containers in group_containers(containers, ship, container):
+        runremotely(containers, s, 'localstart', keep)
 
 
-def ambassadors(ships):
-    return [Container(
-            name='dominator-ambassador',
-            image=Image(settings['deploy-image']),
-            ship=ship,
-            hostname=ship.name,
-            volumes=[
-                DataVolume(path='/var/lib/dominator', dest='/var/lib/dominator'),
-                DataVolume(path='/run/docker.sock', dest='/run/docker.sock'),
-            ]) for ship in ships]
+@utils.cached
+def getambassadorimage():
+    return Image(settings.get('deploy-image', 'yandex/dominator'))
 
 
-def deploy_to_ship(ship, containers, keep):
-    logger = getlogger(ship=ship)
-    logger.info('deploying containers to ship')
+def ambassador(ship, command):
 
-    deploycont = ambassadors([ship])[0]
+    return Container(
+        name='dominator-ambassador',
+        image=getambassadorimage(),
+        ship=ship,
+        hostname=ship.name,
+        command='dominator -c - {}'.format(command),
+        volumes=[
+            DataVolume(path='/var/lib/dominator', dest='/var/lib/dominator'),
+            DataVolume(path='/run/docker.sock', dest='/run/docker.sock'),
+        ],
+    )
 
-    deploycont.run()
 
-    with _docker_attach(ship.docker, deploycont) as stdin:
-        logger.debug('attached to stdin, sending config')
-        stdin.send(yaml.dump(containers).encode())
-        logger.debug('config sent, detaching stdin')
+def runremotely(containers, ship, command, keep: bool=False, printlogs: bool=False):
+    logger = getlogger(ship=ship, command=command, keep=keep)
+    logger.info('running remotely')
 
-    deploycont.attach()
+    if not printlogs:
+        command = '-ldebug ' + command
+
+    cont = ambassador(ship, command)
+
+    with cont.execute() as logs:
+        with _docker_attach(ship.docker, cont) as stdin:
+            logger.debug('attached to stdin, sending config')
+            stdin.send(yaml.dump(containers).encode())
+            logger.debug('config sent, detaching stdin')
+
+        logger = utils.getlogger('dominator.docker.logs', container=cont)
+        for line in logs:
+            if printlogs:
+                print(line)
+            else:
+                logger.debug(line)
 
     if not keep:
-        deploycont.stop()
-        deploycont.remove()
+        cont.remove()
 
 
 @contextmanager
@@ -236,7 +271,7 @@ def _docker_attach(dock, cont):
 
 
 @command
-def logs(containers, ship: str=None, container: str=None):
+def logs(containers, ship: str=None, container: str=None, follow: bool=False):
     """
     Fetch logs for container(s) on ship(s)
 
@@ -244,10 +279,11 @@ def logs(containers, ship: str=None, container: str=None):
 
     Options:
         -h, --help
+        -f, --follow  # follow logs
     """
-    for cont in _filter_containers(containers, ship, container):
+    for cont in filter_containers(containers, ship, container):
         cont.check()
-        cont.attach()
+        cont.logs(follow=follow)
 
 
 def main():

@@ -139,6 +139,7 @@ class Image:
 
     def inspect(self):
         result = utils.getdocker().inspect_image(self.id)
+        # Workaround: Docker sometimes returns "config" key in different casing
         if 'config' in result:
             return result['config']
         else:

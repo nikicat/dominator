@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
-        version='0.3',
+        version='0.4',
         url='https://github.com/nikicat/dominator',
         license='GPLv3',
         author='Nikolay Bryskin',
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             'Topic :: System :: Distributed Computing',
         ],
         install_requires=[
-            'docker-py >= 0.3.2-dev',
+            'docker-py >= 0.4.2-dev',
             'docopt',
             'pyyaml == 3.11nikicat',
             'mako',
@@ -51,7 +51,7 @@ if __name__ == '__main__':
         ],
         dependency_links=[
             'hg+https://bitbucket.org/nikicat/pyyaml#egg=pyyaml-3.11nikicat',
-            'git+https://github.com/dotcloud/docker-py#egg=docker-py-0.3.2-dev',
+            'git+https://github.com/dotcloud/docker-py#egg=docker-py-0.4.2-dev',
         ],
         install_recommends=[
             'requests',

@@ -218,10 +218,16 @@ def start(containers, ship: str=None, container: str=None, keep: bool=False):
         runremotely(containers, s, 'localstart', keep)
 
 
+@utils.cached
+def getambassadorimage():
+    return Image(settings.get('deploy-image', 'yandex/dominator'))
+
+
 def ambassador(ship, command):
+
     return Container(
         name='dominator-ambassador',
-        image=Image(settings['deploy-image']),
+        image=getambassadorimage(),
         ship=ship,
         hostname=ship.name,
         command='dominator -c - {}'.format(command),

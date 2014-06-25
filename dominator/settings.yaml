@@ -27,6 +27,8 @@ logging:
     loggers:
         requests.packages.urllib3.connectionpool:
             level: WARN
+        urllib3.connectionpool:
+            level: WARN
         dominator:
             level: DEBUG
             handlers: [dominator]

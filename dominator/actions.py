@@ -14,7 +14,7 @@ Options:
     -l, --loglevel <loglevel>    log level [default: warn]
     -c, --config <config>        yaml config file
     -m, --module <modulename>    python module name
-    -f, --function <funcname>    python function name
+    -f, --function <funcname>    python function name [default: create]
     -n, --namespace <namespace>  docker namespace to use if not set (overrides config)
 """
 
@@ -97,7 +97,8 @@ def stop(containers, ship: str=None, container: str=None):
     """
     for cont in filter_containers(containers, ship, container):
         cont.check()
-        cont.stop()
+        if cont.running:
+            cont.stop()
 
 
 def group_containers(containers, shipname: str=None, containername: str=None):

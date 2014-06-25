@@ -142,8 +142,10 @@ class Image:
         # Workaround: Docker sometimes returns "config" key in different casing
         if 'config' in result:
             return result['config']
-        else:
+        elif 'Config' in result:
             return result['Config']
+        else:
+            raise RuntimeError("unexpected response from Docker: {}".format(result))
 
     @property
     @utils.cached

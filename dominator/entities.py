@@ -343,6 +343,8 @@ class Container:
     def wait(self):
         return self.ship.docker.wait(self.id)
 
+    def getport(self, name):
+        return self.extports.get(name, self.ports[name])
 
 class Volume:
     def __repr__(self):

@@ -480,3 +480,15 @@ class YamlFile(BaseFile):
 
     def data(self, _container):
         return yaml.dump(self.content)
+
+
+class JsonFile(BaseFile):
+    def __init__(self, name: str, data: dict):
+        BaseFile.__init__(self, name)
+        self.content = data
+
+    def __str__(self):
+        return 'JsonFile(name={name})'.format(vars(self))
+
+    def data(self, _container):
+        return json.dumps(self.content, sort_keys=True, indent='  ')

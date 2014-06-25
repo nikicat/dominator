@@ -71,6 +71,22 @@ def localstart(containers, container: str=None):
 
 
 @command
+def localrestart(containers, container: str=None):
+    """
+    Restart locally all or specified containers
+
+    usage: dominator localrestart [options] [<container>]
+
+        -h, --help
+    """
+    for cont in filter_containers(containers, container):
+        cont.check()
+        if cont.running:
+            cont.stop()
+        cont.start()
+
+
+@command
 def localexec(containers, container: str, keep: bool=False):
     """
     Execute local container until it stops
@@ -214,6 +230,19 @@ def start(containers, ship: str=None, container: str=None, keep: bool=False):
     """
     for s, containers in group_containers(containers, ship, container):
         runremotely(containers, s, 'localstart', keep)
+
+
+@command
+def restart(containers, ship: str=None, container: str=None, keep: bool=False):
+    """Restart selected containers
+    Usage: dominator restart [options] [<ship>] [<container>]
+
+    Options:
+        -h, --help
+        -k, --keep  # keep ambassador container after run
+    """
+    for s, containers in group_containers(containers, ship, container):
+        runremotely(containers, s, 'localrestart', keep)
 
 
 @utils.cached

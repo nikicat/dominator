@@ -312,7 +312,7 @@ def ship_memory_from_nova(ship):
 def docker_lines(records):
     buf = ''
     for record in records:
-        buf += record.decode()
+        buf += record.decode(errors='ignore')
         while '\n' in buf:
             line, buf = buf.split('\n', 1)
             yield line

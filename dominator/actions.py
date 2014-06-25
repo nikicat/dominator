@@ -14,7 +14,7 @@ Options:
     -l, --loglevel <loglevel>    log level [default: warn]
     -c, --config <config>        yaml config file
     -m, --module <modulename>    python module name
-    -f, --function <funcname>    python function name
+    -f, --function <funcname>    python function name [default: create]
     -n, --namespace <namespace>  docker namespace to use if not set (overrides config)
 """
 

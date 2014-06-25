@@ -97,7 +97,8 @@ def stop(containers, ship: str=None, container: str=None):
     """
     for cont in filter_containers(containers, ship, container):
         cont.check()
-        cont.stop()
+        if cont.running:
+            cont.stop()
 
 
 def group_containers(containers, shipname: str=None, containername: str=None):

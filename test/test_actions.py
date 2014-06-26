@@ -7,7 +7,7 @@ from colorama import Fore
 
 from dominator.entities import LocalShip, Container, Image
 from dominator.actions import dump, localstatus, load_yaml, localstart
-from dominator.settings import settings as _settings
+from dominator.utils import settings as _settings
 
 
 vcr = VCR(cassette_library_dir='test/fixtures/vcr_cassettes')

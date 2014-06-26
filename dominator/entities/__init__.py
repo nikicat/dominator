@@ -13,8 +13,7 @@ import yaml
 import pkg_resources
 import docker
 
-from . import utils
-from .settings import settings
+from .. import utils
 
 
 class BaseShip:
@@ -76,7 +75,7 @@ class LocalShip(BaseShip):
 
     @property
     def fqdn(self):
-        return settings.get('localship-fqdn', 'localhost')
+        return utils.settings.get('localship-fqdn', 'localhost')
 
     @property
     def islocal(self):
@@ -91,7 +90,7 @@ class LocalShip(BaseShip):
     @property
     @utils.cached
     def docker(self):
-        return docker.Client(settings.get('dockerurl'))
+        return docker.Client(utils.settings.get('dockerurl'))
 
 
 class Image:
@@ -132,10 +131,11 @@ class Image:
     @utils.cached
     @utils.asdict
     def tags(self):
-        self.logger.debug('retrieving tags')
+        self.logger.debug("retrieving tags")
         images = utils.getdocker().images(self.repository, all=True)
         for image in images:
-            yield image['RepoTags'][0].split(':')[-1], image['Id']
+            for tag in image['RepoTags']:
+                yield tag.split(':')[-1], image['Id']
 
     def inspect(self):
         result = utils.getdocker().inspect_image(self.id)
@@ -343,6 +343,9 @@ class Container:
     def wait(self):
         return self.ship.docker.wait(self.id)
 
+    def getport(self, name):
+        return self.extports.get(name, self.ports[name])
+
 
 class Volume:
     def __repr__(self):
@@ -364,7 +367,7 @@ class DataVolume(Volume):
         pass
 
     def getpath(self, container):
-        return self.path or os.path.expanduser(os.path.join(settings['datavolumedir'],
+        return self.path or os.path.expanduser(os.path.join(utils.settings['datavolumedir'],
                                                             container.name, self.name))
 
 
@@ -375,7 +378,7 @@ class ConfigVolume(Volume):
         self.files = files
 
     def getpath(self, container):
-        return os.path.expanduser(os.path.join(settings['configvolumedir'],
+        return os.path.expanduser(os.path.join(utils.settings['configvolumedir'],
                                                container.name, self.name))
 
     @property
@@ -478,3 +481,15 @@ class YamlFile(BaseFile):
 
     def data(self, _container):
         return yaml.dump(self.content)
+
+
+class JsonFile(BaseFile):
+    def __init__(self, name: str, data: dict):
+        BaseFile.__init__(self, name)
+        self.content = data
+
+    def __str__(self):
+        return 'JsonFile(name={name})'.format(vars(self))
+
+    def data(self, _container):
+        return json.dumps(self.content, sort_keys=True, indent='  ')

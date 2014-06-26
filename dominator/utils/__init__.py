@@ -6,11 +6,12 @@ import string
 import pprint
 import logging
 import re
+import os.path
+from pkg_resources import resource_stream
 
+import yaml
 import colorlog
 import docker
-
-from .settings import settings
 
 
 class PartialFormatter(string.Formatter):
@@ -246,73 +247,31 @@ def compare_container(cont, cinfo):
     yield from compare_volumes(cont, cinfo)
 
 
-@aslist
-def ships_from_conductor(name):
-    import conductor_client
-    from .entities import Ship
-    getlogger(group=name).debug('retrieving ships from Conductor')
-    for host in conductor_client.Group(name=name).hosts:
-        yield Ship(
-            fqdn=host.fqdn,
-            datacenter=host.datacenter.name,
-            name=host.fqdn.split('.')[0],
-        )
-
-
-def _nova_client(cluster):
-    from novaclient.v1_1 import client
-    novaconfig = settings['nova'][cluster]['client']
-    getlogger().debug('creating nova client', **novaconfig)
-    return client.Client(**novaconfig)
-
-
-@aslist
-def ships_from_nova(cluster, metadata):
-    from .entities import Ship
-    getlogger(cluster=cluster, **metadata).debug('retrieving ships from Openstack')
-    nova = _nova_client(cluster)
-    for server in nova.servers.findall():
-        for k, v in metadata.items():
-            if server.metadata.get(k) != v:
-                break
-        else:
-            yield Ship(
-                name=server.name,
-                fqdn='{}.{}'.format(server.name, settings['nova'][cluster]['domain']),
-                novacluster=cluster,
-            )
-
-
-def datacenter_from_racktables(hostname):
-    import requests
-    import pyquery
-    getlogger().debug('retrieving datacenter from Racktables')
-    r = requests.get(
-        url=settings['racktables']['url'],
-        auth=(settings['racktables']['user'], settings['racktables']['password']),
-        params={'page': 'search', 'q': hostname},
-    )
-    return pyquery.PyQuery(r.text)('a.tag-279').text()
-
-
-def ship_memory_from_bot(fqdn):
-    import requests
-    # BOT response format: 'ok:64GB'
-    r = requests.get('http://bot.yandex-team.ru/api/ram-summary.php?name={}'.format(fqdn))
-    if r.status_code != 200 or r.text[:2] != 'ok':
-        raise RuntimeError('failed to get RAM for {} from BOT'.format(fqdn))
-    return int(r.text.split(':')[1][:-3]) * 1024**3
-
-
-def ship_memory_from_nova(ship):
-    c = _nova_client(ship.novacluster)
-    return c.flavors.get(c.servers.find(name=ship.name).flavor['id']).ram * 1024**2
-
-
 def docker_lines(records):
     buf = ''
     for record in records:
-        buf += record.decode()
+        buf += record.decode(errors='ignore')
         while '\n' in buf:
             line, buf = buf.split('\n', 1)
             yield line
+
+
+class Settings(dict):
+    def load(self, filename):
+        if filename is None:
+            for filename in ['settings.yaml',
+                             os.path.expanduser('~/.config/dominator/settings.yaml'),
+                             '/etc/dominator/settings.yaml']:
+                getlogger().debug("checking existense of %s", filename)
+                if os.path.exists(filename):
+                    getlogger().info("loading settings from %s", filename)
+                    stream = open(filename)
+                    break
+            else:
+                getlogger().warning("could not find any settings file, using default")
+                stream = resource_stream(__name__, 'settings.yaml')
+        else:
+            stream = open(filename)
+        self.update(yaml.load(stream))
+
+settings = Settings()

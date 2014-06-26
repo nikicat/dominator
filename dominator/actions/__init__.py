@@ -25,16 +25,15 @@ import sys
 import importlib
 import itertools
 from contextlib import contextmanager
+import pkg_resources
 
 import yaml
 import docopt
 from colorama import Fore
 
-import dominator
-from .entities import Container, Image, DataVolume
-from .settings import settings
-from . import utils
-from .utils import getlogger
+from ..entities import Container, Image, DataVolume
+from .. import utils
+from ..utils import getlogger, settings
 
 
 def literal_str_representer(dumper, data):
@@ -68,6 +67,22 @@ def localstart(containers, container: str=None):
     """
     for cont in filter_containers(containers, container):
         cont.run()
+
+
+@command
+def localrestart(containers, container: str=None):
+    """
+    Restart locally all or specified containers
+
+    usage: dominator localrestart [options] [<container>]
+
+        -h, --help
+    """
+    for cont in filter_containers(containers, container):
+        cont.check()
+        if cont.running:
+            cont.stop()
+        cont.start()
 
 
 @command
@@ -216,6 +231,19 @@ def start(containers, ship: str=None, container: str=None, keep: bool=False):
         runremotely(containers, s, 'localstart', keep)
 
 
+@command
+def restart(containers, ship: str=None, container: str=None, keep: bool=False):
+    """Restart selected containers
+    Usage: dominator restart [options] [<ship>] [<container>]
+
+    Options:
+        -h, --help
+        -k, --keep  # keep ambassador container after run
+    """
+    for s, containers in group_containers(containers, ship, container):
+        runremotely(containers, s, 'localrestart', keep)
+
+
 @utils.cached
 def getambassadorimage():
     return Image(settings.get('deploy-image', 'yandex/dominator'))
@@ -287,8 +315,15 @@ def logs(containers, ship: str=None, container: str=None, follow: bool=False):
         cont.logs(follow=follow)
 
 
+def getversion():
+    try:
+        return pkg_resources.get_distribution('dominator').version
+    except pkg_resources.DistributionNotFound:
+        return '(local)'
+
+
 def main():
-    args = docopt.docopt(__doc__, version=dominator.__version__, options_first=True)
+    args = docopt.docopt(__doc__, version=getversion(), options_first=True)
     command = args['<command>']
     argv = [command] + args['<args>']
     commandfunc = getattr(sys.modules[__name__], command.replace('-', '_'), None)

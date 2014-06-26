@@ -6,11 +6,12 @@ import string
 import pprint
 import logging
 import re
+import os.path
+from pkg_resources import resource_stream
 
+import yaml
 import colorlog
 import docker
-
-from .settings import settings
 
 
 class PartialFormatter(string.Formatter):
@@ -316,3 +317,24 @@ def docker_lines(records):
         while '\n' in buf:
             line, buf = buf.split('\n', 1)
             yield line
+
+
+class Settings(dict):
+    def load(self, filename):
+        if filename is None:
+            for filename in ['settings.yaml',
+                             os.path.expanduser('~/.config/dominator/settings.yaml'),
+                             '/etc/dominator/settings.yaml']:
+                getlogger().debug("checking existense of %s", filename)
+                if os.path.exists(filename):
+                    getlogger().info("loading settings from %s", filename)
+                    stream = open(filename)
+                    break
+            else:
+                getlogger().warning("could not find any settings file, using default")
+                stream = resource_stream(__name__, 'settings.yaml')
+        else:
+            stream = open(filename)
+        self.update(yaml.load(stream))
+
+settings = Settings()

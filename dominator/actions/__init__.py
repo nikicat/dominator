@@ -25,16 +25,16 @@ import sys
 import importlib
 import itertools
 from contextlib import contextmanager
+import pkg_resources
 
 import yaml
 import docopt
 from colorama import Fore
 
 import dominator
-from .entities import Container, Image, DataVolume
-from .settings import settings
-from . import utils
-from .utils import getlogger
+from ..entities import Container, Image, DataVolume
+from .. import utils
+from ..utils import getlogger, settings
 
 
 def literal_str_representer(dumper, data):
@@ -316,8 +316,15 @@ def logs(containers, ship: str=None, container: str=None, follow: bool=False):
         cont.logs(follow=follow)
 
 
+def getversion():
+    try:
+        return pkg_resources.get_distribution('dominator').version
+    except pkg_resources.DistributionNotFound:
+        return '(local)'
+
+
 def main():
-    args = docopt.docopt(__doc__, version=dominator.__version__, options_first=True)
+    args = docopt.docopt(__doc__, version=getversion(), options_first=True)
     command = args['<command>']
     argv = [command] + args['<args>']
     commandfunc = getattr(sys.modules[__name__], command.replace('-', '_'), None)

@@ -26,14 +26,15 @@ if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
         version='0.4',
-        url='https://github.com/nikicat/dominator',
+        url='https://github.com/yandex-sysmon/dominator',
         license='GPLv3',
         author='Nikolay Bryskin',
         author_email='devel.niks@gmail.com',
         description='Cloud deployment toolbox',
         platforms='linux',
-        packages=['dominator'],
-        entry_points={'console_scripts': ['dominator = dominator:main']},
+        packages=['dominator.entities', 'dominator.actions', 'dominator.utils'],
+        namespace_packages=['dominator'],
+        entry_points={'console_scripts': ['dominator = dominator.actions:main']},
         package_data={'dominator': ['settings.yaml']},
         classifiers=[
             'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',

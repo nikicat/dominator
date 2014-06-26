@@ -13,8 +13,7 @@ import yaml
 import pkg_resources
 import docker
 
-from . import utils
-from .settings import settings
+from .. import utils
 
 
 class BaseShip:
@@ -76,7 +75,7 @@ class LocalShip(BaseShip):
 
     @property
     def fqdn(self):
-        return settings.get('localship-fqdn', 'localhost')
+        return utils.settings.get('localship-fqdn', 'localhost')
 
     @property
     def islocal(self):
@@ -91,7 +90,7 @@ class LocalShip(BaseShip):
     @property
     @utils.cached
     def docker(self):
-        return docker.Client(settings.get('dockerurl'))
+        return docker.Client(utils.settings.get('dockerurl'))
 
 
 class Image:
@@ -367,7 +366,7 @@ class DataVolume(Volume):
         pass
 
     def getpath(self, container):
-        return self.path or os.path.expanduser(os.path.join(settings['datavolumedir'],
+        return self.path or os.path.expanduser(os.path.join(utils.settings['datavolumedir'],
                                                             container.name, self.name))
 
 
@@ -378,7 +377,7 @@ class ConfigVolume(Volume):
         self.files = files
 
     def getpath(self, container):
-        return os.path.expanduser(os.path.join(settings['configvolumedir'],
+        return os.path.expanduser(os.path.join(utils.settings['configvolumedir'],
                                                container.name, self.name))
 
     @property

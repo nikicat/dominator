@@ -31,7 +31,6 @@ import yaml
 import docopt
 from colorama import Fore
 
-import dominator
 from ..entities import Container, Image, DataVolume
 from .. import utils
 from ..utils import getlogger, settings

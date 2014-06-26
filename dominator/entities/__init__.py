@@ -131,10 +131,11 @@ class Image:
     @utils.cached
     @utils.asdict
     def tags(self):
-        self.logger.debug('retrieving tags')
+        self.logger.debug("retrieving tags")
         images = utils.getdocker().images(self.repository, all=True)
         for image in images:
-            yield image['RepoTags'][0].split(':')[-1], image['Id']
+            for tag in image['RepoTags']:
+                yield tag.split(':')[-1], image['Id']
 
     def inspect(self):
         result = utils.getdocker().inspect_image(self.id)

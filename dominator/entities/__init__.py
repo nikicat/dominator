@@ -8,10 +8,16 @@ import os
 import inspect
 import json
 import contextlib
+import tarfile
+import hashlib
+import tempfile
+import base64
+import io
 
 import yaml
 import pkg_resources
 import docker
+import docker.errors
 
 from .. import utils
 
@@ -98,11 +104,14 @@ class Image:
         self.tag = tag
         self.id = id
         self.repository = utils.getrepo(repository)
-        if not self.id:
-            self.getid()
 
     def __repr__(self):
         return 'Image(repository={repository}, tag={tag}, id={id:.7})'.format(**vars(self))
+
+    def __getstate__(self):
+        if self.id is '':
+            self.getid()
+        return vars(self)
 
     @property
     def logger(self):
@@ -110,27 +119,42 @@ class Image:
 
     def getid(self):
         self.logger.debug('retrieving id')
-        dock = utils.getdocker()
-        if self.tag not in self.tags:
-            self.pull(dock)
-        self.id = self.tags[self.tag]
+        if self.id is '':
+            if self.tag not in self.gettags():
+                self.pull()
+            self.id = self.gettags()[self.tag]
+        return self.id
 
-    def pull(self, dock):
-        self.logger.info('pulling repo')
-        logger = utils.getlogger('dominator.docker.pull', image=self, docker=dock)
-        for line in dock.pull(self.repository, self.tag, stream=True):
+    def _streamoperation(self, func, **kwargs):
+        logger = utils.getlogger('dominator.docker.{}'.format(func.__name__), image=self, docker=func.__self__)
+        for line in func(stream=True, **kwargs):
             if line != '':
                 resp = json.loads(line)
                 if 'error' in resp:
-                    raise RuntimeError('could not pull {} ({})'.format(self.repository, resp['error']))
+                    raise docker.errors.APIError(None, resp, 'could not complete {} operation on {} ({})'.format(
+                        func.__name__, self.repository, resp['error']))
                 else:
-                    logger.debug('', response=resp)
-        Image.tags.fget.cache_clear()
+                    message = resp.get('stream', resp.get('status', ''))
+                    for line in message.split('\n'):
+                        if line:
+                            logger.debug(line, response=resp)
+        Image.gettags.cache_clear()
 
-    @property
+    def push(self, dock=utils.getdocker()):
+        self.logger.info("pushing repo")
+        return self._streamoperation(dock.push, repository=self.repository)
+
+    def pull(self, dock=utils.getdocker()):
+        self.logger.info("pulling repo")
+        return self._streamoperation(dock.pull, repository=self.repository, tag=self.tag)
+
+    def build(self, dock=utils.getdocker(), **kwargs):
+        self.logger.info("building image")
+        return self._streamoperation(dock.build, tag='{}:{}'.format(self.repository, self.tag), **kwargs)
+
     @utils.cached
     @utils.asdict
-    def tags(self):
+    def gettags(self):
         self.logger.debug("retrieving tags")
         images = utils.getdocker().images(self.repository, all=True)
         for image in images:
@@ -138,7 +162,7 @@ class Image:
                 yield tag.split(':')[-1], image['Id']
 
     def inspect(self):
-        result = utils.getdocker().inspect_image(self.id)
+        result = utils.getdocker().inspect_image(self.getid())
         # Workaround: Docker sometimes returns "config" key in different casing
         if 'config' in result:
             return result['config']
@@ -147,18 +171,86 @@ class Image:
         else:
             raise RuntimeError("unexpected response from Docker: {}".format(result))
 
-    @property
     @utils.cached
-    def ports(self):
+    def getports(self):
         return [int(port.split('/')[0]) for port in self.inspect()['ExposedPorts'].keys()]
 
-    @property
-    def command(self):
+    def getcommand(self):
         return ' '.join(self.inspect()['Cmd'])
 
-    @property
-    def env(self):
+    def getenv(self):
         return dict(var.split('=', 1) for var in self.inspect()['Env'])
+
+
+class SourceImage(Image):
+    def __init__(self, name: str, parent: Image, scripts: [], command: str=None,
+                 env: dict={}, volumes: dict=[], ports: list=[], files: dict={}):
+        self.parent = parent
+        self.scripts = scripts
+        self.command = command
+        self.volumes = volumes
+        self.ports = ports
+        self.files = files
+        self.env = env
+        Image.__init__(self, name)
+        self.tag = self.gettag()
+
+    def __getstate__(self):
+        filter_state = lambda: {k: v for k, v in Image.__getstate__(self).items() if k not in ['files']}
+        try:
+            return filter_state()
+        except docker.errors.APIError:
+            pass
+        self.build(fileobj=self.gettarfile(), custom_context=True)
+        self.push()
+        return filter_state()
+
+    def gettag(self):
+        dump = json.dumps({
+            'repository': self.repository,
+            'parent': self.parent.__getstate__(),
+            'scripts': self.scripts,
+            'command': self.command,
+            'env': self.env,
+            'volumes': self.volumes,
+            'ports': self.ports,
+            'files': {path: hashlib.sha256(file.read()).hexdigest() for path, file in self.files.items()},
+        }, sort_keys=True)
+        digest = hashlib.sha256(dump.encode()).digest()
+        tag = base64.b64encode(digest, altchars=b'+-').decode()
+        return tag
+
+
+    def gettarfile(self):
+        f = tempfile.NamedTemporaryFile()
+        with tarfile.open(mode='w', fileobj=f) as tfile:
+            dockerfile = io.BytesIO()
+            dockerfile.write('FROM {}:latest\n'.format(self.parent.repository).encode())
+            for name, value in self.env.items():
+                dockerfile.write('ENV {} {}'.format(name, value).encode())
+            for script in self.scripts:
+                dockerfile.write('RUN {}\n'.format(script.replace('\n', ' && \\\n')).encode())
+            for volume in self.volumes:
+                dockerfile.write('VOLUME {}\n'.format(volume).encode())
+            for port in self.ports:
+                dockerfile.write('EXPOSE {}\n'.format(port).encode())
+            if self.command:
+                dockerfile.write('CMD {}\n'.format(self.command).encode())
+            for path, fileobj in self.files.items():
+                dockerfile.write('ADD {} {}\n'.format(path, path).encode())
+                tinfo = tfile.gettarinfo(fileobj=fileobj, arcname=path)
+                fileobj.seek(0)
+                tfile.addfile(tinfo, fileobj)
+            dockerfile.seek(0)
+            dfinfo = tarfile.TarInfo('Dockerfile')
+            dfinfo.size = len(dockerfile.getvalue())
+            tfile.addfile(dfinfo, dockerfile)
+
+        f.seek(0)
+        return f
+
+    def getports(self):
+        return self.ports
 
 
 class Container:
@@ -287,9 +379,9 @@ class Container:
         self.logger.debug('container created')
 
     def _create(self):
-        self.logger.debug('creating container')
+        self.logger.debug('creating container', image=self.image)
         return self.ship.docker.create_container(
-            image='{}:{}'.format(self.image.repository, self.image.id),
+            image='{}:{}'.format(self.image.repository, self.image.getid()),
             hostname=self.hostname,
             command=self.command,
             mem_limit=self.memory,

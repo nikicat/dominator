@@ -238,8 +238,8 @@ def compare_container(cont, cinfo):
 
     if cont.image.id == imageid:
         # get command and env from image only if images are same because expected image could not even exist
-        yield from compare_values(('command',), cont.command or cont.image.command, ' '.join(cinfo['Config']['Cmd']))
-        env = cont.image.env.copy()
+        yield from compare_values(('command',), cont.command or cont.image.getcommand(), ' '.join(cinfo['Config']['Cmd']))
+        env = cont.image.getenv().copy()
         env.update(cont.env)
         yield from compare_env(env, dict(var.split('=', 1) for var in cinfo['Config']['Env']))
 

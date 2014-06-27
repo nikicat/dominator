@@ -134,8 +134,8 @@ class Image:
             if line != '':
                 resp = json.loads(line)
                 if 'error' in resp:
-                    raise docker.errors.APIError(None, resp, 'could not complete {} operation on {} ({})'.format(
-                        func.__name__, self.repository, resp['error']))
+                    raise docker.errors.DockerException('could not complete {} operation on {} ({})'.format(
+                        func.__name__, self, resp['error']), response=resp)
                 else:
                     message = resp.get('stream', resp.get('status', ''))
                     for line in message.split('\n'):

@@ -135,7 +135,7 @@ class Image:
                 resp = json.loads(line)
                 if 'error' in resp:
                     raise docker.errors.DockerException('could not complete {} operation on {} ({})'.format(
-                        func.__name__, self, resp['error']), response=resp)
+                        func.__name__, self, resp['error']))
                 else:
                     message = resp.get('stream', resp.get('status', ''))
                     for line in message.split('\n'):
@@ -202,7 +202,8 @@ class SourceImage(Image):
         filter_state = lambda: {k: v for k, v in Image.__getstate__(self).items() if k not in ['files']}
         try:
             return filter_state()
-        except docker.errors.APIError:
+        except docker.errors.DockerException:
+            # DockerException means that needed image not found in repository and needs rebuilding
             pass
         self.build(fileobj=self.gettarfile(), custom_context=True)
         self.push()

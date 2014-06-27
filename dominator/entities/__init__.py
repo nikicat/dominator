@@ -229,9 +229,9 @@ class SourceImage(Image):
             dockerfile = io.BytesIO()
             dockerfile.write('FROM {}:latest\n'.format(self.parent.getfullrepository()).encode())
             for name, value in self.env.items():
-                dockerfile.write('ENV {} {}'.format(name, value).encode())
+                dockerfile.write('ENV {} {}\n'.format(name, value).encode())
             for script in self.scripts:
-                dockerfile.write('RUN {}\n'.format(script.replace('\n', ' && \\\n')).encode())
+                dockerfile.write('RUN {}\n'.format(script).encode())
             for volume in self.volumes:
                 dockerfile.write('VOLUME {}\n'.format(volume).encode())
             for port in self.ports:

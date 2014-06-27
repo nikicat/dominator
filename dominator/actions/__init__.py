@@ -218,8 +218,8 @@ def print_diff(difflist):
                 print('  {keystr:60.60} {color}{line}{fore.RESET}'.format(**locals()))
         elif len(diff) == 2:
             expected, actual = diff
-            print('  {keystr:60.60} {fore.RED}{actual!s:30.30}{fore.RESET} \
-{fore.GREEN}{expected!s:30.30}{fore.RESET}'.format(**locals()))
+            print('  {keystr:60.60} {fore.RED}{actual!s:50.50}{fore.RESET} \
+{fore.GREEN}{expected!s:50.50}{fore.RESET}'.format(**locals()))
         else:
             assert False, "invalid diff format for {key}: {diff}".format(**locals())
 

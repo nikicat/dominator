@@ -223,7 +223,6 @@ class SourceImage(Image):
         tag = base64.b64encode(digest, altchars=b'+-').decode()
         return tag
 
-
     def gettarfile(self):
         f = tempfile.NamedTemporaryFile()
         with tarfile.open(mode='w', fileobj=f) as tfile:

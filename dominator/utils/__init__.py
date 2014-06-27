@@ -133,9 +133,14 @@ def getdocker(url=None):
 def getrepo(repo):
     if '/' not in repo and 'docker-namespace' in settings:
         repo = '{}/{}'.format(settings['docker-namespace'], repo)
-    if 'docker-registry' in settings and not re.match('/.*/', repo):
-        repo = '{}/{}'.format(settings['docker-registry'], repo)
-    return repo
+
+    mo = re.match('^(.*)/(.*/.*)$', repo)
+    if mo is not None:
+        registry = mo.groups[0]
+        repo = mo.groups[1]
+    else:
+        registry = settings.get('docker-registry')
+    return registry, repo
 
 
 @aslist
@@ -230,7 +235,7 @@ def compare_container(cont, cinfo):
 
     for key, expected, actual in [
         ('name', cont.name, cinfo['Name'][1:]),
-        ('image.repo', cont.image.repository, imagerepo),
+        ('image.repo', cont.image.getfullrepository(), imagerepo),
         ('image.id', cont.image.id, imageid),
         ('memory', cont.memory, cinfo['Config']['Memory']),
     ]:
@@ -238,8 +243,11 @@ def compare_container(cont, cinfo):
 
     if cont.image.id == imageid:
         # get command and env from image only if images are same because expected image could not even exist
-        yield from compare_values(('command',), cont.command or cont.image.command, ' '.join(cinfo['Config']['Cmd']))
-        env = cont.image.env.copy()
+        yield from compare_values(
+            ('command',),
+            cont.command or cont.image.getcommand(),
+            ' '.join(cinfo['Config']['Cmd']))
+        env = cont.image.getenv().copy()
         env.update(cont.env)
         yield from compare_env(env, dict(var.split('=', 1) for var in cinfo['Config']['Env']))
 

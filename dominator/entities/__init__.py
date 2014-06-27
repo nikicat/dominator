@@ -190,7 +190,7 @@ class Image:
 
 class SourceImage(Image):
     def __init__(self, name: str, parent: Image, scripts: [], command: str=None,
-                 env: dict={}, volumes: dict=[], ports: list=[], files: dict={}):
+                 env: dict={}, volumes: list=[], ports: list=[], files: dict={}):
         self.parent = parent
         self.scripts = scripts
         self.command = command

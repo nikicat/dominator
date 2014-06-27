@@ -5,9 +5,15 @@ Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <f
 Commands:
     dump                dump config in yaml format
     list-containers     list local containers (used by upstart script)
-    run                 run container(s) locally
-    deploy              deploy containers to ships
+    start               start containers
+    stop                stop containers
+    restart             restart containers
     status              show containers' status
+
+    localstart          start containers locally
+    localstop           stop containers locally
+    localrestart        restart containers locally
+    localstatus         show local containers' status
 
 Options:
     -s, --settings <settings>    yaml file to load settings

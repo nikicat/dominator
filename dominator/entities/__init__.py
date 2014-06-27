@@ -103,15 +103,18 @@ class Image:
     def __init__(self, repository: str, tag: str='latest', id: str=''):
         self.tag = tag
         self.id = id
-        self.repository = utils.getrepo(repository)
+        self.registry, self.repository = utils.getrepo(repository)
 
     def __repr__(self):
-        return 'Image(repository={repository}, tag={tag}, id={id:.7})'.format(**vars(self))
+        return 'Image(repository={repository}, tag={tag}, id={id:.7}, registry={registry})'.format(**vars(self))
 
     def __getstate__(self):
         if self.id is '':
             self.getid()
         return vars(self)
+
+    def getfullrepository(self):
+        return self.repository if self.registry is None else '{}/{}'.format(self.registry, self.repository)
 
     @property
     def logger(self):
@@ -142,21 +145,21 @@ class Image:
 
     def push(self, dock=utils.getdocker()):
         self.logger.info("pushing repo")
-        return self._streamoperation(dock.push, repository=self.repository)
+        return self._streamoperation(dock.push, repository=self.getfullrepository())
 
     def pull(self, dock=utils.getdocker()):
         self.logger.info("pulling repo")
-        return self._streamoperation(dock.pull, repository=self.repository, tag=self.tag)
+        return self._streamoperation(dock.pull, repository=self.getfullrepository(), tag=self.tag)
 
     def build(self, dock=utils.getdocker(), **kwargs):
         self.logger.info("building image")
-        return self._streamoperation(dock.build, tag='{}:{}'.format(self.repository, self.tag), **kwargs)
+        return self._streamoperation(dock.build, tag='{}:{}'.format(self.getfullrepository(), self.tag), **kwargs)
 
     @utils.cached
     @utils.asdict
     def gettags(self):
         self.logger.debug("retrieving tags")
-        images = utils.getdocker().images(self.repository, all=True)
+        images = utils.getdocker().images(self.getfullrepository(), all=True)
         for image in images:
             for tag in image['RepoTags']:
                 yield tag.split(':')[-1], image['Id']
@@ -225,7 +228,7 @@ class SourceImage(Image):
         f = tempfile.NamedTemporaryFile()
         with tarfile.open(mode='w', fileobj=f) as tfile:
             dockerfile = io.BytesIO()
-            dockerfile.write('FROM {}:latest\n'.format(self.parent.repository).encode())
+            dockerfile.write('FROM {}:latest\n'.format(self.parent.getfullrepository()).encode())
             for name, value in self.env.items():
                 dockerfile.write('ENV {} {}'.format(name, value).encode())
             for script in self.scripts:
@@ -381,7 +384,7 @@ class Container:
     def _create(self):
         self.logger.debug('creating container', image=self.image)
         return self.ship.docker.create_container(
-            image='{}:{}'.format(self.image.repository, self.image.getid()),
+            image='{}:{}'.format(self.image.getfullrepository(), self.image.getid()),
             hostname=self.hostname,
             command=self.command,
             mem_limit=self.memory,

@@ -143,16 +143,19 @@ class Image:
                             logger.debug(line, response=resp)
         Image.gettags.cache_clear()
 
-    def push(self, dock=utils.getdocker()):
+    def push(self, dock=None):
         self.logger.info("pushing repo")
+        dock = dock or utils.getdocker()
         return self._streamoperation(dock.push, repository=self.getfullrepository())
 
-    def pull(self, dock=utils.getdocker()):
+    def pull(self, dock=None):
         self.logger.info("pulling repo")
+        dock = dock or utils.getdocker()
         return self._streamoperation(dock.pull, repository=self.getfullrepository(), tag=self.tag)
 
-    def build(self, dock=utils.getdocker(), **kwargs):
+    def build(self, dock=None, **kwargs):
         self.logger.info("building image")
+        dock = dock or utils.getdocker()
         return self._streamoperation(dock.build, tag='{}:{}'.format(self.getfullrepository(), self.tag), **kwargs)
 
     @utils.cached

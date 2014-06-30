@@ -236,7 +236,7 @@ def compare_container(cont, cinfo):
     for key, expected, actual in [
         ('name', cont.name, cinfo['Name'][1:]),
         ('image.repo', cont.image.getfullrepository(), imagerepo),
-        ('image.id', cont.image.id, imageid),
+        ('image.id', cont.image.getid(), imageid),
         ('memory', cont.memory, cinfo['Config']['Memory']),
     ]:
         yield from compare_values((key,), expected, actual)

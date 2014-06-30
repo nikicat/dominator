@@ -379,7 +379,17 @@ class Container:
 
     def remove(self, force=False):
         self.logger.debug('removing container')
-        self.ship.docker.remove_container(self.id, force=force)
+        try:
+            self.ship.docker.remove_container(self.id, force=force)
+        except docker.errors.APIError as e:
+            if b'Driver devicemapper failed to remove root filesystem' in e.explanation:
+                self.logger.debug('', exc_info=True)
+                self.logger.warning("Docker bug 'Driver devicemapper failed to remove root filesystem' detected, just trying again")
+                self.check()
+                if self.id:
+                    self.ship.docker.remove_container(self.id, force=force)
+            else:
+                raise
         self.check({'Id': '', 'Status': 'not found'})
 
     def create(self):

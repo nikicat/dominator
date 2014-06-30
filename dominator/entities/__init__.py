@@ -5,7 +5,6 @@ This module contains classes used to describe cluster configuration
 
 import os.path
 import os
-import inspect
 import json
 import contextlib
 import tarfile
@@ -182,6 +181,7 @@ class Image:
     def gethash(self):
         return '{}:{}[{}]'.format(self.getfullrepository(), self.tag, self.getid())
 
+
 class SourceImage(Image):
     def __init__(self, name: str, parent: Image, scripts: [], command: str=None,
                  env: dict={}, volumes: dict={}, ports: dict={}, files: dict={}):
@@ -236,7 +236,8 @@ class SourceImage(Image):
             'env': self.env,
             'volumes': self.volumes,
             'ports': self.ports,
-            'files': {path: hashlib.sha256(file.seek(0) or file.read()).hexdigest() for path, file in self.files.items()},
+            'files': {path: hashlib.sha256(file.seek(0) or file.read()).hexdigest()
+                      for path, file in self.files.items()},
         }, sort_keys=True)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
@@ -380,7 +381,8 @@ class Container:
         except docker.errors.APIError as e:
             if b'Driver devicemapper failed to remove root filesystem' in e.explanation:
                 self.logger.debug('', exc_info=True)
-                self.logger.warning("Docker bug 'Driver devicemapper failed to remove root filesystem' detected, just trying again")
+                self.logger.warning("Docker bug 'Driver devicemapper failed to remove root filesystem'"
+                                    " detected, just trying again")
                 self.check()
                 if self.id:
                     self.ship.docker.remove_container(self.id, force=force)
@@ -448,6 +450,7 @@ class Container:
 
     def start(self):
         self.logger.debug('starting container')
+
         def _start():
             self.ship.docker.start(
                 self.id,

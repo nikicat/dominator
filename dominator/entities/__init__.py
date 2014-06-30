@@ -179,69 +179,95 @@ class Image:
     def getenv(self):
         return dict(var.split('=', 1) for var in self.inspect()['Env'])
 
+    def gethash(self):
+        return '{}:{}[{}]'.format(self.getfullrepository(), self.tag, self.getid())
 
 class SourceImage(Image):
     def __init__(self, name: str, parent: Image, scripts: [], command: str=None,
-                 env: dict={}, volumes: list=[], ports: list=[], files: dict={}):
+                 env: dict={}, volumes: dict={}, ports: dict={}, files: dict={}):
         self.parent = parent
         self.scripts = scripts
         self.command = command
         self.volumes = volumes
         self.ports = ports
-        self.files = files
+
+        def getfileobj(fileobj_or_filename):
+            if isinstance(fileobj_or_filename, str):
+                return pkg_resources.resource_stream(utils.getcallingmodule(3).__name__, fileobj_or_filename)
+            else:
+                return fileobj_or_filename
+
+        self.files = {path: getfileobj(fileobj_or_filename) for path, fileobj_or_filename in files.items()}
         self.env = env
         Image.__init__(self, name)
-        self.tag = self.gettag()
+        self.tag = self.gethash()
 
     def __getstate__(self):
-        filter_state = lambda: {k: v for k, v in Image.__getstate__(self).items() if k not in ['files']}
+        """Used when dumping to yaml"""
+        def filtered_state():
+            return {k: v for k, v in Image.__getstate__(self).items() if k not in ['files']}
         try:
-            return filter_state()
+            return filtered_state()
         except docker.errors.DockerException:
             # DockerException means that needed image not found in repository and needs rebuilding
             pass
         self.build(fileobj=self.gettarfile(), custom_context=True)
         self.push()
-        return filter_state()
+        return filtered_state()
 
-    def gettag(self):
+    def getid(self):
+        try:
+            return Image.getid(self)
+        except docker.errors.DockerException as e:
+            self.logger.info("pull failed, rebuilding (%s)", e)
+        self.build(fileobj=self.gettarfile(), custom_context=True)
+        self.push()
+        return Image.getid(self)
+
+    def gethash(self):
+        """Used to calculate unique identifying tag for image
+           If tag is not found in registry, than image must be rebuilt
+        """
         dump = json.dumps({
             'repository': self.repository,
-            'parent': self.parent.__getstate__(),
+            'parent': self.parent.gethash(),
             'scripts': self.scripts,
             'command': self.command,
             'env': self.env,
             'volumes': self.volumes,
             'ports': self.ports,
-            'files': {path: hashlib.sha256(file.read()).hexdigest() for path, file in self.files.items()},
+            'files': {path: hashlib.sha256(file.seek(0) or file.read()).hexdigest() for path, file in self.files.items()},
         }, sort_keys=True)
         digest = hashlib.sha256(dump.encode()).digest()
-        tag = base64.b64encode(digest, altchars=b'+-').decode()
-        return tag
+        return base64.b64encode(digest, altchars=b'+-').decode()
 
     def gettarfile(self):
         f = tempfile.NamedTemporaryFile()
         with tarfile.open(mode='w', fileobj=f) as tfile:
             dockerfile = io.BytesIO()
-            dockerfile.write('FROM {}:latest\n'.format(self.parent.getfullrepository()).encode())
+            dockerfile.write('FROM {}:{}\n'.format(self.parent.getfullrepository(), self.parent.getid()).encode())
             for name, value in self.env.items():
                 dockerfile.write('ENV {} {}\n'.format(name, value).encode())
             for script in self.scripts:
                 dockerfile.write('RUN {}\n'.format(script).encode())
-            for volume in self.volumes:
+            for volume in self.volumes.values():
                 dockerfile.write('VOLUME {}\n'.format(volume).encode())
-            for port in self.ports:
+            for port in self.ports.values():
                 dockerfile.write('EXPOSE {}\n'.format(port).encode())
             if self.command:
                 dockerfile.write('CMD {}\n'.format(self.command).encode())
             for path, fileobj in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
-                tinfo = tfile.gettarinfo(fileobj=fileobj, arcname=path)
+                if isinstance(fileobj, io.BytesIO):
+                    tinfo = tarfile.TarInfo(path)
+                    tinfo.size = len(fileobj.getvalue())
+                else:
+                    tinfo = tfile.gettarinfo(fileobj=fileobj, arcname=path)
                 fileobj.seek(0)
                 tfile.addfile(tinfo, fileobj)
-            dockerfile.seek(0)
             dfinfo = tarfile.TarInfo('Dockerfile')
             dfinfo.size = len(dockerfile.getvalue())
+            dockerfile.seek(0)
             tfile.addfile(dfinfo, dockerfile)
 
         f.seek(0)

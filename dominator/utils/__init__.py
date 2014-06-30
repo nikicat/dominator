@@ -185,7 +185,7 @@ def compare_volumes(cont, cinfo):
     getlogger().debug('comparing volumes')
     for dest, path in cinfo['Volumes'].items():
         ro = not cinfo['VolumesRW'][dest]
-        matched_expected = [volume for volume in cont.volumes if volume.dest == dest]
+        matched_expected = [volume for volume in cont.volumes.values() if volume.dest == dest]
         if len(matched_expected) == 0:
             if not path.startswith('/var/lib/docker/vfs/dir'):
                 yield ('volumes',), ('', dest)
@@ -201,7 +201,7 @@ def compare_volumes(cont, cinfo):
             if volume.ro != ro:
                 yield ('volumes', dest, 'ro'), (volume.ro, ro)
 
-    for volume in cont.volumes:
+    for volume in cont.volumes.values():
         matched_actual_path = [path for dest, path in cinfo['Volumes'].items() if dest == volume.dest]
         if len(matched_actual_path) == 0:
             yield ('volumes',), (volume.dest, '')

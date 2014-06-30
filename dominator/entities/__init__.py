@@ -279,7 +279,7 @@ class SourceImage(Image):
 
 class Container:
     def __init__(self, name: str, ship: Ship, image: Image, command: str=None, hostname: str=None,
-                 ports: dict={}, memory: int=0, volumes: list=[],
+                 ports: dict={}, memory: int=0, volumes: dict={},
                  env: dict={}, extports: dict={}, portproto: dict={}):
         self.name = name
         self.ship = ship
@@ -311,11 +311,7 @@ class Container:
         self.status = 'not found'
 
     def getvolume(self, volumename):
-        for volume in self.volumes:
-            if volume.name == volumename:
-                return volume
-        else:
-            raise RuntimeError('no such volume in container: %s', volumename)
+        return self.volumes[volumename]
 
     @property
     def running(self):
@@ -395,7 +391,7 @@ class Container:
     def create(self):
         self.logger.debug('preparing to create container')
 
-        for volume in self.volumes:
+        for volume in self.volumes.values():
             volume.render(self)
 
         try:
@@ -492,7 +488,7 @@ class Container:
 
 class Volume:
     def __repr__(self):
-        return '{}(name={name}, dest={dest})'.format(type(self).__name__, **vars(self))
+        return '{}(dest={dest})'.format(type(self).__name__, **vars(self))
 
     @property
     def logger(self):
@@ -500,8 +496,7 @@ class Volume:
 
 
 class DataVolume(Volume):
-    def __init__(self, dest: str, path: str=None, name: str='data', ro=False):
-        self.name = name
+    def __init__(self, dest: str, path: str=None, ro=False):
         self.dest = dest
         self.path = path
         self.ro = ro
@@ -511,18 +506,17 @@ class DataVolume(Volume):
 
     def getpath(self, container):
         return self.path or os.path.expanduser(os.path.join(utils.settings['datavolumedir'],
-                                                            container.name, self.name))
+                                               container.name, self.dest[1:]))
 
 
 class ConfigVolume(Volume):
-    def __init__(self, dest: str, files: dict={}, name: str='config'):
-        self.name = name
+    def __init__(self, dest: str, files: dict={}):
         self.dest = dest
         self.files = files
 
     def getpath(self, container):
         return os.path.expanduser(os.path.join(utils.settings['configvolumedir'],
-                                               container.name, self.name))
+                                               container.name, self.dest[1:]))
 
     @property
     def ro(self):

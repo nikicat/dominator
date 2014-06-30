@@ -52,14 +52,6 @@ class Ship(BaseShip):
 
     @property
     @utils.cached
-    def memory(self):
-        if hasattr(self, 'novacluster'):
-            return utils.ship_memory_from_nova(self)
-        else:
-            return utils.ship_memory_from_bot(self.fqdn)
-
-    @property
-    @utils.cached
     def islocal(self):
         return self.name == os.uname()[1]
 

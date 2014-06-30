@@ -531,9 +531,7 @@ class TextFile(BaseFile):
         if text is not None:
             self.content = text
         else:
-            parent_frame = inspect.stack()[1]
-            parent_module = inspect.getmodule(parent_frame[0])
-            self.content = pkg_resources.resource_string(parent_module.__name__, filename).decode()
+            self.content = pkg_resources.resource_string(utils.getcallingmodule(1).__name__, filename).decode()
 
     def __str__(self):
         return 'TextFile(name={})'.format(self.name)

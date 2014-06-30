@@ -264,6 +264,11 @@ def docker_lines(records):
             yield line
 
 
+def getcallingmodule(deep):
+    parent_frame = inspect.stack()[1+deep]
+    return inspect.getmodule(parent_frame[0])
+
+
 class Settings(dict):
     def load(self, filename):
         if filename is None:

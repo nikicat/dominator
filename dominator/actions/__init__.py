@@ -63,20 +63,20 @@ def dump(containers):
 
 
 @command
-def localstart(containers, container: str=None):
+def localstart(containers, shipname: str=None, containername: str=None):
     """
     Start locally all or specified containers
 
-    usage: dominator localstart [options] [<container>]
+    usage: dominator localstart [options] [<shipname>] [<containername>]
 
         -h, --help
     """
-    for cont in filter_containers(containers, container):
+    for cont in filter_containers(containers, shipname, containername):
         cont.run()
 
 
 @command
-def localrestart(containers, container: str=None):
+def localrestart(containers, shipname: str=None, containername: str=None):
     """
     Restart locally all or specified containers
 
@@ -84,7 +84,7 @@ def localrestart(containers, container: str=None):
 
         -h, --help
     """
-    for cont in filter_containers(containers, container):
+    for cont in filter_containers(containers, shipname, containername):
         cont.check()
         if cont.running:
             cont.stop()
@@ -92,13 +92,13 @@ def localrestart(containers, container: str=None):
 
 
 @command
-def localexec(containers, container: str, keep: bool=False):
+def localexec(containers, shipname: str, containername: str, keep: bool=False):
     """
-    Execute local container until it stops
+    Execute container until it stops
 
-    Usage: dominator localexec [options] <container>
+    Usage: dominator localexec [options] <ship> <container>
     """
-    for cont in filter_containers(containers, container):
+    for cont in filter_containers(containers, shipname, containername):
         with cont.execute() as logs:
             for line in logs:
                 print(line)

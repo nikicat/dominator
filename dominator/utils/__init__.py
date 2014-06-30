@@ -218,7 +218,7 @@ def compare_files(container, volume):
         expected = file.data(container)
         if actual != expected:
             diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
-            yield ('volumes', volume.name, 'files', file.name), [line for line in diff if line[:2] != '  ']
+            yield ('volumes', volume.dest, 'files', file.name), [line for line in diff if line[:2] != '  ']
 
 
 def compare_values(key, expected, actual):

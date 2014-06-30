@@ -351,7 +351,7 @@ def main():
                 containers = load_yaml(args['--config'])
             else:
                 with requests_cache.enabled():
-                    if '--clear-cache' in args:
+                    if args['--clear-cache']:
                         getlogger().info("clearing requetss cache")
                         requests_cache.clear()
                     containers = load_module(args['--module'], args['--function'])

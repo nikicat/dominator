@@ -1,5 +1,5 @@
 """
-Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) [-n <namespace>] \
+Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) [--clear-cache] [-n <namespace>] \
  <command> [<args>...]
 
 Commands:
@@ -22,6 +22,7 @@ Options:
     -m, --module <modulename>    python module name
     -f, --function <funcname>    python function name [default: create]
     -n, --namespace <namespace>  docker namespace to use if not set (overrides config)
+    --clear-cache                clear requests cache
 """
 
 
@@ -36,6 +37,7 @@ import pkg_resources
 import yaml
 import docopt
 from colorama import Fore
+import requests_cache
 
 from ..entities import Container, Image, DataVolume
 from .. import utils
@@ -343,11 +345,16 @@ def main():
             settings['docker-namespace'] = args['--namespace']
         logging.config.dictConfig(settings.get('logging', {}))
         logging.disable(level=loglevel-1)
+
         try:
             if args['--config'] is not None:
                 containers = load_yaml(args['--config'])
             else:
-                containers = load_module(args['--module'], args['--function'])
+                with requests_cache.enabled():
+                    if '--clear-cache' in args:
+                        getlogger().info("clearing requetss cache")
+                        requests_cache.clear()
+                    containers = load_module(args['--module'], args['--function'])
         except:
             getlogger().exception("failed to load config")
             return

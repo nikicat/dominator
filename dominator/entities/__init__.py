@@ -183,11 +183,12 @@ class Image:
 
 
 class SourceImage(Image):
-    def __init__(self, name: str, parent: Image, scripts: [], command: str=None,
+    def __init__(self, name: str, parent: Image, scripts: [], command: str=None, workdir: str=None,
                  env: dict={}, volumes: dict={}, ports: dict={}, files: dict={}):
         self.parent = parent
         self.scripts = scripts
         self.command = command
+        self.workdir = workdir
         self.volumes = volumes
         self.ports = ports
 
@@ -233,6 +234,7 @@ class SourceImage(Image):
             'parent': self.parent.gethash(),
             'scripts': self.scripts,
             'command': self.command,
+            'workdir': self.workdir,
             'env': self.env,
             'volumes': self.volumes,
             'ports': self.ports,
@@ -249,6 +251,8 @@ class SourceImage(Image):
             dockerfile.write('FROM {}:{}\n'.format(self.parent.getfullrepository(), self.parent.getid()).encode())
             for name, value in self.env.items():
                 dockerfile.write('ENV {} {}\n'.format(name, value).encode())
+            if self.workdir is not None:
+                dockerfile.write('WORKDIR {}\n'.format(self.workdir).encode())
             for script in self.scripts:
                 dockerfile.write('RUN {}\n'.format(script).encode())
             for volume in self.volumes.values():

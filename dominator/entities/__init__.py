@@ -452,14 +452,31 @@ class Container:
 
     def start(self):
         self.logger.debug('starting container')
-        self.ship.docker.start(
-            self.id,
-            port_bindings={
-                '{}/{}'.format(port, self.portproto.get(name, 'tcp')): ('::', self.extports.get(name, port))
-                for name, port in self.ports.items()
-            },
-            binds={v.getpath(self): {'bind': v.dest, 'ro': v.ro} for v in self.volumes},
-        )
+        def _start():
+            self.ship.docker.start(
+                self.id,
+                port_bindings={
+                    '{}/{}'.format(port, self.portproto.get(name, 'tcp')): ('::', self.extports.get(name, port))
+                    for name, port in self.ports.items()
+                },
+                binds={v.getpath(self): {'bind': v.dest, 'ro': v.ro} for v in self.volumes.values()},
+            )
+        try:
+            _start()
+        except docker.errors.APIError as e:
+            if b'Cannot find child for' in e.explanation:
+                self.logger.debug('', exc_info=True)
+                self.logger.warning("Docker bug 'Cannot find child' detected, waiting 2 seconds and trying "
+                                    "to start container again")
+                _start()
+            elif b'port has already been allocated' in e.explanation:
+                self.logger.debug('', exc_info=True)
+                self.logger.error("Docker bug 'port has already been allocated' detected, try to restart "
+                                  "Docker manually")
+                return
+            else:
+                raise
+
         self.check({'Status': 'Up'})
         self.logger.debug('container started')
 

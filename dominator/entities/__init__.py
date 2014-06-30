@@ -522,6 +522,11 @@ class BaseFile:
 
 class TextFile(BaseFile):
     def __init__(self, filename: str, text: str=None):
+        """
+        Constructs TextFile. If text provided, populate
+        file contents from it. If not - try to load resource
+        from calling module using filename.
+        """
         BaseFile.__init__(self, filename)
         if text is not None:
             self.content = text

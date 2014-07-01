@@ -185,7 +185,7 @@ def compare_volumes(cont, cinfo):
     getlogger().debug('comparing volumes')
     for dest, path in cinfo['Volumes'].items():
         ro = not cinfo['VolumesRW'][dest]
-        matched_expected = [volume for volume in cont.volumes if volume.dest == dest]
+        matched_expected = [volume for volume in cont.volumes.values() if volume.dest == dest]
         if len(matched_expected) == 0:
             if not path.startswith('/var/lib/docker/vfs/dir'):
                 yield ('volumes',), ('', dest)
@@ -201,7 +201,7 @@ def compare_volumes(cont, cinfo):
             if volume.ro != ro:
                 yield ('volumes', dest, 'ro'), (volume.ro, ro)
 
-    for volume in cont.volumes:
+    for volume in cont.volumes.values():
         matched_actual_path = [path for dest, path in cinfo['Volumes'].items() if dest == volume.dest]
         if len(matched_actual_path) == 0:
             yield ('volumes',), (volume.dest, '')
@@ -218,7 +218,7 @@ def compare_files(container, volume):
         expected = file.data(container)
         if actual != expected:
             diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
-            yield ('volumes', volume.name, 'files', file.name), [line for line in diff if line[:2] != '  ']
+            yield ('volumes', volume.dest, 'files', file.name), [line for line in diff if line[:2] != '  ']
 
 
 def compare_values(key, expected, actual):
@@ -236,7 +236,7 @@ def compare_container(cont, cinfo):
     for key, expected, actual in [
         ('name', cont.name, cinfo['Name'][1:]),
         ('image.repo', cont.image.getfullrepository(), imagerepo),
-        ('image.id', cont.image.id, imageid),
+        ('image.id', cont.image.getid(), imageid),
         ('memory', cont.memory, cinfo['Config']['Memory']),
     ]:
         yield from compare_values((key,), expected, actual)
@@ -262,6 +262,11 @@ def docker_lines(records):
         while '\n' in buf:
             line, buf = buf.split('\n', 1)
             yield line
+
+
+def getcallingmodule(deep):
+    parent_frame = inspect.stack()[1+deep]
+    return inspect.getmodule(parent_frame[0])
 
 
 class Settings(dict):

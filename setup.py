@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
-        version='1.0',
+        version='2.0',
         url='https://github.com/yandex-sysmon/dominator',
         license='GPLv3',
         author='Nikolay Bryskin',
@@ -49,17 +49,10 @@ if __name__ == '__main__':
             'pyyaml == 3.11nikicat',
             'mako',
             'colorlog',
+            'requests_cache',
         ],
         dependency_links=[
             'hg+https://bitbucket.org/nikicat/pyyaml#egg=pyyaml-3.11nikicat',
-        ],
-        install_recommends=[
-            'requests',
-            'python_novaclient',
-            'conductor_client',
-            'psutil',
-            'colorama',
-            'pyquery',
         ],
         tests_require=[
             'pytest',

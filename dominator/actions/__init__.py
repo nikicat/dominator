@@ -56,21 +56,20 @@ def command(func):
 
 @command
 def dump(containers):
-    """
-    Dump config as YAML
+    """Dump config as YAML
 
-    usage: dominator dump
+    Usage: dominator dump
     """
     print(yaml.dump(containers))
 
 
 @command
 def localstart(containers, shipname: str=None, containername: str=None):
-    """
-    Start locally all or specified containers
+    """Start locally all or specified containers
 
-    usage: dominator localstart [options] [<shipname>] [<containername>]
+    Usage: dominator localstart [options] [<shipname>] [<containername>]
 
+    Options:
         -h, --help
     """
     for cont in filter_containers(containers, shipname, containername):
@@ -79,11 +78,11 @@ def localstart(containers, shipname: str=None, containername: str=None):
 
 @command
 def localrestart(containers, shipname: str=None, containername: str=None):
-    """
-    Restart locally all or specified containers
+    """Restart locally all or specified containers
 
-    usage: dominator localrestart [options] [<container>]
+    Usage: dominator localrestart [options] [<shipname>] [<containername>]
 
+    Options:
         -h, --help
     """
     for cont in filter_containers(containers, shipname, containername):
@@ -95,10 +94,9 @@ def localrestart(containers, shipname: str=None, containername: str=None):
 
 @command
 def localexec(containers, shipname: str, containername: str, keep: bool=False):
-    """
-    Execute container until it stops
+    """Execute container until it stops
 
-    Usage: dominator localexec [options] <ship> <container>
+    Usage: dominator localexec [options] <shipname> <containername>
     """
     for cont in filter_containers(containers, shipname, containername):
         with cont.execute() as logs:
@@ -110,8 +108,7 @@ def localexec(containers, shipname: str, containername: str, keep: bool=False):
 
 @command
 def stop(containers, ship: str=None, container: str=None):
-    """
-    Stop container(s) on ship(s)
+    """Stop container(s) on ship(s)
 
     Usage: dominator stop [options] [<ship> [<container>]]
 
@@ -142,9 +139,11 @@ def filter_containers(containers, shipname: str=None, containername: str=None):
 
 @command
 def list_containers(containers):
-    """ list containers for local ship
-    usage: dominator list-containers [-h]
+    """List containers for local ship
 
+    Usage: dominator list-containers [-h]
+
+    Options:
         -h, --help
     """
     for container in containers:
@@ -170,8 +169,10 @@ def load_yaml(filename):
 @command
 def localstatus(containers, ship: str=None, container: str=None, showdiff: bool=False):
     """Show local containers' status
-    usage: dominator localstatus [options] [<ship>] [<container>]
 
+    Usage: dominator localstatus [options] [<ship>] [<container>]
+
+    Options:
         -h, --help
         -d, --showdiff  # show diff with running container [default: false]
     """
@@ -198,8 +199,10 @@ def localstatus(containers, ship: str=None, container: str=None, showdiff: bool=
 @command
 def status(containers, ship: str=None, container: str=None, showdiff: bool=False, keep: bool=True):
     """Show local containers' status
-    usage: dominator status [options] [<ship>] [<container>]
 
+    Usage: dominator status [options] [<ship>] [<container>]
+
+    Options:
         -h, --help
         -d, --showdiff  # show diff with running container [default: false]
         -k, --keep      # keep ambassador container [default: false]
@@ -229,6 +232,7 @@ def print_diff(difflist):
 @command
 def start(containers, ship: str=None, container: str=None, keep: bool=False):
     """Start containers on ship[s]
+
     Usage: dominator start [options] [<ship> [<container>]]
 
     Options:
@@ -242,6 +246,7 @@ def start(containers, ship: str=None, container: str=None, keep: bool=False):
 @command
 def restart(containers, ship: str=None, container: str=None, keep: bool=False):
     """Restart selected containers
+
     Usage: dominator restart [options] [<ship>] [<container>]
 
     Options:
@@ -266,7 +271,7 @@ def ambassador(ship, command):
         hostname=ship.name,
         command='dominator -c - {}'.format(command),
         volumes={
-            'dominator': DataVolume(path='/var/lib/dominator', dest='/var/lib/dominator'),
+            'data': DataVolume(path='/var/lib/dominator', dest='/var/lib/dominator'),
             'docker': DataVolume(path='/run/docker.sock', dest='/run/docker.sock'),
         },
     )
@@ -309,8 +314,7 @@ def _docker_attach(dock, cont):
 
 @command
 def logs(containers, ship: str=None, container: str=None, follow: bool=False):
-    """
-    Fetch logs for container(s) on ship(s)
+    """Fetch logs for container(s) on ship(s)
 
     Usage: dominator logs [options] [<ship>] [<container>]
 
@@ -352,7 +356,7 @@ def main():
             else:
                 with requests_cache.enabled():
                     if args['--clear-cache']:
-                        getlogger().info("clearing requetss cache")
+                        getlogger().info("clearing requests cache")
                         requests_cache.clear()
                     containers = load_module(args['--module'], args['--function'])
         except:

@@ -356,7 +356,7 @@ def main():
             else:
                 with requests_cache.enabled():
                     if args['--clear-cache']:
-                        getlogger().info("clearing requetss cache")
+                        getlogger().info("clearing requests cache")
                         requests_cache.clear()
                     containers = load_module(args['--module'], args['--function'])
         except:

@@ -35,7 +35,7 @@ if __name__ == '__main__':
         packages=['dominator.entities', 'dominator.actions', 'dominator.utils'],
         namespace_packages=['dominator'],
         entry_points={'console_scripts': ['dominator = dominator.actions:main']},
-        package_data={'dominator': ['settings.yaml']},
+        package_data={'dominator.utils': ['settings.yaml']},
         classifiers=[
             'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
             'Operating System :: POSIX :: Linux',
@@ -50,11 +50,11 @@ if __name__ == '__main__':
             'mako',
             'colorlog',
             'requests_cache',
+            'colorama',
         ],
         tests_require=[
             'pytest',
             'vcrpy',
-            'colorama',
         ],
         cmdclass={'test': PyTest},
     )

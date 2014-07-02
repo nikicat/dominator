@@ -46,13 +46,10 @@ if __name__ == '__main__':
         install_requires=[
             'docker-py >= 0.3.2',
             'docopt',
-            'pyyaml == 3.11nikicat',
+            'PyYAML.Yandex == 3.11.1',
             'mako',
             'colorlog',
             'requests_cache',
-        ],
-        dependency_links=[
-            'hg+https://bitbucket.org/nikicat/pyyaml#egg=pyyaml-3.11nikicat',
         ],
         tests_require=[
             'pytest',

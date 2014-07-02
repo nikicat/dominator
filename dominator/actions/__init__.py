@@ -271,7 +271,7 @@ def ambassador(ship, command):
         hostname=ship.name,
         command='dominator -c - {}'.format(command),
         volumes={
-            'dominator': DataVolume(path='/var/lib/dominator', dest='/var/lib/dominator'),
+            'data': DataVolume(path='/var/lib/dominator', dest='/var/lib/dominator'),
             'docker': DataVolume(path='/run/docker.sock', dest='/run/docker.sock'),
         },
     )

@@ -531,51 +531,48 @@ class ConfigVolume(Volume):
 
         for filename in os.listdir(path):
             os.remove(os.path.join(path, filename))
-        for file in self.files:
-            file.dump(cont, self)
+        for name, file in self.files.items():
+            file.dump(cont, self, name)
 
 
 class BaseFile:
-    def __init__(self, name):
-        self.name = name
+    def __str__(self):
+        return '{}({!s:.20})'.format(type(self).__name__, self.content)
 
     @property
     def logger(self):
         return utils.getlogger(file=self, bindto=3)
 
-    def getpath(self, container: Container, volume: Volume):
-        return os.path.join(volume.getpath(container), self.name)
+    def getpath(self, container: Container, volume: Volume, name: str):
+        return os.path.join(volume.getpath(container), name)
 
-    def dump(self, container: Container, volume: Volume, data: str=None):
+    def dump(self, container: Container, volume: Volume, name: str, data: str=None):
         if data is None:
             data = self.data(container)
-        path = self.getpath(container, volume)
+        path = self.getpath(container, volume, name)
         self.logger.debug("writing file", path=path)
         with open(path, 'w+', encoding='utf8') as f:
             f.write(data)
 
-    def load(self, container: Container, volume: Volume):
-        path = self.getpath(container, volume)
+    def load(self, container: Container, volume: Volume, name: str):
+        path = self.getpath(container, volume, name)
         self.logger.debug("loading text file contents", path=path)
         with open(path) as f:
             return f.read()
 
 
 class TextFile(BaseFile):
-    def __init__(self, filename: str, text: str=None):
+    def __init__(self, filename: str=None, text: str=None):
         """
         Constructs TextFile. If text provided, populate
         file contents from it. If not - try to load resource
         from calling module using filename.
         """
-        BaseFile.__init__(self, filename)
+        assert(filename is not None or text is not None)
         if text is not None:
             self.content = text
         else:
             self.content = pkg_resources.resource_string(utils.getcallingmodule(1).__name__, filename).decode()
-
-    def __str__(self):
-        return 'TextFile(name={})'.format(self.name)
 
     def data(self, _container):
         return self.content
@@ -593,9 +590,9 @@ class TemplateFile:
     def logger(self):
         return utils.getlogger(file=self, bindto=3)
 
-    def dump(self, container, volume):
+    def dump(self, container, volume, name):
         self.logger.debug("rendering file")
-        self.file.dump(container, volume, self.data(container))
+        self.file.dump(container, volume, name, self.data(container))
 
     def data(self, container):
         import mako.template
@@ -605,21 +602,13 @@ class TemplateFile:
         self.logger.debug('rendering template file', context=context)
         return template.render(**context)
 
-    def load(self, container, volume):
-        return self.file.load(container, volume)
-
-    @property
-    def name(self):
-        return self.file.name
+    def load(self, container, volume, name):
+        return self.file.load(container, volume, name)
 
 
 class YamlFile(BaseFile):
-    def __init__(self, name: str, data: dict):
-        BaseFile.__init__(self, name)
+    def __init__(self, data: dict):
         self.content = data
-
-    def __str__(self):
-        return 'YamlFile(name={name})'.format(vars(self))
 
     def data(self, _container):
         return yaml.dump(self.content)
@@ -629,9 +618,6 @@ class JsonFile(BaseFile):
     def __init__(self, name: str, data: dict):
         BaseFile.__init__(self, name)
         self.content = data
-
-    def __str__(self):
-        return 'JsonFile(name={name})'.format(vars(self))
 
     def data(self, _container):
         return json.dumps(self.content, sort_keys=True, indent='  ')

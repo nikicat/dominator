@@ -29,6 +29,7 @@ Options:
 import logging
 import logging.config
 import sys
+import re
 import importlib
 import itertools
 from contextlib import contextmanager
@@ -130,7 +131,7 @@ def group_containers(containers, shipname: str=None, containername: str=None):
 def filter_containers(containers, shipname: str=None, containername: str=None):
     notfound = True
     for cont in containers:
-        if (shipname is None or cont.ship.name == shipname) and (containername is None or cont.name == containername):
+        if (shipname is None or re.match(shipname, cont.ship.name)) and (containername is None or re.match(containername, cont.name)):
             notfound = False
             yield cont
     if notfound:

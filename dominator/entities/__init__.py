@@ -429,27 +429,22 @@ class Container:
         )
 
     def run(self):
-        try:
-            self.create()
-        except docker.errors.APIError as e:
-            if e.response.status_code != 409:
-                raise
-            self.check()
-            if self.id:
-                if self.running:
-                    self.logger.info('found running container with the same name, comparing config with requested')
-                    diff = utils.compare_container(self, self.inspect())
-                    if diff:
-                        self.logger.info('running container config differs from requested, stopping', diff=diff)
-                        self.stop()
-                    else:
-                        self.logger.info('running container config identical to requested, keeping')
-                        return
+        self.check()
+        if self.running:
+            self.logger.info('found running container with the same name, comparing config with requested')
+            diff = utils.compare_container(self, self.inspect())
+            if diff:
+                self.logger.info('running container config differs from requested, stopping', diff=diff)
+                self.stop()
+            else:
+                self.logger.info('running container config identical to requested, keeping')
+                return
 
-                self.logger.info('found stopped container with the same name, removing')
-                self.remove()
-            self.create()
+        if self.id:
+            self.logger.info('found stopped container with the same name, removing')
+            self.remove()
 
+        self.create()
         self.start()
 
     def start(self):

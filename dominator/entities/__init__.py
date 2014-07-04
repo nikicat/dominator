@@ -183,14 +183,14 @@ class Image:
 
 
 class SourceImage(Image):
-    def __init__(self, name: str, parent: Image, scripts: [], command: str=None, workdir: str=None,
-                 env: dict={}, volumes: dict={}, ports: dict={}, files: dict={}):
+    def __init__(self, name: str, parent: Image, scripts: list=None, command: str=None, workdir: str=None,
+                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None):
         self.parent = parent
-        self.scripts = scripts
+        self.scripts = scripts or []
         self.command = command
         self.workdir = workdir
-        self.volumes = volumes
-        self.ports = ports
+        self.volumes = volumes or {}
+        self.ports = ports or {}
 
         def getfileobj(fileobj_or_filename):
             if isinstance(fileobj_or_filename, str):
@@ -198,8 +198,8 @@ class SourceImage(Image):
             else:
                 return fileobj_or_filename
 
-        self.files = {path: getfileobj(fileobj_or_filename) for path, fileobj_or_filename in files.items()}
-        self.env = env
+        self.files = {path: getfileobj(fileobj_or_filename) for path, fileobj_or_filename in (files or {}).items()}
+        self.env = env or {}
         Image.__init__(self, name)
         self.tag = self.gethash()
 
@@ -284,18 +284,18 @@ class SourceImage(Image):
 
 class Container:
     def __init__(self, name: str, ship: Ship, image: Image, command: str=None, hostname: str=None,
-                 ports: dict={}, memory: int=0, volumes: dict={},
-                 env: dict={}, extports: dict={}, portproto: dict={}):
+                 ports: dict=None, memory: int=0, volumes: dict=None,
+                 env: dict=None, extports: dict=None, portproto: dict=None):
         self.name = name
         self.ship = ship
         self.image = image
         self.command = command
-        self.volumes = volumes
-        self.ports = ports
+        self.volumes = volumes or {}
+        self.ports = ports or {}
         self.memory = memory
-        self.env = env
-        self.extports = extports
-        self.portproto = portproto
+        self.env = env or {}
+        self.extports = extports or {}
+        self.portproto = portproto or {}
         self.id = ''
         self.status = 'not found'
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
@@ -517,9 +517,9 @@ class DataVolume(Volume):
 
 
 class ConfigVolume(Volume):
-    def __init__(self, dest: str, files: dict={}):
+    def __init__(self, dest: str, files: dict=None):
         self.dest = dest
-        self.files = files
+        self.files = files or {}
 
     def getpath(self, container):
         return os.path.expanduser(os.path.join(utils.settings['configvolumedir'],

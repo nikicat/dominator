@@ -149,12 +149,12 @@ def compare_env(expected: dict, actual: dict):
     for name, value in actual.items():
         if name not in expected:
             yield ('env', name), ('', value or '""')
-        elif expected[name] != value:
+        elif str(expected[name]) != value:
             yield ('env', name), (expected[name], value or '""')
 
     for name, value in expected.items():
         if name not in actual:
-            yield ('env', name), (value or '""', '')
+            yield ('env', name), (str(value) or '""', '')
 
 
 @aslist

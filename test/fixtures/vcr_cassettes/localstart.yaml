@@ -4,167 +4,18 @@ interactions:
     headers:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate, compress']
-      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.1-1-aufs_friendly]
+      User-Agent: [python-requests/2.2.1 CPython/3.3.5 Linux/3.15.2-1-aufs_friendly]
     method: GET
-    uri: http://localhost:4243/v1.12/images/json?only_ids=0&all=1&filter=busybox
+    uri: http://localhost:4243/v1.12/containers/json?size=0&trunc_cmd=1&limit=-1&all=1
   response:
-    body:
-      string: |-
-        [{"Created":1401926735,"Id":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","ParentId":"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16","RepoTags":["busybox:latest"],"Size":0,"VirtualSize":2433303}
-        ]
+    body: {string: '[{"Command":"sleep 10","Created":1404730070,"Id":"58043b9c9cae87540c01c1606495fafa81f2df50b8a19c3ebfd7b73cef9889cf","Image":"busybox:latest","Names":["/testcont"],"Ports":[],"Status":"Exited
+        (0) 16 minutes ago"}
+
+        ]'}
     headers:
-      Content-Length: ['236']
+      Content-Length: ['213']
       Content-Type: [application/json]
-      Date: ['Fri, 27 Jun 2014 13:41:17 GMT']
-    status: {code: 200, message: OK}
-- request:
-    body: '{"AttachStdout": true, "Env": [], "Image": "busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721",
-      "OpenStdin": true, "Hostname": "testcont-localship", "Tty": false, "MemorySwap":
-      0, "StdinOnce": true, "Memory": 0, "ExposedPorts": {}, "NetworkDisabled": false,
-      "Cmd": ["sleep", "10"], "AttachStderr": true, "AttachStdin": true}'
-    headers:
-      Accept: ['*/*']
-      Accept-Encoding: ['gzip, deflate, compress']
-      Content-Length: ['347']
-      Content-Type: [application/json]
-      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.1-1-aufs_friendly]
-    method: POST
-    uri: http://localhost:4243/v1.12/containers/create?name=testcont
-  response:
-    body:
-      string: |
-        Conflict, The name testcont is already assigned to 362323de0f28. You have to delete (or rename) that container to be able to assign testcont to a container again.
-    headers:
-      Content-Length: ['163']
-      Content-Type: [text/plain; charset=utf-8]
-      Date: ['Fri, 27 Jun 2014 13:41:17 GMT']
-    status: {code: 409, message: Conflict}
-- request:
-    body: null
-    headers:
-      Accept: ['*/*']
-      Accept-Encoding: ['gzip, deflate, compress']
-      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.1-1-aufs_friendly]
-    method: GET
-    uri: http://localhost:4243/v1.12/containers/json?all=1&trunc_cmd=1&size=0&limit=-1
-  response:
-    body:
-      string: |-
-        [{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403874909,"Id":"92a6e28a279501b1a3ba66876b9f30c483853db7a9cc5cb01ba973ea47ae5cb2","Image":"954a450b5c87","Names":["/sick_sinoussi"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403874906,"Id":"e41e2a7f11b30799bde2f158049405fc4732d5d944736287ee62e6741e116f89","Image":"9b4dcd9a92d0","Names":["/determined_thompson"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403874902,"Id":"bed18ba07e5e78a9dd5e4f007a39549dbe1cac8ead89bfebf70c29ff5d4eff0c","Image":"f0899a4cd728","Names":["/furious_engelbart9"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403874898,"Id":"8fd717b26e83ac0cb1dfb082cd56ef257e6cb1e2df4020ddf383a91a171e1ed6","Image":"01d69d1bfd3e","Names":["/happy_ptolemy"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'pip install git+https://github.com/yandex-sysmon/gns'","Created":1403874840,"Id":"3cb3469b937f5b8c17e3308e83478c06bb01ae71581ae9cce3a533fb2630e76b","Image":"71511efa7db0","Names":["/jolly_albattani"],"Ports":[],"Status":"Exited (0) 26 minutes ago"}
-        ,{"Command":"/bin/sh -c 'easy_install pip==1.4.1'","Created":1403874833,"Id":"58206239dc77282840d58001ee771af573adaee73a9a66fc954b12e835912293","Image":"a32be8f6b70b","Names":["/silly_almeida"],"Ports":[],"Status":"Exited (0) 27 minutes ago"}
-        ,{"Command":"/bin/sh -c 'curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy'","Created":1403874824,"Id":"8318d818db7c80437d8696737c47a0c316ab155a2a4a55e41a5fece6a62c893a","Image":"c1e7acb75ca2","Names":["/kickass_curie"],"Ports":[],"Status":"Exited (0) 27 minutes ago"}
-        ,{"Command":"/bin/sh -c 'mv pypy* /opt/pypy3'","Created":1403874819,"Id":"420d3d87ef990485d936bee5a94256148f119f0a97ca6a72542b76e0633020a1","Image":"cb6c7069b1fb","Names":["/stoic_pasteur"],"Ports":[],"Status":"Exited (0) 27 minutes ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf -'","Created":1403874789,"Id":"be0df490a444fb9be8a625c9e83dd8ee28adec391df70679a514d2a59341e690","Image":"798c6f656642","Names":["/high_kowalevski"],"Ports":[],"Status":"Exited (0) 27 minutes ago"}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8'","Created":1403874786,"Id":"085efeefc34cd6ac24a11facb5f6235353fd4ae611230d979719fba47527456c","Image":"2396703792ec","Names":["/agitated_blackwell"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/bin'","Created":1403874782,"Id":"78965c5f15cab1bf28b546959fada256ed8770efed1e404112b8089661aa5fca","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/clever_carson"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '/usr/sbin/exim4 -bdf -v -q30m'","Created":1403839501,"Id":"f08d7dc03b1c049018b0ed7d80fa4f1cc3d814e0d61c6bf8532b8ede03895941","Image":"registry.tst.ape.yandex.net:5000/nikicat/exim:OFq4THbCp2bVwS2qV874OsReAHF5u2N84rw1s5W7ejY=","Names":["/exim"],"Ports":[{"IP":"::","PrivatePort":25,"PublicPort":25,"Type":"tcp"}],"Status":"Up 10 hours"}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:54ddd4151bff21316f16df42ed7641830bdedb718bca30144acf05be5e22dfa4 in /root/run.sh'","Created":1403837850,"Id":"7d2c58d0c711ac2f86ef56b70abb338d20ae762cf0cd8207912e7fd05579b7ce","Image":"bcb6493ba2b9","Names":["/stoic_lalande"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:2f32756ec6eab0314ddbccb8836b249b1a88c690a75b950960ed236402f24a93 in /etc/ssh/sshd_config'","Created":1403837846,"Id":"a7a47e7f26e51f1518edf71389321719880a54daf08a5b885e4f33d15c0e50e4","Image":"7881d398ec16","Names":["/compassionate_torvalds"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:9fdf4a24720015bf18c207e487b7c40465b6e6decca34aee4db1fd1cdd8a2b4b in /post-receive'","Created":1403837842,"Id":"a397e538e63cdf6edb24d91abdaa754bcc71740cdbd1cf7b9f1c9964e9490401","Image":"54ac0188278e","Names":["/clever_davinci"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403837490,"Id":"d76561366ee39cc627199580b6a42bc8f63c6be5292698c5f32bd1d454d3fbeb","Image":"be7bde590ce2","Names":["/cranky_pare"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403837487,"Id":"05c1ccf6956a6b7e248719becec72c2dc9b98bee84598a77fec757ae4cda2faf","Image":"45ea2a84ff3b","Names":["/grave_darwin"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403837483,"Id":"51bb589154765a15e524fceba74539f5a7d3b5c5ac9743aad7dc2934a4ddae27","Image":"ad08f2ecf2ac","Names":["/goofy_hawking"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403837479,"Id":"c30949337aa9b2a6a5698c526e1986a6111f1d8ae7bbdb0574ad5a8f76a5b8c2","Image":"5643285ba894","Names":["/lonely_carson"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'pip install gns'","Created":1403837428,"Id":"c02cb88047274706b677c4ea20596c6ad439655927d3578d00195b145c9bdcc8","Image":"29966aef7501","Names":["/tender_mcclintock"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'easy_install pip==1.4.1'","Created":1403837420,"Id":"340142f8625feab11c54fc1e25495e9587f86038fc7049eabde58c335a04d42e","Image":"03876f05e9da","Names":["/boring_carson"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy'","Created":1403837411,"Id":"f75a7da8f9302a620828de2a01e9a4e8d5f00d7de2dfcf4a65d2dbd2099ce0bb","Image":"73faa7efd759","Names":["/lonely_albattani"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'mv pypy* /opt/pypy3'","Created":1403837406,"Id":"e71cb5a2f85da015f691043dd6837b4c19508892561f926c93021b7ba2364bad","Image":"afe192059d6d","Names":["/cocky_goldstine"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf -'","Created":1403837395,"Id":"62eacb4d813e1d02db43b85c8619125f802f943a50291be92f2715324a3b4057","Image":"df0069a87974","Names":["/hopeful_hypatia"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/bin'","Created":1403837391,"Id":"7a8777217a59fda34de5716db7a605d09cc6e9c2ac2a2b3e4c4dc1a988a8b1b4","Image":"e8121c753a8f","Names":["/condescending_pasteur"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403837321,"Id":"97d45d72e91b583d1fd019871770f671d5cc8850c2bb77cf3a7fd7fb8f3af1c4","Image":"bce5678b4b2c","Names":["/romantic_elion"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403837317,"Id":"3b9fefd9a8a1539977df49f105c795a65a68cc04686ae0f20966e81ad9daaf84","Image":"7a3973d476cc","Names":["/kickass_babbage"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403837313,"Id":"73328f6603ef023e8f30f0efaee03fb0ad5f66deee90f6732e714dd9fee6d05c","Image":"c42367a42697","Names":["/determined_heisenberg"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403837309,"Id":"0eb76f4bc7505b83afb3a3b1f75a23f2c2407e5b8a86d9c06d12060298014c55","Image":"13360a4283a6","Names":["/backstabbing_elion"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403837291,"Id":"85f5753bec50f745678ea6ff7d92b5e5f51c74e85309fe8655fdcbfa03b0386e","Image":"3bdfa2e016ee","Names":["/sharp_hawking"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install python3-pip -yy'","Created":1403837254,"Id":"10ab830a06ca9b8fccd24f2cf931a86582a61e7fdbbe4a22789627fb7db6756d","Image":"608ff731f2be","Names":["/stoic_blackwell"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get update'","Created":1403837242,"Id":"e06d05d97423cddefcd8ebea832cc0f7cde547b08d40c6895993158981ec8759","Image":"77f036caadfb","Names":["/suspicious_hoover"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-add-repository ppa:fkrull/deadsnakes -y'","Created":1403837235,"Id":"3071d359c742beb83eb0c5a34a1757a2cb5895225f9b5c4b515f93f56141ecc2","Image":"e8121c753a8f","Names":["/naughty_bohr"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c '['apt-add-repository ppa:fkrull/deadsnakes -y', 'apt-get update', 'apt-get install python3-pip -yy', 'pip3 install gns']'","Created":1403837072,"Id":"3c0716d90e3ca6908c71f5f6dd0ca0838f12cde5f5f82b398c7bd130b7b5ea1c","Image":"e8121c753a8f","Names":["/lonely_kowalevski"],"Ports":[],"Status":"Exited (127) 10 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8'","Created":1403837069,"Id":"f33b3b2cd261f0b8a0ff0dcd757bd8e74b8e976f09450311b0c42b9134d9f161","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/focused_nobel"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:9fdf4a24720015bf18c207e487b7c40465b6e6decca34aee4db1fd1cdd8a2b4b in /post-receive'","Created":1403837034,"Id":"e2f2412fe1b1952dca1f043bb0fe7e0f03488c07460d9c133171fdb4ef75de97","Image":"8668745e1df9","Names":["/hungry_kowalevski"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:2f32756ec6eab0314ddbccb8836b249b1a88c690a75b950960ed236402f24a93 in /etc/ssh/sshd_config'","Created":1403837030,"Id":"87f9b5e4821f833617e9fb2ec0edc041380cfab2f9e8908a8f7d665745f6e359","Image":"50c289bef3e2","Names":["/grave_mcclintock"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:54ddd4151bff21316f16df42ed7641830bdedb718bca30144acf05be5e22dfa4 in /root/run.sh'","Created":1403837026,"Id":"8fe1b2bdcb29a386c3a46f8857b59bb2118f807297b630468cd2ef49909a6c3f","Image":"54ac0188278e","Names":["/boring_hoover"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c /root/run.sh]'","Created":1403837023,"Id":"dfa086226b79ef5622d31f63e446ebecb5e0008da89e4a4585fd54d4c48ea5b0","Image":"3d9a133609ed","Names":["/backstabbing_mestorf"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) EXPOSE map[22/tcp:{}]'","Created":1403837019,"Id":"24df79baebdc69b812b2f508fe1824519f5c65d117d36486576127a7dc46e54d","Image":"e1956c902e30","Names":["/sad_bardeen"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules.git'","Created":1403837015,"Id":"f05aa09551a60d4bf40dc5b9b5dfa626c3ed47a23dcc38cfc920f70feb93640d","Image":"01e3c4e78129","Names":["/mad_hopper"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403837012,"Id":"34f19b260bb608ca4b1cce8fe3b2a20e3f00f0dd1d2d5f14841890c45842e9a8","Image":"024aa53f239f","Names":["/goofy_franklin"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'chmod 0755 /run/sshd'","Created":1403837008,"Id":"cca4ae413bfea93432084a5a7e50e1ba6527b44a9fa248e2064252496c13cc14","Image":"02b8d66b785e","Names":["/nostalgic_blackwell"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'mkdir /run/sshd'","Created":1403837004,"Id":"90def6fa754e101b684add04a34baab5a7a4634397b431e684f73a495d18a5f3","Image":"b2d120538d42","Names":["/naughty_ptolemy"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'useradd --non-unique --uid 0 --system --shell /usr/bin/git-shell git'","Created":1403837000,"Id":"3e9f7fba3306bd12586d98efea5052f055f5fafebff8cc550b883316d42cf19f","Image":"f911887e71f4","Names":["/prickly_bardeen"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'useradd --non-unique --uid 0 --system --shell /usr/bin/git-shell gitmkdir /run/sshd'","Created":1403836971,"Id":"4810bef7254e962c0065a7624db707e0ba89fdb7cbd78b637233c24278d76c72","Image":"f911887e71f4","Names":["/backstabbing_galileo"],"Ports":[],"Status":"Exited (2) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'useradd -o -u 0 --system --shell=/usr/bin/git-shell gitmkdir /run/sshd'","Created":1403836866,"Id":"9ca0a450cc97a588ce31a5fa28f16dacc6d94a235ae20939b3b7893d355d5e5b","Image":"f911887e71f4","Names":["/sharp_almeida"],"Ports":[],"Status":"Exited (2) 11 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c /usr/sbin/exim4 -bdf -v -q30m]'","Created":1403836832,"Id":"a19bfc25a60cd89e310de5fafbcf7116b1fbee241a6304a2ac307f9d40d53b89","Image":"504d3270946b","Names":["/pensive_davinci"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) EXPOSE map[25/tcp:{}]'","Created":1403836828,"Id":"fcfd6e1771e3a9e3c3aff8d6f8489acae066ddf51520b27952955e6eccf13401","Image":"ddda9cc788f2","Names":["/agitated_brattain"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'apt-get install -y exim4'","Created":1403836808,"Id":"568a0ba9ceede62735081cb9c49a86665ad74317f60c8828fe5389ea8ae95dfa","Image":"9320040e2ae4","Names":["/silly_hopper"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"\"/bin/sh -c 'echo -e \"exim4-config exim4/dc_local_interfaces string 0.0.0.0\\nexim4-config exim4/dc_eximconfig_configtype string internet site; mail is sent and received directly using SMTP\\nexim4-config exim4/dc_relay_domains string *\" | debconf-set-selections'\"","Created":1403836804,"Id":"9a30b27b34c3f3bacc26c3b297c8ec648e55cde0c9311a3638e5f9a5a3d7a542","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/hungry_wilson"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'debconf-set-selections \u003c\u003cEOF'","Created":1403836516,"Id":"c7b00c39be4b7b3b24509a66cf3f8ac416dad91e3a2e8ad73b1a6d5aa8d0791b","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/sad_ardinghelli"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403835118,"Id":"d752f5420e8c6b3edf27babfa7ac3d4f32573fcffcdb41d4ac1260d3fa923268","Image":"a080932f6aa1","Names":["/dreamy_almeida"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403835114,"Id":"817db856060149da80e9d534f7556c0276674f8d5319b13c2153435405979b14","Image":"7e415a2fa7a3","Names":["/hopeful_lumiere"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403835111,"Id":"8118fbe5c1a72c75d56d0e43adaa73eb5a9194b852f223c429dce9f9076a6a00","Image":"6aa5b8de7a4e","Names":["/happy_kirch"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403835107,"Id":"486c440926970bd9861d7d04232f4302369aa62d73abac114781301b1f9eb2e5","Image":"110070154f0b","Names":["/goofy_carson"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/binENV LANG C.UTF-8RUN curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026    mv pypy* /opt/pypy3 \u0026\u0026    curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026    rm *.zip \u0026\u0026    easy_install pip==1.4.1 \u0026\u0026    pip install gns'","Created":1403835104,"Id":"50373b6b2c2587dff191144d684b012d6d1fefe754c0509b5f13db532a9b0452","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/sharp_hopper"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403835080,"Id":"9f504c34e973797ba75c3407e1d261adac8baad25173a819963c56703e9d6ed2","Image":"0bf0c8c91b13","Names":["/condescending_newton"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403835077,"Id":"50e7458dafec61b73934afd7ad3b618c814e66a6dcc4f67a1df3742ccfd56d2b","Image":"bcc28cd4f97c","Names":["/kickass_brown"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403835074,"Id":"b26143357802bfb495319de9f3758598c9f8f3e107b1d19dfd33792c813f315f","Image":"196b21f4cf04","Names":["/sleepy_franklin"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403835070,"Id":"21c9eb15a5e567468dc0996d52d6bb8a9dc073092899dfdcd80b50adcd5154e1","Image":"c9b40cb07dd5","Names":["/cranky_heisenberg"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8RUN apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns'","Created":1403835067,"Id":"210e07aed15c96aeed3b8249c17140a52df3da5c196ffb891d10ec6813914494","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/clever_colden"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:54ddd4151bff21316f16df42ed7641830bdedb718bca30144acf05be5e22dfa4 in /root/run.sh'","Created":1403834856,"Id":"6ef8c25d77c26d6549c8255aada39e6beb7c8615def52943516a07fee72ec4ec","Image":"303d9393e32c","Names":["/mad_wozniak"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:2f32756ec6eab0314ddbccb8836b249b1a88c690a75b950960ed236402f24a93 in /etc/ssh/sshd_config'","Created":1403834852,"Id":"1a010f256395ce0620069903a5a54376a78b5cbca495c56d78b327fdb79a191e","Image":"c1d767592844","Names":["/naughty_albattani"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:9fdf4a24720015bf18c207e487b7c40465b6e6decca34aee4db1fd1cdd8a2b4b in /post-receive'","Created":1403834848,"Id":"e3bea105a705d8b2e5181a5f5f8f679e9e9b7bbe826d4d52046e1a44281a9ee3","Image":"3fde3d5fa80c","Names":["/sharp_lovelace"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c /root/run.sh]'","Created":1403834845,"Id":"16f3050fa98df461bd82f4d68e062437c5bc4b73f7fa48194dcc2ea24b870091","Image":"2efc40cae851","Names":["/nostalgic_fermat"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) EXPOSE map[22/tcp:{}]'","Created":1403834841,"Id":"943381c37d25fdb3ece54c6293f3895920b1892b8440cff2208c98bcddae0494","Image":"991764ec0ac4","Names":["/distracted_leakey"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules.git'","Created":1403834837,"Id":"9f4aaec40e8c9c9180d9e416895f520c453383f3511a3b60a6a96eb7c29082ff","Image":"c868c4f9eb62","Names":["/stupefied_lumiere"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403834833,"Id":"b5cf6d7f0c41043ebffb1d111b1316ef6ad6b131b3b64d90f7fee1edafaf7ae7","Image":"6be611154fcd","Names":["/sharp_galileo"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'useradd -o -u 0 --system --shell=/usr/bin/git-shell git \u0026\u0026        mkdir /run/sshd \u0026\u0026        chmod 0755 /run/sshd'","Created":1403834828,"Id":"9469de1a5ae14bddcc46fed8cdf216700338d482fc579d2281eac74c1c0b03ef","Image":"f911887e71f4","Names":["/backstabbing_euclid"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install -y openssh-server'","Created":1403834805,"Id":"c6f3f52ba38bcdbb608c389be22e607bb6dbcd41e63a728fb0d6f7347285e032","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/compassionate_wilson"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install -y openssh-server \u0026\u0026        useradd -o -u 0 --system --shell=/usr/bin/git-shell git \u0026\u0026        mkdir /run/sshd \u0026\u0026        chmod 0755 /run/sshd \u0026\u0026VOLUME /var/lib/gns/rules'","Created":1403834748,"Id":"ab328c002230974cfd66557c7b0e8311bc420146dcf0bc5530e3313043bfaf7f","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/stupefied_mccarthy"],"Ports":[],"Status":"Exited (127) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install -y openssh-server \u0026\u0026        useradd -o -u 0 --system --shell=/usr/bin/git-shell git \u0026\u0026        mkdir /run/sshd \u0026\u0026        chmod 0755 /run/sshd \u0026\u0026VOLUME ['/var/lib/gns/rules', '/var/lib/gns/rules.git']'","Created":1403834571,"Id":"b2c4f28ccfe00b9cf7ced30f2f3ae953ad6716d4439d0b39b2ee91363cc059ac","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/cranky_bardeen"],"Ports":[],"Status":"Exited (127) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install -y openssh-server \u0026\u0026        useradd -o -u 0 --system --shell=/usr/bin/git-shell git \u0026\u0026        mkdir /run/sshd \u0026\u0026        chmod 0755 /run/sshd \u0026\u0026VOLUME ['/etc/ssh/authorized_keys', '/var/lib/gns/rules', '/var/lib/gns/rules.git']'","Created":1403834495,"Id":"3eaba74f997d314a5200c1b2e802b69c5446e21d0f83f98e077838784e89554e","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/stupefied_fermi"],"Ports":[],"Status":"Exited (127) 11 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403829739,"Id":"50cdba833960e62f91477efd0924b3af32b3db1394417f1d926440082b0167b2","Image":"e0557ecf2f6c","Names":["/loving_bardeen"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8RUN apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829736,"Id":"5a39b4ff61b6ec1531f73940a53de7d117ef2466b2e278461464c90ffe48176e","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/boring_shockley"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403829717,"Id":"26eb1ed7010559694e469f8b6c3e0ba6cf02b55ba4cf81881a9895104720d841","Image":"c3d1e968886b","Names":["/sleepy_shockley"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/binRUN curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026    mv pypy* /opt/pypy3 \u0026\u0026    curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026    rm *.zip \u0026\u0026    easy_install pip==1.4.1 \u0026\u0026    pip install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829714,"Id":"183eb47453ec018a2bc1612fe496654f50d7e3e262babf20533d1f889540da45","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/sick_bell"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829602,"Id":"8338ad0e31db35740d58415271bab06c0a399a1d3cbcbe4b653508e0f0ace3a3","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/lonely_newton"],"Ports":[],"Status":"Exited (1) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829584,"Id":"bd5352c4f6e9a54887ac5d28766d0a8b6c22f2ec6663764bd600b992844765b8","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/naughty_shockley"],"Ports":[],"Status":"Exited (1) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829077,"Id":"899a1879f8ac520babc7abc05a0d602f6c459864ba2338b17f9f5ae9fa3bdf37","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/elegant_rosalind"],"Ports":[],"Status":"Exited (1) 13 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403829031,"Id":"88c70e0f41170fef73fdf598ebe318b34e839d41ea280711bc07781ad5fe0ab4","Image":"fcfd6faf65be","Names":["/tender_blackwell"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/binRUN curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026    mv pypy* /opt/pypy3 \u0026\u0026    curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026    rm *.zip \u0026\u0026    easy_install pip==1.4.1 \u0026\u0026    pip install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829027,"Id":"852637f6abf728e7070175c77a680cdb454b0f49d185d71116713ae2e0631799","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/evil_darwin"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403828723,"Id":"7929a7a49ea24a4db4d2dc8699e9ea41aad15787a9caf65fb74cbf9f036f152a","Image":"2fd667860c18","Names":["/pensive_ritchie"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/binRUN curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026mv pypy* /opt/pypy3 \u0026\u0026curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026rm *.zip \u0026\u0026easy_install pip==1.4.1 \u0026\u0026ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3 \u0026\u0026pip3 install gns'","Created":1403828719,"Id":"107a54ee9c88f9ea66bff918905aa5fd5f9f8af1f059ed78d67db1af06087781","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/mad_blackwell"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026mv pypy* /opt/pypy3 \u0026\u0026curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026rm *.zip \u0026\u0026easy_install pip==1.4.1 \u0026\u0026ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3 \u0026\u0026pip3 install gns'","Created":1403828485,"Id":"de98d12afe71a6bb183477d757c7fdf07e548cf765b163fffeece56f19c7603d","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/drunk_rosalind"],"Ports":[],"Status":"Exited (127) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026mv pypy* /opt/pypy3 \u0026\u0026curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | pypy \u0026\u0026rm *.zip \u0026\u0026easy_install pip==1.4.1 \u0026\u0026ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3 \u0026\u0026pip3 install gns'","Created":1403828366,"Id":"76cae77a16ce51afd5ee898c6374c6cc5e689354f32e404c6f487ff9520efc12","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/kickass_pasteur"],"Ports":[],"Status":"Exited (127) 13 hours ago"}
-        ,{"Command":"/bin/sh -c '\u0026\u0026curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026mv pypy* /opt/pypy3 \u0026\u0026curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | pypy \u0026\u0026rm *.zip \u0026\u0026easy_install pip==1.4.1 \u0026\u0026ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3 \u0026\u0026pip3 install gns'","Created":1403827945,"Id":"bef4177924d84677a8c75034217304bd0579e9f96574296101e4338fc33a269c","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/suspicious_wozniak"],"Ports":[],"Status":"Exited (2) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026 mv pypy* /opt/pypy3curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | pypyrm *.zipeasy_install pip==1.4.1ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3pip3 install gns'","Created":1403827740,"Id":"ff0768593670d8a40d93cd81d692093f8a6c8078ce35b829182a3372da327585","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/mad_rosalind"],"Ports":[],"Status":"Exited (127) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026 mv pypy* /opt/pypy3curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | pypyrm *.zipeasy_install pip==1.4.1ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3pip3 install gns'","Created":1403827564,"Id":"3a277718a4ccd079038a297c2a31e717bf9105c51fe2e02c3f354f45da4c5ba2","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/stoic_elion"],"Ports":[],"Status":"Exited (127) 13 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403827422,"Id":"9ff2cab7e8a8b09834fe5d62bf5085734d8c67bb32a84f9821bdd6d7ed1ab78c","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/determined_torvalds"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403825994,"Id":"edd444d42d7dccdb299f8845920b8ac77b24e9b2ebf010f0a256cd747086bc4c","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty-with-pypy3:d20140623","Names":["/high_yonath"],"Ports":[],"Status":"Exited (127) 14 hours ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403825796,"Id":"04d3a0f3e738bfd6b223e2c842ec90bdfc944cafc26a39465775eab752f5abfb","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty-with-pypy3:d20140623","Names":["/suspicious_archimedes"],"Ports":[],"Status":"Exited (127) 14 hours ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403825742,"Id":"197fe94df1a4f4e6a861f1f3388e6ea1251d6efef20609fc4579ac2777334b1b","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty-with-pypy3:d20140623","Names":["/determined_pike"],"Ports":[],"Status":"Exited (127) 14 hours ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403825633,"Id":"8ad53fe1e2f3cb73760080fc4bf3a0b1b2bd5ff3b1e09b9bb5f96a3cdd812f8a","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty-with-pypy3:d20140623","Names":["/loving_morse"],"Ports":[],"Status":"Exited (127) 14 hours ago"}
-        ,{"Command":"/bin/sh -c 'mvn install'","Created":1403709508,"Id":"980793b21f608b681102344eee71e29dac31ad9b248cbdf7e2ab818ebb1f20f0","Image":"ae2e1fa31e75","Names":["/compassionate_nobel"],"Ports":[],"Status":"Exited (1) 46 hours ago"}
-        ,{"Command":"/bin/sh -c 'mvn install'","Created":1403708436,"Id":"748682d4d7d94cacecce8b9619278a71ca4080c7df845c2538fc9923acb51898","Image":"538ce889e6a1","Names":["/jolly_lovelace"],"Ports":[],"Status":"Exited (1) 46 hours ago"}
-        ,{"Command":"bash","Created":1403689072,"Id":"83548d25c497940f3f00c62f6bf6bb0af50a2d25e8d31948a652c21bf6b867d8","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/romantic_thompson"],"Ports":[],"Status":"Up 13 hours"}
-        ,{"Command":"/bin/sh -c /root/run.sh","Created":1403632876,"Id":"17fa55a8701c35f00ed8d4a532f15e01caa4d0949f2de20d64265796109a2671","Image":"registry.tst.ape.yandex.net:5000/yandex/zookeeper:latest","Names":["/zookeeper"],"Ports":[{"IP":"::","PrivatePort":2181,"PublicPort":2181,"Type":"tcp"},{"IP":"::","PrivatePort":2888,"PublicPort":2888,"Type":"tcp"},{"IP":"::","PrivatePort":3888,"PublicPort":3888,"Type":"tcp"},{"IP":"::","PrivatePort":4888,"PublicPort":4888,"Type":"tcp"}],"Status":"Exited (0) 46 hours ago"}
-        ,{"Command":"/bin/sh -c 'trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait'","Created":1403628872,"Id":"bd1fbb45739aa56fe52e7d61b993ebaab31c8909acb3d3530efd5a484e2458eb","Image":"registry.tst.ape.yandex.net:5000/nikicat/gns:latest","Names":["/gns-worker"],"Ports":[{"IP":"::","PrivatePort":11001,"PublicPort":11001,"Type":"tcp"}],"Status":"Up 13 hours"}
-        ,{"Command":"/bin/sh -c 'trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait'","Created":1403628872,"Id":"754728515a8ec66ea0c1f345dbf67fe6a2566032528c4e921c1857263665537b","Image":"registry.tst.ape.yandex.net:5000/nikicat/gns:latest","Names":["/gns-collector"],"Ports":[{"IP":"::","PrivatePort":11003,"PublicPort":11003,"Type":"tcp"}],"Status":"Up 13 hours"}
-        ,{"Command":"/bin/sh -c 'trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait'","Created":1403628872,"Id":"7f482bc0672f8988d8270b19419ec69fc476c82f6328c658e4c95ffe1a525360","Image":"registry.tst.ape.yandex.net:5000/nikicat/gns:latest","Names":["/gns-splitter"],"Ports":[{"IP":"::","PrivatePort":11002,"PublicPort":11002,"Type":"tcp"}],"Status":"Exited (0) 24 hours ago"}
-        ,{"Command":"/bin/sh -c 'trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait'","Created":1403628871,"Id":"390e02a695c0782066acb3526b47240ae8a5c870fec9067d522d1f3d6118f8ac","Image":"registry.tst.ape.yandex.net:5000/nikicat/gns:latest","Names":["/gns-api"],"Ports":[{"IP":"::","PrivatePort":11004,"PublicPort":11004,"Type":"tcp"},{"IP":"::","PrivatePort":7887,"PublicPort":7887,"Type":"tcp"}],"Status":"Exited (0) 46 hours ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install -e /root/gns'","Created":1403627928,"Id":"b72e61fb4890a79afba07577a2924bc66329c22a68720526943e9adc68a2e279","Image":"327a84e82aea","Names":["/drunk_hoover"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install -e /root/gns'","Created":1403627468,"Id":"6a25a1250319dab6f2c22c5f17436ab4ed8623f728a23725ea4e30cd73a2503d","Image":"ad63aee0aa79","Names":["/mad_euclid"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install -e /root/gns'","Created":1403623608,"Id":"f245bb6ffada60ed4f8c6622154ad3665d8cc122f5453db15a7535f2c353245d","Image":"d873818be6d4","Names":["/insane_mcclintock"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026 mv pypy* /opt/pypy3'","Created":1403623091,"Id":"4c89a2bad443b3321cae9da7bdce8c79eeda3ba29131d972195ea2603f85d894","Image":"yandex/ubuntu:12.04","Names":["/thirsty_thompson"],"Ports":[],"Status":"Exited (0) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install -e /root/gns'","Created":1403622520,"Id":"0e88a8927b1fbde6e3b1aad4690c59d218ea56859c733a792b1743925bd2663b","Image":"141adb12944c","Names":["/sleepy_engelbart"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'pip install -e /root/gns'","Created":1403622430,"Id":"13bac7d7a98af014427a7dbfa649755529a4a38b22c1b674214013508fc44915","Image":"cbcbd2caa698","Names":["/jolly_curie"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ,{"Command":"sleep 10","Created":1403538356,"Id":"362323de0f282369bedb35160e3b86e8e6934df4ce5a8e1f9b35fd19603e50c6","Image":"busybox:latest","Names":["/testcont"],"Ports":[],"Status":"Exited (0) 3 days ago"}
-        ]
-    headers:
-      Content-Type: [application/json]
-      Date: ['Fri, 27 Jun 2014 13:41:17 GMT']
-      Transfer-Encoding: [chunked]
+      Date: ['Mon, 07 Jul 2014 11:04:51 GMT']
     status: {code: 200, message: OK}
 - request:
     body: null
@@ -172,35 +23,53 @@ interactions:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate, compress']
       Content-Length: ['0']
-      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.1-1-aufs_friendly]
+      User-Agent: [python-requests/2.2.1 CPython/3.3.5 Linux/3.15.2-1-aufs_friendly]
     method: DELETE
-    uri: http://localhost:4243/v1.12/containers/362323de0f282369bedb35160e3b86e8e6934df4ce5a8e1f9b35fd19603e50c6?force=False&link=False&v=False
+    uri: http://localhost:4243/v1.12/containers/58043b9c9cae87540c01c1606495fafa81f2df50b8a19c3ebfd7b73cef9889cf?v=False&force=False&link=False
   response:
     body: {string: ''}
     headers:
-      Date: ['Fri, 27 Jun 2014 13:41:18 GMT']
+      Date: ['Mon, 07 Jul 2014 11:04:52 GMT']
     status: {code: 204, message: No Content}
 - request:
-    body: '{"AttachStdout": true, "Env": [], "Image": "busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721",
-      "OpenStdin": true, "Hostname": "testcont-localship", "Tty": false, "MemorySwap":
-      0, "StdinOnce": true, "Memory": 0, "ExposedPorts": {}, "NetworkDisabled": false,
-      "Cmd": ["sleep", "10"], "AttachStderr": true, "AttachStdin": true}'
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.3.5 Linux/3.15.2-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/images/json?only_ids=0&filter=busybox&all=1
+  response:
+    body: {string: '[{"Created":1401926735,"Id":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","ParentId":"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16","RepoTags":["busybox:latest"],"Size":0,"VirtualSize":2433303}
+
+        ]'}
+    headers:
+      Content-Length: ['236']
+      Content-Type: [application/json]
+      Date: ['Mon, 07 Jul 2014 11:04:53 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: '{"MemorySwap": 0, "OpenStdin": true, "ExposedPorts": {}, "StdinOnce": true,
+      "Cmd": ["sleep", "10"], "AttachStdin": true, "Tty": false, "NetworkDisabled":
+      false, "AttachStdout": true, "Hostname": "testcont-localship", "AttachStderr":
+      true, "Image": "busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721",
+      "Memory": 0, "Env": []}'
     headers:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate, compress']
       Content-Length: ['347']
       Content-Type: [application/json]
-      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.1-1-aufs_friendly]
+      User-Agent: [python-requests/2.2.1 CPython/3.3.5 Linux/3.15.2-1-aufs_friendly]
     method: POST
     uri: http://localhost:4243/v1.12/containers/create?name=testcont
   response:
-    body:
-      string: |
-        {"Id":"b887cb045bd916f64948b7f712cee4a2c44fdb5464281d7cfae750ac5d54cf86","Warnings":null}
+    body: {string: '{"Id":"75d1976ee34cb79295aee752ab67a516b8d273a90a14fc37c5f500de285a4abc","Warnings":null}
+
+'}
     headers:
       Content-Length: ['90']
       Content-Type: [application/json]
-      Date: ['Fri, 27 Jun 2014 13:41:18 GMT']
+      Date: ['Mon, 07 Jul 2014 11:04:53 GMT']
     status: {code: 201, message: Created}
 - request:
     body: '{"Privileged": false, "PublishAllPorts": false}'
@@ -209,191 +78,64 @@ interactions:
       Accept-Encoding: ['gzip, deflate, compress']
       Content-Length: ['47']
       Content-Type: [application/json]
-      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.1-1-aufs_friendly]
+      User-Agent: [python-requests/2.2.1 CPython/3.3.5 Linux/3.15.2-1-aufs_friendly]
     method: POST
-    uri: http://localhost:4243/v1.12/containers/b887cb045bd916f64948b7f712cee4a2c44fdb5464281d7cfae750ac5d54cf86/start
+    uri: http://localhost:4243/v1.12/containers/75d1976ee34cb79295aee752ab67a516b8d273a90a14fc37c5f500de285a4abc/start
   response:
     body: {string: ''}
     headers:
-      Date: ['Fri, 27 Jun 2014 13:41:18 GMT']
+      Date: ['Mon, 07 Jul 2014 11:04:53 GMT']
     status: {code: 204, message: No Content}
 - request:
     body: null
     headers:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate, compress']
-      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.1-1-aufs_friendly]
+      User-Agent: [python-requests/2.2.1 CPython/3.3.5 Linux/3.15.2-1-aufs_friendly]
     method: GET
-    uri: http://localhost:4243/v1.12/containers/json?all=1&trunc_cmd=1&size=0&limit=-1
+    uri: http://localhost:4243/v1.12/containers/json?size=0&trunc_cmd=1&limit=-1&all=1
   response:
-    body:
-      string: |-
-        [{"Command":"sleep 10","Created":1403876478,"Id":"b887cb045bd916f64948b7f712cee4a2c44fdb5464281d7cfae750ac5d54cf86","Image":"busybox:latest","Names":["/testcont"],"Ports":[],"Status":"Up Less than a second"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403874909,"Id":"92a6e28a279501b1a3ba66876b9f30c483853db7a9cc5cb01ba973ea47ae5cb2","Image":"954a450b5c87","Names":["/sick_sinoussi"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403874906,"Id":"e41e2a7f11b30799bde2f158049405fc4732d5d944736287ee62e6741e116f89","Image":"9b4dcd9a92d0","Names":["/determined_thompson"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403874902,"Id":"bed18ba07e5e78a9dd5e4f007a39549dbe1cac8ead89bfebf70c29ff5d4eff0c","Image":"f0899a4cd728","Names":["/furious_engelbart9"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403874898,"Id":"8fd717b26e83ac0cb1dfb082cd56ef257e6cb1e2df4020ddf383a91a171e1ed6","Image":"01d69d1bfd3e","Names":["/happy_ptolemy"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'pip install git+https://github.com/yandex-sysmon/gns'","Created":1403874840,"Id":"3cb3469b937f5b8c17e3308e83478c06bb01ae71581ae9cce3a533fb2630e76b","Image":"71511efa7db0","Names":["/jolly_albattani"],"Ports":[],"Status":"Exited (0) 26 minutes ago"}
-        ,{"Command":"/bin/sh -c 'easy_install pip==1.4.1'","Created":1403874833,"Id":"58206239dc77282840d58001ee771af573adaee73a9a66fc954b12e835912293","Image":"a32be8f6b70b","Names":["/silly_almeida"],"Ports":[],"Status":"Exited (0) 27 minutes ago"}
-        ,{"Command":"/bin/sh -c 'curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy'","Created":1403874824,"Id":"8318d818db7c80437d8696737c47a0c316ab155a2a4a55e41a5fece6a62c893a","Image":"c1e7acb75ca2","Names":["/kickass_curie"],"Ports":[],"Status":"Exited (0) 27 minutes ago"}
-        ,{"Command":"/bin/sh -c 'mv pypy* /opt/pypy3'","Created":1403874819,"Id":"420d3d87ef990485d936bee5a94256148f119f0a97ca6a72542b76e0633020a1","Image":"cb6c7069b1fb","Names":["/stoic_pasteur"],"Ports":[],"Status":"Exited (0) 27 minutes ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf -'","Created":1403874789,"Id":"be0df490a444fb9be8a625c9e83dd8ee28adec391df70679a514d2a59341e690","Image":"798c6f656642","Names":["/high_kowalevski"],"Ports":[],"Status":"Exited (0) 27 minutes ago"}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8'","Created":1403874786,"Id":"085efeefc34cd6ac24a11facb5f6235353fd4ae611230d979719fba47527456c","Image":"2396703792ec","Names":["/agitated_blackwell"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/bin'","Created":1403874782,"Id":"78965c5f15cab1bf28b546959fada256ed8770efed1e404112b8089661aa5fca","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/clever_carson"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '/usr/sbin/exim4 -bdf -v -q30m'","Created":1403839501,"Id":"f08d7dc03b1c049018b0ed7d80fa4f1cc3d814e0d61c6bf8532b8ede03895941","Image":"registry.tst.ape.yandex.net:5000/nikicat/exim:OFq4THbCp2bVwS2qV874OsReAHF5u2N84rw1s5W7ejY=","Names":["/exim"],"Ports":[{"IP":"::","PrivatePort":25,"PublicPort":25,"Type":"tcp"}],"Status":"Up 10 hours"}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:54ddd4151bff21316f16df42ed7641830bdedb718bca30144acf05be5e22dfa4 in /root/run.sh'","Created":1403837850,"Id":"7d2c58d0c711ac2f86ef56b70abb338d20ae762cf0cd8207912e7fd05579b7ce","Image":"bcb6493ba2b9","Names":["/stoic_lalande"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:2f32756ec6eab0314ddbccb8836b249b1a88c690a75b950960ed236402f24a93 in /etc/ssh/sshd_config'","Created":1403837846,"Id":"a7a47e7f26e51f1518edf71389321719880a54daf08a5b885e4f33d15c0e50e4","Image":"7881d398ec16","Names":["/compassionate_torvalds"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:9fdf4a24720015bf18c207e487b7c40465b6e6decca34aee4db1fd1cdd8a2b4b in /post-receive'","Created":1403837842,"Id":"a397e538e63cdf6edb24d91abdaa754bcc71740cdbd1cf7b9f1c9964e9490401","Image":"54ac0188278e","Names":["/clever_davinci"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403837490,"Id":"d76561366ee39cc627199580b6a42bc8f63c6be5292698c5f32bd1d454d3fbeb","Image":"be7bde590ce2","Names":["/cranky_pare"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403837487,"Id":"05c1ccf6956a6b7e248719becec72c2dc9b98bee84598a77fec757ae4cda2faf","Image":"45ea2a84ff3b","Names":["/grave_darwin"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403837483,"Id":"51bb589154765a15e524fceba74539f5a7d3b5c5ac9743aad7dc2934a4ddae27","Image":"ad08f2ecf2ac","Names":["/goofy_hawking"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403837479,"Id":"c30949337aa9b2a6a5698c526e1986a6111f1d8ae7bbdb0574ad5a8f76a5b8c2","Image":"5643285ba894","Names":["/lonely_carson"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'pip install gns'","Created":1403837428,"Id":"c02cb88047274706b677c4ea20596c6ad439655927d3578d00195b145c9bdcc8","Image":"29966aef7501","Names":["/tender_mcclintock"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'easy_install pip==1.4.1'","Created":1403837420,"Id":"340142f8625feab11c54fc1e25495e9587f86038fc7049eabde58c335a04d42e","Image":"03876f05e9da","Names":["/boring_carson"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy'","Created":1403837411,"Id":"f75a7da8f9302a620828de2a01e9a4e8d5f00d7de2dfcf4a65d2dbd2099ce0bb","Image":"73faa7efd759","Names":["/lonely_albattani"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'mv pypy* /opt/pypy3'","Created":1403837406,"Id":"e71cb5a2f85da015f691043dd6837b4c19508892561f926c93021b7ba2364bad","Image":"afe192059d6d","Names":["/cocky_goldstine"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf -'","Created":1403837395,"Id":"62eacb4d813e1d02db43b85c8619125f802f943a50291be92f2715324a3b4057","Image":"df0069a87974","Names":["/hopeful_hypatia"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/bin'","Created":1403837391,"Id":"7a8777217a59fda34de5716db7a605d09cc6e9c2ac2a2b3e4c4dc1a988a8b1b4","Image":"e8121c753a8f","Names":["/condescending_pasteur"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403837321,"Id":"97d45d72e91b583d1fd019871770f671d5cc8850c2bb77cf3a7fd7fb8f3af1c4","Image":"bce5678b4b2c","Names":["/romantic_elion"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403837317,"Id":"3b9fefd9a8a1539977df49f105c795a65a68cc04686ae0f20966e81ad9daaf84","Image":"7a3973d476cc","Names":["/kickass_babbage"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403837313,"Id":"73328f6603ef023e8f30f0efaee03fb0ad5f66deee90f6732e714dd9fee6d05c","Image":"c42367a42697","Names":["/determined_heisenberg"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403837309,"Id":"0eb76f4bc7505b83afb3a3b1f75a23f2c2407e5b8a86d9c06d12060298014c55","Image":"13360a4283a6","Names":["/backstabbing_elion"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403837291,"Id":"85f5753bec50f745678ea6ff7d92b5e5f51c74e85309fe8655fdcbfa03b0386e","Image":"3bdfa2e016ee","Names":["/sharp_hawking"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install python3-pip -yy'","Created":1403837254,"Id":"10ab830a06ca9b8fccd24f2cf931a86582a61e7fdbbe4a22789627fb7db6756d","Image":"608ff731f2be","Names":["/stoic_blackwell"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get update'","Created":1403837242,"Id":"e06d05d97423cddefcd8ebea832cc0f7cde547b08d40c6895993158981ec8759","Image":"77f036caadfb","Names":["/suspicious_hoover"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-add-repository ppa:fkrull/deadsnakes -y'","Created":1403837235,"Id":"3071d359c742beb83eb0c5a34a1757a2cb5895225f9b5c4b515f93f56141ecc2","Image":"e8121c753a8f","Names":["/naughty_bohr"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c '['apt-add-repository ppa:fkrull/deadsnakes -y', 'apt-get update', 'apt-get install python3-pip -yy', 'pip3 install gns']'","Created":1403837072,"Id":"3c0716d90e3ca6908c71f5f6dd0ca0838f12cde5f5f82b398c7bd130b7b5ea1c","Image":"e8121c753a8f","Names":["/lonely_kowalevski"],"Ports":[],"Status":"Exited (127) 10 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8'","Created":1403837069,"Id":"f33b3b2cd261f0b8a0ff0dcd757bd8e74b8e976f09450311b0c42b9134d9f161","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/focused_nobel"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:9fdf4a24720015bf18c207e487b7c40465b6e6decca34aee4db1fd1cdd8a2b4b in /post-receive'","Created":1403837034,"Id":"e2f2412fe1b1952dca1f043bb0fe7e0f03488c07460d9c133171fdb4ef75de97","Image":"8668745e1df9","Names":["/hungry_kowalevski"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:2f32756ec6eab0314ddbccb8836b249b1a88c690a75b950960ed236402f24a93 in /etc/ssh/sshd_config'","Created":1403837030,"Id":"87f9b5e4821f833617e9fb2ec0edc041380cfab2f9e8908a8f7d665745f6e359","Image":"50c289bef3e2","Names":["/grave_mcclintock"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:54ddd4151bff21316f16df42ed7641830bdedb718bca30144acf05be5e22dfa4 in /root/run.sh'","Created":1403837026,"Id":"8fe1b2bdcb29a386c3a46f8857b59bb2118f807297b630468cd2ef49909a6c3f","Image":"54ac0188278e","Names":["/boring_hoover"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c /root/run.sh]'","Created":1403837023,"Id":"dfa086226b79ef5622d31f63e446ebecb5e0008da89e4a4585fd54d4c48ea5b0","Image":"3d9a133609ed","Names":["/backstabbing_mestorf"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) EXPOSE map[22/tcp:{}]'","Created":1403837019,"Id":"24df79baebdc69b812b2f508fe1824519f5c65d117d36486576127a7dc46e54d","Image":"e1956c902e30","Names":["/sad_bardeen"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules.git'","Created":1403837015,"Id":"f05aa09551a60d4bf40dc5b9b5dfa626c3ed47a23dcc38cfc920f70feb93640d","Image":"01e3c4e78129","Names":["/mad_hopper"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403837012,"Id":"34f19b260bb608ca4b1cce8fe3b2a20e3f00f0dd1d2d5f14841890c45842e9a8","Image":"024aa53f239f","Names":["/goofy_franklin"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'chmod 0755 /run/sshd'","Created":1403837008,"Id":"cca4ae413bfea93432084a5a7e50e1ba6527b44a9fa248e2064252496c13cc14","Image":"02b8d66b785e","Names":["/nostalgic_blackwell"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'mkdir /run/sshd'","Created":1403837004,"Id":"90def6fa754e101b684add04a34baab5a7a4634397b431e684f73a495d18a5f3","Image":"b2d120538d42","Names":["/naughty_ptolemy"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'useradd --non-unique --uid 0 --system --shell /usr/bin/git-shell git'","Created":1403837000,"Id":"3e9f7fba3306bd12586d98efea5052f055f5fafebff8cc550b883316d42cf19f","Image":"f911887e71f4","Names":["/prickly_bardeen"],"Ports":[],"Status":"Exited (0) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'useradd --non-unique --uid 0 --system --shell /usr/bin/git-shell gitmkdir /run/sshd'","Created":1403836971,"Id":"4810bef7254e962c0065a7624db707e0ba89fdb7cbd78b637233c24278d76c72","Image":"f911887e71f4","Names":["/backstabbing_galileo"],"Ports":[],"Status":"Exited (2) 10 hours ago"}
-        ,{"Command":"/bin/sh -c 'useradd -o -u 0 --system --shell=/usr/bin/git-shell gitmkdir /run/sshd'","Created":1403836866,"Id":"9ca0a450cc97a588ce31a5fa28f16dacc6d94a235ae20939b3b7893d355d5e5b","Image":"f911887e71f4","Names":["/sharp_almeida"],"Ports":[],"Status":"Exited (2) 11 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c /usr/sbin/exim4 -bdf -v -q30m]'","Created":1403836832,"Id":"a19bfc25a60cd89e310de5fafbcf7116b1fbee241a6304a2ac307f9d40d53b89","Image":"504d3270946b","Names":["/pensive_davinci"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) EXPOSE map[25/tcp:{}]'","Created":1403836828,"Id":"fcfd6e1771e3a9e3c3aff8d6f8489acae066ddf51520b27952955e6eccf13401","Image":"ddda9cc788f2","Names":["/agitated_brattain"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'apt-get install -y exim4'","Created":1403836808,"Id":"568a0ba9ceede62735081cb9c49a86665ad74317f60c8828fe5389ea8ae95dfa","Image":"9320040e2ae4","Names":["/silly_hopper"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"\"/bin/sh -c 'echo -e \"exim4-config exim4/dc_local_interfaces string 0.0.0.0\\nexim4-config exim4/dc_eximconfig_configtype string internet site; mail is sent and received directly using SMTP\\nexim4-config exim4/dc_relay_domains string *\" | debconf-set-selections'\"","Created":1403836804,"Id":"9a30b27b34c3f3bacc26c3b297c8ec648e55cde0c9311a3638e5f9a5a3d7a542","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/hungry_wilson"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'debconf-set-selections \u003c\u003cEOF'","Created":1403836516,"Id":"c7b00c39be4b7b3b24509a66cf3f8ac416dad91e3a2e8ad73b1a6d5aa8d0791b","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/sad_ardinghelli"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403835118,"Id":"d752f5420e8c6b3edf27babfa7ac3d4f32573fcffcdb41d4ac1260d3fa923268","Image":"a080932f6aa1","Names":["/dreamy_almeida"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403835114,"Id":"817db856060149da80e9d534f7556c0276674f8d5319b13c2153435405979b14","Image":"7e415a2fa7a3","Names":["/hopeful_lumiere"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403835111,"Id":"8118fbe5c1a72c75d56d0e43adaa73eb5a9194b852f223c429dce9f9076a6a00","Image":"6aa5b8de7a4e","Names":["/happy_kirch"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403835107,"Id":"486c440926970bd9861d7d04232f4302369aa62d73abac114781301b1f9eb2e5","Image":"110070154f0b","Names":["/goofy_carson"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/binENV LANG C.UTF-8RUN curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026    mv pypy* /opt/pypy3 \u0026\u0026    curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026    rm *.zip \u0026\u0026    easy_install pip==1.4.1 \u0026\u0026    pip install gns'","Created":1403835104,"Id":"50373b6b2c2587dff191144d684b012d6d1fefe754c0509b5f13db532a9b0452","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/sharp_hopper"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403835080,"Id":"9f504c34e973797ba75c3407e1d261adac8baad25173a819963c56703e9d6ed2","Image":"0bf0c8c91b13","Names":["/condescending_newton"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/log/gns'","Created":1403835077,"Id":"50e7458dafec61b73934afd7ad3b618c814e66a6dcc4f67a1df3742ccfd56d2b","Image":"bcc28cd4f97c","Names":["/kickass_brown"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403835074,"Id":"b26143357802bfb495319de9f3758598c9f8f3e107b1d19dfd33792c813f315f","Image":"196b21f4cf04","Names":["/sleepy_franklin"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /etc/gns'","Created":1403835070,"Id":"21c9eb15a5e567468dc0996d52d6bb8a9dc073092899dfdcd80b50adcd5154e1","Image":"c9b40cb07dd5","Names":["/cranky_heisenberg"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8RUN apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns'","Created":1403835067,"Id":"210e07aed15c96aeed3b8249c17140a52df3da5c196ffb891d10ec6813914494","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/clever_colden"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:54ddd4151bff21316f16df42ed7641830bdedb718bca30144acf05be5e22dfa4 in /root/run.sh'","Created":1403834856,"Id":"6ef8c25d77c26d6549c8255aada39e6beb7c8615def52943516a07fee72ec4ec","Image":"303d9393e32c","Names":["/mad_wozniak"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:2f32756ec6eab0314ddbccb8836b249b1a88c690a75b950960ed236402f24a93 in /etc/ssh/sshd_config'","Created":1403834852,"Id":"1a010f256395ce0620069903a5a54376a78b5cbca495c56d78b327fdb79a191e","Image":"c1d767592844","Names":["/naughty_albattani"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ADD file:9fdf4a24720015bf18c207e487b7c40465b6e6decca34aee4db1fd1cdd8a2b4b in /post-receive'","Created":1403834848,"Id":"e3bea105a705d8b2e5181a5f5f8f679e9e9b7bbe826d4d52046e1a44281a9ee3","Image":"3fde3d5fa80c","Names":["/sharp_lovelace"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c /root/run.sh]'","Created":1403834845,"Id":"16f3050fa98df461bd82f4d68e062437c5bc4b73f7fa48194dcc2ea24b870091","Image":"2efc40cae851","Names":["/nostalgic_fermat"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) EXPOSE map[22/tcp:{}]'","Created":1403834841,"Id":"943381c37d25fdb3ece54c6293f3895920b1892b8440cff2208c98bcddae0494","Image":"991764ec0ac4","Names":["/distracted_leakey"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules.git'","Created":1403834837,"Id":"9f4aaec40e8c9c9180d9e416895f520c453383f3511a3b60a6a96eb7c29082ff","Image":"c868c4f9eb62","Names":["/stupefied_lumiere"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) VOLUME /var/lib/gns/rules'","Created":1403834833,"Id":"b5cf6d7f0c41043ebffb1d111b1316ef6ad6b131b3b64d90f7fee1edafaf7ae7","Image":"6be611154fcd","Names":["/sharp_galileo"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'useradd -o -u 0 --system --shell=/usr/bin/git-shell git \u0026\u0026        mkdir /run/sshd \u0026\u0026        chmod 0755 /run/sshd'","Created":1403834828,"Id":"9469de1a5ae14bddcc46fed8cdf216700338d482fc579d2281eac74c1c0b03ef","Image":"f911887e71f4","Names":["/backstabbing_euclid"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install -y openssh-server'","Created":1403834805,"Id":"c6f3f52ba38bcdbb608c389be22e607bb6dbcd41e63a728fb0d6f7347285e032","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/compassionate_wilson"],"Ports":[],"Status":"Exited (0) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install -y openssh-server \u0026\u0026        useradd -o -u 0 --system --shell=/usr/bin/git-shell git \u0026\u0026        mkdir /run/sshd \u0026\u0026        chmod 0755 /run/sshd \u0026\u0026VOLUME /var/lib/gns/rules'","Created":1403834748,"Id":"ab328c002230974cfd66557c7b0e8311bc420146dcf0bc5530e3313043bfaf7f","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/stupefied_mccarthy"],"Ports":[],"Status":"Exited (127) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install -y openssh-server \u0026\u0026        useradd -o -u 0 --system --shell=/usr/bin/git-shell git \u0026\u0026        mkdir /run/sshd \u0026\u0026        chmod 0755 /run/sshd \u0026\u0026VOLUME ['/var/lib/gns/rules', '/var/lib/gns/rules.git']'","Created":1403834571,"Id":"b2c4f28ccfe00b9cf7ced30f2f3ae953ad6716d4439d0b39b2ee91363cc059ac","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/cranky_bardeen"],"Ports":[],"Status":"Exited (127) 11 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-get install -y openssh-server \u0026\u0026        useradd -o -u 0 --system --shell=/usr/bin/git-shell git \u0026\u0026        mkdir /run/sshd \u0026\u0026        chmod 0755 /run/sshd \u0026\u0026VOLUME ['/etc/ssh/authorized_keys', '/var/lib/gns/rules', '/var/lib/gns/rules.git']'","Created":1403834495,"Id":"3eaba74f997d314a5200c1b2e802b69c5446e21d0f83f98e077838784e89554e","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/stupefied_fermi"],"Ports":[],"Status":"Exited (127) 11 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403829739,"Id":"50cdba833960e62f91477efd0924b3af32b3db1394417f1d926440082b0167b2","Image":"e0557ecf2f6c","Names":["/loving_bardeen"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8RUN apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829736,"Id":"5a39b4ff61b6ec1531f73940a53de7d117ef2466b2e278461464c90ffe48176e","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/boring_shockley"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403829717,"Id":"26eb1ed7010559694e469f8b6c3e0ba6cf02b55ba4cf81881a9895104720d841","Image":"c3d1e968886b","Names":["/sleepy_shockley"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV LANG=C.UTF-8ENV PATH /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/binRUN curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026    mv pypy* /opt/pypy3 \u0026\u0026    curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026    rm *.zip \u0026\u0026    easy_install pip==1.4.1 \u0026\u0026    pip install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829714,"Id":"183eb47453ec018a2bc1612fe496654f50d7e3e262babf20533d1f889540da45","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/sick_bell"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829602,"Id":"8338ad0e31db35740d58415271bab06c0a399a1d3cbcbe4b653508e0f0ace3a3","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/lonely_newton"],"Ports":[],"Status":"Exited (1) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829584,"Id":"bd5352c4f6e9a54887ac5d28766d0a8b6c22f2ec6663764bd600b992844765b8","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/naughty_shockley"],"Ports":[],"Status":"Exited (1) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'apt-add-repository ppa:fkrull/deadsnakes -y \u0026\u0026    apt-get update \u0026\u0026    apt-get install python3-pip -yy \u0026\u0026    pip3 install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829077,"Id":"899a1879f8ac520babc7abc05a0d602f6c459864ba2338b17f9f5ae9fa3bdf37","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/elegant_rosalind"],"Ports":[],"Status":"Exited (1) 13 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403829031,"Id":"88c70e0f41170fef73fdf598ebe318b34e839d41ea280711bc07781ad5fe0ab4","Image":"fcfd6faf65be","Names":["/tender_blackwell"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/binRUN curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026    mv pypy* /opt/pypy3 \u0026\u0026    curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026    rm *.zip \u0026\u0026    easy_install pip==1.4.1 \u0026\u0026    pip install gns \u0026\u0026VOLUME ['/etc/gns', '/var/lib/gns/rules', '/var/log/gns']'","Created":1403829027,"Id":"852637f6abf728e7070175c77a680cdb454b0f49d185d71116713ae2e0631799","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/evil_darwin"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403828723,"Id":"7929a7a49ea24a4db4d2dc8699e9ea41aad15787a9caf65fb74cbf9f036f152a","Image":"2fd667860c18","Names":["/pensive_ritchie"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c '#(nop) ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/pypy3/binRUN curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026mv pypy* /opt/pypy3 \u0026\u0026curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026rm *.zip \u0026\u0026easy_install pip==1.4.1 \u0026\u0026ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3 \u0026\u0026pip3 install gns'","Created":1403828719,"Id":"107a54ee9c88f9ea66bff918905aa5fd5f9f8af1f059ed78d67db1af06087781","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/mad_blackwell"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 2\u003e/dev/null | tar -jxf - \u0026\u0026mv pypy* /opt/pypy3 \u0026\u0026curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py 2\u003e/dev/null | pypy \u0026\u0026rm *.zip \u0026\u0026easy_install pip==1.4.1 \u0026\u0026ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3 \u0026\u0026pip3 install gns'","Created":1403828485,"Id":"de98d12afe71a6bb183477d757c7fdf07e548cf765b163fffeece56f19c7603d","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/drunk_rosalind"],"Ports":[],"Status":"Exited (127) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026mv pypy* /opt/pypy3 \u0026\u0026curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | pypy \u0026\u0026rm *.zip \u0026\u0026easy_install pip==1.4.1 \u0026\u0026ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3 \u0026\u0026pip3 install gns'","Created":1403828366,"Id":"76cae77a16ce51afd5ee898c6374c6cc5e689354f32e404c6f487ff9520efc12","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/kickass_pasteur"],"Ports":[],"Status":"Exited (127) 13 hours ago"}
-        ,{"Command":"/bin/sh -c '\u0026\u0026curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026mv pypy* /opt/pypy3 \u0026\u0026curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | pypy \u0026\u0026rm *.zip \u0026\u0026easy_install pip==1.4.1 \u0026\u0026ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3 \u0026\u0026pip3 install gns'","Created":1403827945,"Id":"bef4177924d84677a8c75034217304bd0579e9f96574296101e4338fc33a269c","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/suspicious_wozniak"],"Ports":[],"Status":"Exited (2) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026 mv pypy* /opt/pypy3curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | pypyrm *.zipeasy_install pip==1.4.1ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3pip3 install gns'","Created":1403827740,"Id":"ff0768593670d8a40d93cd81d692093f8a6c8078ce35b829182a3372da327585","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/mad_rosalind"],"Ports":[],"Status":"Exited (127) 13 hours ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026 mv pypy* /opt/pypy3curl https://bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py | pypyrm *.zipeasy_install pip==1.4.1ln -s /opt/pypy3/bin/pip /opt/pypy3/bin/pip3pip3 install gns'","Created":1403827564,"Id":"3a277718a4ccd079038a297c2a31e717bf9105c51fe2e02c3f354f45da4c5ba2","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/stoic_elion"],"Ports":[],"Status":"Exited (127) 13 hours ago"}
-        ,{"Command":"/bin/sh -c '#(nop) CMD [/bin/sh -c trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait]'","Created":1403827422,"Id":"9ff2cab7e8a8b09834fe5d62bf5085734d8c67bb32a84f9821bdd6d7ed1ab78c","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/determined_torvalds"],"Ports":[],"Status":""}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403825994,"Id":"edd444d42d7dccdb299f8845920b8ac77b24e9b2ebf010f0a256cd747086bc4c","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty-with-pypy3:d20140623","Names":["/high_yonath"],"Ports":[],"Status":"Exited (127) 14 hours ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403825796,"Id":"04d3a0f3e738bfd6b223e2c842ec90bdfc944cafc26a39465775eab752f5abfb","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty-with-pypy3:d20140623","Names":["/suspicious_archimedes"],"Ports":[],"Status":"Exited (127) 14 hours ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403825742,"Id":"197fe94df1a4f4e6a861f1f3388e6ea1251d6efef20609fc4579ac2777334b1b","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty-with-pypy3:d20140623","Names":["/determined_pike"],"Ports":[],"Status":"Exited (127) 14 hours ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install gns'","Created":1403825633,"Id":"8ad53fe1e2f3cb73760080fc4bf3a0b1b2bd5ff3b1e09b9bb5f96a3cdd812f8a","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty-with-pypy3:d20140623","Names":["/loving_morse"],"Ports":[],"Status":"Exited (127) 14 hours ago"}
-        ,{"Command":"/bin/sh -c 'mvn install'","Created":1403709508,"Id":"980793b21f608b681102344eee71e29dac31ad9b248cbdf7e2ab818ebb1f20f0","Image":"ae2e1fa31e75","Names":["/compassionate_nobel"],"Ports":[],"Status":"Exited (1) 46 hours ago"}
-        ,{"Command":"/bin/sh -c 'mvn install'","Created":1403708436,"Id":"748682d4d7d94cacecce8b9619278a71ca4080c7df845c2538fc9923acb51898","Image":"538ce889e6a1","Names":["/jolly_lovelace"],"Ports":[],"Status":"Exited (1) 46 hours ago"}
-        ,{"Command":"bash","Created":1403689072,"Id":"83548d25c497940f3f00c62f6bf6bb0af50a2d25e8d31948a652c21bf6b867d8","Image":"registry.tst.ape.yandex.net:5000/yandex/trusty:d20140623","Names":["/romantic_thompson"],"Ports":[],"Status":"Up 13 hours"}
-        ,{"Command":"/bin/sh -c /root/run.sh","Created":1403632876,"Id":"17fa55a8701c35f00ed8d4a532f15e01caa4d0949f2de20d64265796109a2671","Image":"registry.tst.ape.yandex.net:5000/yandex/zookeeper:latest","Names":["/zookeeper"],"Ports":[{"IP":"::","PrivatePort":4888,"PublicPort":4888,"Type":"tcp"},{"IP":"::","PrivatePort":2181,"PublicPort":2181,"Type":"tcp"},{"IP":"::","PrivatePort":2888,"PublicPort":2888,"Type":"tcp"},{"IP":"::","PrivatePort":3888,"PublicPort":3888,"Type":"tcp"}],"Status":"Exited (0) 46 hours ago"}
-        ,{"Command":"/bin/sh -c 'trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait'","Created":1403628872,"Id":"754728515a8ec66ea0c1f345dbf67fe6a2566032528c4e921c1857263665537b","Image":"registry.tst.ape.yandex.net:5000/nikicat/gns:latest","Names":["/gns-collector"],"Ports":[{"IP":"::","PrivatePort":11003,"PublicPort":11003,"Type":"tcp"}],"Status":"Up 13 hours"}
-        ,{"Command":"/bin/sh -c 'trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait'","Created":1403628872,"Id":"bd1fbb45739aa56fe52e7d61b993ebaab31c8909acb3d3530efd5a484e2458eb","Image":"registry.tst.ape.yandex.net:5000/nikicat/gns:latest","Names":["/gns-worker"],"Ports":[{"IP":"::","PrivatePort":11001,"PublicPort":11001,"Type":"tcp"}],"Status":"Up 13 hours"}
-        ,{"Command":"/bin/sh -c 'trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait'","Created":1403628872,"Id":"7f482bc0672f8988d8270b19419ec69fc476c82f6328c658e4c95ffe1a525360","Image":"registry.tst.ape.yandex.net:5000/nikicat/gns:latest","Names":["/gns-splitter"],"Ports":[{"IP":"::","PrivatePort":11002,"PublicPort":11002,"Type":"tcp"}],"Status":"Exited (0) 24 hours ago"}
-        ,{"Command":"/bin/sh -c 'trap exit TERM; gns $GNS_MODULE -c /etc/gns/gns.yaml \u0026 wait'","Created":1403628871,"Id":"390e02a695c0782066acb3526b47240ae8a5c870fec9067d522d1f3d6118f8ac","Image":"registry.tst.ape.yandex.net:5000/nikicat/gns:latest","Names":["/gns-api"],"Ports":[{"IP":"::","PrivatePort":11004,"PublicPort":11004,"Type":"tcp"},{"IP":"::","PrivatePort":7887,"PublicPort":7887,"Type":"tcp"}],"Status":"Exited (0) 46 hours ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install -e /root/gns'","Created":1403627928,"Id":"b72e61fb4890a79afba07577a2924bc66329c22a68720526943e9adc68a2e279","Image":"327a84e82aea","Names":["/drunk_hoover"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install -e /root/gns'","Created":1403627468,"Id":"6a25a1250319dab6f2c22c5f17436ab4ed8623f728a23725ea4e30cd73a2503d","Image":"ad63aee0aa79","Names":["/mad_euclid"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install -e /root/gns'","Created":1403623608,"Id":"f245bb6ffada60ed4f8c6622154ad3665d8cc122f5453db15a7535f2c353245d","Image":"d873818be6d4","Names":["/insane_mcclintock"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'curl http://buildbot.pypy.org/nightly/py3k/pypy-c-jit-latest-linux64.tar.bz2 | tar -jxf - \u0026\u0026 mv pypy* /opt/pypy3'","Created":1403623091,"Id":"4c89a2bad443b3321cae9da7bdce8c79eeda3ba29131d972195ea2603f85d894","Image":"yandex/ubuntu:12.04","Names":["/thirsty_thompson"],"Ports":[],"Status":"Exited (0) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'pip3 install -e /root/gns'","Created":1403622520,"Id":"0e88a8927b1fbde6e3b1aad4690c59d218ea56859c733a792b1743925bd2663b","Image":"141adb12944c","Names":["/sleepy_engelbart"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ,{"Command":"/bin/sh -c 'pip install -e /root/gns'","Created":1403622430,"Id":"13bac7d7a98af014427a7dbfa649755529a4a38b22c1b674214013508fc44915","Image":"cbcbd2caa698","Names":["/jolly_curie"],"Ports":[],"Status":"Exited (127) 2 days ago"}
-        ]
+    body: {string: '[{"Command":"sleep 10","Created":1404731093,"Id":"75d1976ee34cb79295aee752ab67a516b8d273a90a14fc37c5f500de285a4abc","Image":"busybox:latest","Names":["/testcont"],"Ports":[],"Status":"Up
+        Less than a second"}
+
+        ]'}
     headers:
+      Content-Length: ['209']
       Content-Type: [application/json]
-      Date: ['Fri, 27 Jun 2014 13:41:18 GMT']
-      Transfer-Encoding: [chunked]
+      Date: ['Mon, 07 Jul 2014 11:04:53 GMT']
     status: {code: 200, message: OK}
 - request:
     body: null
     headers:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate, compress']
-      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.1-1-aufs_friendly]
+      User-Agent: [python-requests/2.2.1 CPython/3.3.5 Linux/3.15.2-1-aufs_friendly]
     method: GET
-    uri: http://localhost:4243/v1.12/containers/b887cb045bd916f64948b7f712cee4a2c44fdb5464281d7cfae750ac5d54cf86/json
+    uri: http://localhost:4243/v1.12/containers/75d1976ee34cb79295aee752ab67a516b8d273a90a14fc37c5f500de285a4abc/json
   response:
-    body:
-      string: |
-        {"Args":["10"],"Config":{"AttachStderr":true,"AttachStdin":true,"AttachStdout":true,"Cmd":["sleep","10"],"CpuShares":0,"Cpuset":"","Domainname":"","Entrypoint":null,"Env":["HOME=/","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],"ExposedPorts":null,"Hostname":"testcont-localship","Image":"busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","Memory":0,"MemorySwap":0,"NetworkDisabled":false,"OnBuild":null,"OpenStdin":true,"PortSpecs":null,"StdinOnce":true,"Tty":false,"User":"","Volumes":null,"WorkingDir":""},"Created":"2014-06-27T13:41:18.029314136Z","Driver":"devicemapper","ExecDriver":"native-0.2","HostConfig":{"Binds":null,"ContainerIDFile":"","Dns":null,"DnsSearch":null,"Links":null,"LxcConf":null,"NetworkMode":"","PortBindings":null,"Privileged":false,"PublishAllPorts":false,"VolumesFrom":null},"HostnamePath":"/var/lib/docker/containers/b887cb045bd916f64948b7f712cee4a2c44fdb5464281d7cfae750ac5d54cf86/hostname","HostsPath":"/var/lib/docker/containers/b887cb045bd916f64948b7f712cee4a2c44fdb5464281d7cfae750ac5d54cf86/hosts","Id":"b887cb045bd916f64948b7f712cee4a2c44fdb5464281d7cfae750ac5d54cf86","Image":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","MountLabel":"","Name":"/testcont","NetworkSettings":{"Bridge":"docker0","Gateway":"172.17.42.1","IPAddress":"172.17.0.56","IPPrefixLen":16,"PortMapping":null,"Ports":{}},"Path":"sleep","ProcessLabel":"","ResolvConfPath":"/etc/resolv.conf","State":{"ExitCode":0,"FinishedAt":"0001-01-01T00:00:00Z","Paused":false,"Pid":10740,"Running":true,"StartedAt":"2014-06-27T13:41:18.30351553Z"},"Volumes":{},"VolumesRW":{}}
+    body: {string: '{"Args":["10"],"Config":{"AttachStderr":true,"AttachStdin":true,"AttachStdout":true,"Cmd":["sleep","10"],"CpuShares":0,"Cpuset":"","Domainname":"","Entrypoint":null,"Env":["HOME=/","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],"ExposedPorts":null,"Hostname":"testcont-localship","Image":"busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","Memory":0,"MemorySwap":0,"NetworkDisabled":false,"OnBuild":null,"OpenStdin":true,"PortSpecs":null,"StdinOnce":true,"Tty":false,"User":"","Volumes":null,"WorkingDir":""},"Created":"2014-07-07T11:04:53.014176799Z","Driver":"devicemapper","ExecDriver":"native-0.2","HostConfig":{"Binds":null,"ContainerIDFile":"","Dns":null,"DnsSearch":null,"Links":null,"LxcConf":null,"NetworkMode":"","PortBindings":null,"Privileged":false,"PublishAllPorts":false,"VolumesFrom":null},"HostnamePath":"/var/lib/docker/containers/75d1976ee34cb79295aee752ab67a516b8d273a90a14fc37c5f500de285a4abc/hostname","HostsPath":"/var/lib/docker/containers/75d1976ee34cb79295aee752ab67a516b8d273a90a14fc37c5f500de285a4abc/hosts","Id":"75d1976ee34cb79295aee752ab67a516b8d273a90a14fc37c5f500de285a4abc","Image":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","MountLabel":"","Name":"/testcont","NetworkSettings":{"Bridge":"docker0","Gateway":"172.17.42.1","IPAddress":"172.17.0.3","IPPrefixLen":16,"PortMapping":null,"Ports":{}},"Path":"sleep","ProcessLabel":"","ResolvConfPath":"/var/lib/docker/containers/75d1976ee34cb79295aee752ab67a516b8d273a90a14fc37c5f500de285a4abc/resolv.conf","State":{"ExitCode":0,"FinishedAt":"0001-01-01T00:00:00Z","Paused":false,"Pid":32629,"Running":true,"StartedAt":"2014-07-07T11:04:53.357357049Z"},"Volumes":{},"VolumesRW":{}}
+
+'}
     headers:
-      Content-Length: ['1643']
+      Content-Length: ['1730']
       Content-Type: [application/json]
-      Date: ['Fri, 27 Jun 2014 13:41:18 GMT']
+      Date: ['Mon, 07 Jul 2014 11:04:53 GMT']
     status: {code: 200, message: OK}
 - request:
     body: null
     headers:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate, compress']
-      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.1-1-aufs_friendly]
+      User-Agent: [python-requests/2.2.1 CPython/3.3.5 Linux/3.15.2-1-aufs_friendly]
     method: GET
     uri: http://localhost:4243/v1.12/images/a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721/json
   response:
-    body:
-      string: "{\"Architecture\":\"amd64\",\"Author\":\"J\xE9r\xF4me Petazzoni \\\
-        u003cjerome@docker.com\\u003e\",\"Comment\":\"\",\"Config\":{\"AttachStderr\"\
-        :false,\"AttachStdin\":false,\"AttachStdout\":false,\"Cmd\":[\"/bin/sh\"],\"\
-        CpuShares\":0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\"\
-        :[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"\
-        ],\"ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\"\
-        ,\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"\
-        OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"\
-        User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Container\":\"bb3475b3130b6a47104549a0291a6569d24e41fa57a7f094591f0d4611fd15bc\"\
-        ,\"ContainerConfig\":{\"AttachStderr\":false,\"AttachStdin\":false,\"AttachStdout\"\
-        :false,\"Cmd\":[\"/bin/sh\",\"-c\",\"#(nop) CMD [/bin/sh]\"],\"CpuShares\"\
-        :0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\":[\"HOME=/\"\
-        ,\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"\
-        ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\"\
-        ,\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"\
-        OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"\
-        User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Created\":\"2014-06-05T00:05:35.990887725Z\"\
-        ,\"DockerVersion\":\"0.10.0\",\"Id\":\"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721\"\
-        ,\"Os\":\"linux\",\"Parent\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\"\
-        ,\"Size\":0}\n"
+    body: {string: "{\"Architecture\":\"amd64\",\"Author\":\"J\xE9r\xF4me Petazzoni
+        \\u003cjerome@docker.com\\u003e\",\"Comment\":\"\",\"Config\":{\"AttachStderr\":false,\"AttachStdin\":false,\"AttachStdout\":false,\"Cmd\":[\"/bin/sh\"],\"CpuShares\":0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Container\":\"bb3475b3130b6a47104549a0291a6569d24e41fa57a7f094591f0d4611fd15bc\",\"ContainerConfig\":{\"AttachStderr\":false,\"AttachStdin\":false,\"AttachStdout\":false,\"Cmd\":[\"/bin/sh\",\"-c\",\"#(nop)
+        CMD [/bin/sh]\"],\"CpuShares\":0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Created\":\"2014-06-05T00:05:35.990887725Z\",\"DockerVersion\":\"0.10.0\",\"Id\":\"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721\",\"Os\":\"linux\",\"Parent\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Size\":0}\n"}
     headers:
       Content-Length: ['1504']
       Content-Type: [application/json]
-      Date: ['Fri, 27 Jun 2014 13:41:18 GMT']
+      Date: ['Mon, 07 Jul 2014 11:04:53 GMT']
     status: {code: 200, message: OK}
 version: 1

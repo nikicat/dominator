@@ -34,7 +34,6 @@ def ships():
 
 
 @pytest.fixture
-@vcr.use_cassette('images.yaml')
 def containers():
     return [Container(name='testcont',
                       ship=ship,
@@ -58,6 +57,7 @@ def test_localstart(capsys, containers):
         color=re.escape(Fore.GREEN)), out.split('\n')[-2])
 
 
+@vcr.use_cassette('dump.yaml')
 def test_dump(capsys, containers):
     dump(containers)
     dump1, _ = capsys.readouterr()

@@ -149,12 +149,12 @@ def compare_env(expected: dict, actual: dict):
     for name, value in actual.items():
         if name not in expected:
             yield ('env', name), ('', value or '""')
-        elif expected[name] != value:
+        elif str(expected[name]) != value:
             yield ('env', name), (expected[name], value or '""')
 
     for name, value in expected.items():
         if name not in actual:
-            yield ('env', name), (value or '""', '')
+            yield ('env', name), (str(value) or '""', '')
 
 
 @aslist
@@ -210,15 +210,15 @@ def compare_volumes(cont, cinfo):
 @aslist
 def compare_files(container, volume):
     getlogger().debug('comparing files')
-    for file in volume.files:
+    for name, file in volume.files.items():
         try:
-            actual = file.load(container, volume)
+            actual = file.load(container, volume, name)
         except FileNotFoundError:
             actual = ''
         expected = file.data(container)
         if actual != expected:
             diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
-            yield ('volumes', volume.dest, 'files', file.name), [line for line in diff if line[:2] != '  ']
+            yield ('volumes', volume.dest, 'files', name), [line for line in diff if line[:2] != '  ']
 
 
 def compare_values(key, expected, actual):

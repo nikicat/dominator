@@ -183,14 +183,14 @@ class Image:
 
 
 class SourceImage(Image):
-    def __init__(self, name: str, parent: Image, scripts: [], command: str=None, workdir: str=None,
-                 env: dict={}, volumes: dict={}, ports: dict={}, files: dict={}):
+    def __init__(self, name: str, parent: Image, scripts: list=None, command: str=None, workdir: str=None,
+                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None):
         self.parent = parent
-        self.scripts = scripts
+        self.scripts = scripts or []
         self.command = command
         self.workdir = workdir
-        self.volumes = volumes
-        self.ports = ports
+        self.volumes = volumes or {}
+        self.ports = ports or {}
 
         def getfileobj(fileobj_or_filename):
             if isinstance(fileobj_or_filename, str):
@@ -198,8 +198,8 @@ class SourceImage(Image):
             else:
                 return fileobj_or_filename
 
-        self.files = {path: getfileobj(fileobj_or_filename) for path, fileobj_or_filename in files.items()}
-        self.env = env
+        self.files = {path: getfileobj(fileobj_or_filename) for path, fileobj_or_filename in (files or {}).items()}
+        self.env = env or {}
         Image.__init__(self, name)
         self.tag = self.gethash()
 
@@ -284,18 +284,18 @@ class SourceImage(Image):
 
 class Container:
     def __init__(self, name: str, ship: Ship, image: Image, command: str=None, hostname: str=None,
-                 ports: dict={}, memory: int=0, volumes: dict={},
-                 env: dict={}, extports: dict={}, portproto: dict={}):
+                 ports: dict=None, memory: int=0, volumes: dict=None,
+                 env: dict=None, extports: dict=None, portproto: dict=None):
         self.name = name
         self.ship = ship
         self.image = image
         self.command = command
-        self.volumes = volumes
-        self.ports = ports
+        self.volumes = volumes or {}
+        self.ports = ports or {}
         self.memory = memory
-        self.env = env
-        self.extports = extports
-        self.portproto = portproto
+        self.env = env or {}
+        self.extports = extports or {}
+        self.portproto = portproto or {}
         self.id = ''
         self.status = 'not found'
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
@@ -429,27 +429,22 @@ class Container:
         )
 
     def run(self):
-        try:
-            self.create()
-        except docker.errors.APIError as e:
-            if e.response.status_code != 409:
-                raise
-            self.check()
-            if self.id:
-                if self.running:
-                    self.logger.info('found running container with the same name, comparing config with requested')
-                    diff = utils.compare_container(self, self.inspect())
-                    if diff:
-                        self.logger.info('running container config differs from requested, stopping', diff=diff)
-                        self.stop()
-                    else:
-                        self.logger.info('running container config identical to requested, keeping')
-                        return
+        self.check()
+        if self.running:
+            self.logger.info('found running container with the same name, comparing config with requested')
+            diff = utils.compare_container(self, self.inspect())
+            if diff:
+                self.logger.info('running container config differs from requested, stopping', diff=diff)
+                self.stop()
+            else:
+                self.logger.info('running container config identical to requested, keeping')
+                return
 
-                self.logger.info('found stopped container with the same name, removing')
-                self.remove()
-            self.create()
+        if self.id:
+            self.logger.info('found stopped container with the same name, removing')
+            self.remove()
 
+        self.create()
         self.start()
 
     def start(self):
@@ -517,9 +512,9 @@ class DataVolume(Volume):
 
 
 class ConfigVolume(Volume):
-    def __init__(self, dest: str, files: dict={}):
+    def __init__(self, dest: str, files: dict=None):
         self.dest = dest
-        self.files = files
+        self.files = files or {}
 
     def getpath(self, container):
         return os.path.expanduser(os.path.join(utils.settings['configvolumedir'],
@@ -536,51 +531,48 @@ class ConfigVolume(Volume):
 
         for filename in os.listdir(path):
             os.remove(os.path.join(path, filename))
-        for file in self.files:
-            file.dump(cont, self)
+        for name, file in self.files.items():
+            file.dump(cont, self, name)
 
 
 class BaseFile:
-    def __init__(self, name):
-        self.name = name
+    def __str__(self):
+        return '{}({!s:.20})'.format(type(self).__name__, self.content)
 
     @property
     def logger(self):
         return utils.getlogger(file=self, bindto=3)
 
-    def getpath(self, container: Container, volume: Volume):
-        return os.path.join(volume.getpath(container), self.name)
+    def getpath(self, container: Container, volume: Volume, name: str):
+        return os.path.join(volume.getpath(container), name)
 
-    def dump(self, container: Container, volume: Volume, data: str=None):
+    def dump(self, container: Container, volume: Volume, name: str, data: str=None):
         if data is None:
             data = self.data(container)
-        path = self.getpath(container, volume)
+        path = self.getpath(container, volume, name)
         self.logger.debug("writing file", path=path)
         with open(path, 'w+', encoding='utf8') as f:
             f.write(data)
 
-    def load(self, container: Container, volume: Volume):
-        path = self.getpath(container, volume)
+    def load(self, container: Container, volume: Volume, name: str):
+        path = self.getpath(container, volume, name)
         self.logger.debug("loading text file contents", path=path)
         with open(path) as f:
             return f.read()
 
 
 class TextFile(BaseFile):
-    def __init__(self, filename: str, text: str=None):
+    def __init__(self, filename: str=None, text: str=None):
         """
         Constructs TextFile. If text provided, populate
         file contents from it. If not - try to load resource
         from calling module using filename.
         """
-        BaseFile.__init__(self, filename)
+        assert(filename is not None or text is not None)
         if text is not None:
             self.content = text
         else:
             self.content = pkg_resources.resource_string(utils.getcallingmodule(1).__name__, filename).decode()
-
-    def __str__(self):
-        return 'TextFile(name={})'.format(self.name)
 
     def data(self, _container):
         return self.content
@@ -598,9 +590,9 @@ class TemplateFile:
     def logger(self):
         return utils.getlogger(file=self, bindto=3)
 
-    def dump(self, container, volume):
+    def dump(self, container, volume, name):
         self.logger.debug("rendering file")
-        self.file.dump(container, volume, self.data(container))
+        self.file.dump(container, volume, name, self.data(container))
 
     def data(self, container):
         import mako.template
@@ -610,21 +602,13 @@ class TemplateFile:
         self.logger.debug('rendering template file', context=context)
         return template.render(**context)
 
-    def load(self, container, volume):
-        return self.file.load(container, volume)
-
-    @property
-    def name(self):
-        return self.file.name
+    def load(self, container, volume, name):
+        return self.file.load(container, volume, name)
 
 
 class YamlFile(BaseFile):
-    def __init__(self, name: str, data: dict):
-        BaseFile.__init__(self, name)
+    def __init__(self, data: dict):
         self.content = data
-
-    def __str__(self):
-        return 'YamlFile(name={name})'.format(vars(self))
 
     def data(self, _container):
         return yaml.dump(self.content)
@@ -634,9 +618,6 @@ class JsonFile(BaseFile):
     def __init__(self, name: str, data: dict):
         BaseFile.__init__(self, name)
         self.content = data
-
-    def __str__(self):
-        return 'JsonFile(name={name})'.format(vars(self))
 
     def data(self, _container):
         return json.dumps(self.content, sort_keys=True, indent='  ')

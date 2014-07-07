@@ -131,8 +131,8 @@ def group_containers(containers, shipname: str=None, containername: str=None):
 def filter_containers(containers, shipname: str=None, containername: str=None):
     notfound = True
     for cont in containers:
-        if (shipname is None or re.match(shipname, cont.ship.name)) and \
-           (containername is None or re.match(containername, cont.name)):
+        if ((shipname is None or re.match(shipname, cont.ship.name)) and
+           (containername is None or re.match(containername, cont.name))):
             notfound = False
             yield cont
     if notfound:

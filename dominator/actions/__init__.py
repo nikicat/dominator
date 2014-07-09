@@ -330,18 +330,19 @@ def logs(containers, ship: str=None, container: str=None, follow: bool=False):
 
 
 @command
-def build(containers, imagename: str=None, nocache: bool=False):
+def build(containers, imagename: str=None, nocache: bool=False, push: bool=False):
     """Build source images
 
     Usage: dominator build [options] [<imagename>]
 
     Options:
         -h, --help
-        --nocache      # disable Docker cache [default: false]
+        -n, --nocache     # disable Docker cache [default: false]
+        -p, --push        # push image to registry after build [default: false]
     """
     for cont in containers:
         if isinstance(cont.image, SourceImage) and (imagename is None or cont.image.repository == imagename):
-            cont.image.build(push=False, nocache=nocache)
+            cont.image.build(push=push, nocache=nocache)
 
 
 def getversion():

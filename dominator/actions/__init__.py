@@ -1,6 +1,6 @@
 """
 Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) \
-                 [--clear-cache] [-n <namespace>] <command> [<args>...]
+                 [--no-cache] [--clear-cache] [-n <namespace>] <command> [<args>...]
 
 Commands:
     dump                dump config in yaml format
@@ -22,7 +22,8 @@ Options:
     -m, --module <modulename>    python module name
     -f, --function <funcname>    python function name [default: create]
     -n, --namespace <namespace>  docker namespace to use if not set (overrides config)
-    --clear-cache                clear requests cache
+    --no-cache                   disable requests cache when using -m/-f
+    --clear-cache                clear requests cache (requires no --no-cache)
 """
 
 
@@ -38,7 +39,6 @@ import pkg_resources
 import yaml
 import docopt
 from colorama import Fore
-import requests_cache
 
 from ..entities import Container, Image, SourceImage, DataVolume
 from .. import utils
@@ -371,11 +371,15 @@ def main():
             if args['--config'] is not None:
                 containers = load_yaml(args['--config'])
             else:
-                with requests_cache.enabled():
-                    if args['--clear-cache']:
-                        getlogger().info("clearing requests cache")
-                        requests_cache.clear()
+                if args['--no-cache']:
                     containers = load_module(args['--module'], args['--function'])
+                else:
+                    import requests_cache
+                    with requests_cache.enabled():
+                        if args['--clear-cache']:
+                            getlogger().info("clearing requests cache")
+                            requests_cache.clear()
+                        containers = load_module(args['--module'], args['--function'])
         except:
             getlogger().exception("failed to load config")
             return

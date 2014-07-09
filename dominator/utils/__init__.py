@@ -10,9 +10,13 @@ import os.path
 from pkg_resources import resource_stream
 
 import yaml
-import colorlog
 import docker
 
+try:
+    import colorlog
+    BaseFormatter = colorlog.ColoredFormatter
+except ImportError:
+    BaseFormatter = logging.Formatter
 
 class PartialFormatter(string.Formatter):
     def __init__(self):
@@ -27,7 +31,7 @@ class PartialFormatter(string.Formatter):
         return val
 
 
-class PartialLoggingFormatter(colorlog.ColoredFormatter):
+class PartialLoggingFormatter(BaseFormatter):
     def formatMessage(self, record):
         return PartialFormatter().format(self._style._fmt, **vars(record))
 

@@ -1,8 +1,10 @@
 description "Start Dominator container"
 
 instance ${CONFIG}/${CONTAINER}
+kill signal SIGINT
+kill timeout 10
 
 script
 	. /etc/default/dominator
-	exec dominator run ${CONFIGDIR}/${CONFIG}.yaml $CONTAINER --remove
+	exec dominator -c ${CONFIGDIR}/${CONFIG}.yaml localexec `hostname` $CONTAINER
 end script

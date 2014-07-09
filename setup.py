@@ -46,15 +46,18 @@ if __name__ == '__main__':
         install_requires=[
             'docker-py >= 0.3.2',
             'docopt',
-            'PyYAML.Yandex == 3.11.1',
             'mako',
-            'colorlog',
-            'requests_cache',
             'colorama',
         ],
         tests_require=[
             'pytest',
             'vcrpy',
         ],
+        extras_require={
+            'cache': ['requests_cache'],
+            'colorlog': ['colorlog'],
+            'dump': ['PyYAML.Yandex >= 3.11.1'],
+            'load': ['PyYAML']
+        },
         cmdclass={'test': PyTest},
     )

@@ -221,9 +221,13 @@ class SourceImage(Image):
             return Image.getid(self)
         except docker.errors.DockerException as e:
             self.logger.info("pull failed, rebuilding (%s)", e)
-        self.build(fileobj=self.gettarfile(), custom_context=True)
-        self.push()
-        return Image.getid(self)
+            self.build()
+            return Image.getid(self)
+
+    def build(self, push=True, **kwargs):
+        Image.build(self, fileobj=self.gettarfile(), custom_context=True, **kwargs)
+        if push:
+            self.push()
 
     def gethash(self):
         """Used to calculate unique identifying tag for image
@@ -384,7 +388,6 @@ class Container:
             self.ship.docker.remove_container(self.id, force=force)
         except docker.errors.APIError as e:
             if b'Driver devicemapper failed to remove root filesystem' in e.explanation:
-                self.logger.debug('', exc_info=True)
                 self.logger.warning("Docker bug 'Driver devicemapper failed to remove root filesystem'"
                                     " detected, just trying again")
                 self.check()
@@ -615,8 +618,7 @@ class YamlFile(BaseFile):
 
 
 class JsonFile(BaseFile):
-    def __init__(self, name: str, data: dict):
-        BaseFile.__init__(self, name)
+    def __init__(self, data: dict):
         self.content = data
 
     def data(self, _container):

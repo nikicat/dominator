@@ -1,6 +1,6 @@
 """
 Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) \
-                 [--clear-cache] [-n <namespace>] <command> [<args>...]
+                 [--no-cache] [--clear-cache] [-n <namespace>] <command> [<args>...]
 
 Commands:
     dump                dump config in yaml format
@@ -22,7 +22,8 @@ Options:
     -m, --module <modulename>    python module name
     -f, --function <funcname>    python function name [default: create]
     -n, --namespace <namespace>  docker namespace to use if not set (overrides config)
-    --clear-cache                clear requests cache
+    --no-cache                   disable requests cache when using -m/-f
+    --clear-cache                clear requests cache (requires no --no-cache)
 """
 
 
@@ -38,9 +39,8 @@ import pkg_resources
 import yaml
 import docopt
 from colorama import Fore
-import requests_cache
 
-from ..entities import Container, Image, DataVolume
+from ..entities import Container, Image, SourceImage, DataVolume
 from .. import utils
 from ..utils import getlogger, settings
 
@@ -95,16 +95,26 @@ def localrestart(containers, shipname: str=None, containername: str=None):
 
 @command
 def localexec(containers, shipname: str, containername: str, keep: bool=False):
-    """Execute container until it stops
+    """Start container locally, attach to process, read stdout/stderr
+       and print it, then (optionally) remove it
 
     Usage: dominator localexec [options] <shipname> <containername>
+
+    Options:
+        -h, --help
+        -k, --keep  # keep container after stop [default: false]
     """
     for cont in filter_containers(containers, shipname, containername):
-        with cont.execute() as logs:
-            for line in logs:
-                print(line)
-        if not keep:
-            cont.remove()
+        try:
+            with cont.execute() as logs:
+                for line in logs:
+                    print(line)
+        finally:
+            try:
+                if not keep:
+                    cont.remove(force=True)
+            except:
+                getlogger().exception("failed to remove container")
 
 
 @command
@@ -140,17 +150,15 @@ def filter_containers(containers, shipname: str=None, containername: str=None):
 
 
 @command
-def list_containers(containers):
-    """List containers for local ship
-
-    Usage: dominator list-containers [-h]
+def list_containers(containers, shipname: str=None):
+    """Print container names
+    Usage: dominator list-containers [options] [<shipname>]
 
     Options:
         -h, --help
     """
-    for container in containers:
-        if container.ship.islocal:
-            print(container.name)
+    for cont in filter_containers(containers, shipname):
+        print(cont.name)
 
 
 def load_module(modulename, func):
@@ -329,6 +337,22 @@ def logs(containers, ship: str=None, container: str=None, follow: bool=False):
         cont.logs(follow=follow)
 
 
+@command
+def build(containers, imagename: str=None, nocache: bool=False, push: bool=False):
+    """Build source images
+
+    Usage: dominator build [options] [<imagename>]
+
+    Options:
+        -h, --help
+        -n, --nocache     # disable Docker cache [default: false]
+        -p, --push        # push image to registry after build [default: false]
+    """
+    for cont in containers:
+        if isinstance(cont.image, SourceImage) and (imagename is None or cont.image.repository == imagename):
+            cont.image.build(push=push, nocache=nocache)
+
+
 def getversion():
     try:
         return pkg_resources.get_distribution('dominator').version
@@ -356,11 +380,15 @@ def main():
             if args['--config'] is not None:
                 containers = load_yaml(args['--config'])
             else:
-                with requests_cache.enabled():
-                    if args['--clear-cache']:
-                        getlogger().info("clearing requests cache")
-                        requests_cache.clear()
+                if args['--no-cache']:
                     containers = load_module(args['--module'], args['--function'])
+                else:
+                    import requests_cache
+                    with requests_cache.enabled():
+                        if args['--clear-cache']:
+                            getlogger().info("clearing requests cache")
+                            requests_cache.clear()
+                        containers = load_module(args['--module'], args['--function'])
         except:
             getlogger().exception("failed to load config")
             return

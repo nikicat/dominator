@@ -1,0 +1,109 @@
+# Global settings for Dominator
+# Copy this file to ~/.config/dominator/settings.yaml and edit
+
+# Image for deploying config files to remote ships
+deploy-image: nikicat/dominator
+
+# Directory to place config files
+configvolumedir: ~/.config/dominator/config
+
+# Directory to place data
+datavolumedir: ~/.config/dominator/data
+
+# Uncomment to connect using tcp socket instead of unix-socket
+#dockerurl: http://localhost:4243
+
+# FQDN for LocalShip's - used for developing. Put here some local ip
+# different from 127.0.0.1/::1 that local containers could reach
+#localship-fqdn: localhost
+
+# Put here local registry address to speed up pull
+#docker-registry: <host:port>
+
+# Logging config (https://docs.python.org/3.4/library/logging.config.html#dictionary-schema-details)
+logging:
+    version: 1
+    disable_existing_loggers: false
+    loggers:
+        requests.packages.urllib3.connectionpool:
+            level: WARN
+        urllib3.connectionpool:
+            level: WARN
+        dominator:
+            level: DEBUG
+            handlers: [dominator]
+            propagate: false
+        dominator.docker.pull:
+            level: DEBUG
+            handlers: [dominator.docker.pull]
+            propagate: false
+        dominator.docker.logs:
+            level: DEBUG
+            handlers: [dominator.docker.logs]
+            propagate: false
+    formatters:
+        default:
+            style: "{"
+            format: "{asctime} {levelname:>7} {name:20.20}  {message}"
+        dominator:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{asctime} {levelname:>7} {ship.name:10.10} {container.name:15.15} {volume.name:10.10} {file.name:15.15}  {message} {_extra}"
+        dominator.docker.pull:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{asctime} {levelname:>7} {ship.name:10.10} {image.repository:25.25}  {response[status]} {response[id]}: {response[progress]}"
+        dominator.docker.logs:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{asctime}         {ship.name:10.10} {container.name:15.15} {message}"
+    handlers:
+        default:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: default
+        dominator:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator
+        dominator.docker.pull:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator.docker.pull
+        dominator.docker.logs:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator.docker.logs
+    root:
+        level: DEBUG
+        handlers: [default]
+
+# FIXME: next options should be moved to separate sub-package
+
+username: &username !!python/object/apply:os.getenv [OS_USERNAME]
+password: &password !!python/object/apply:os.getenv [OS_PASSWORD]
+
+# Openstack installations endpoints and credentials
+nova:
+    haze:
+        client:
+            username: *username
+            api_key: *password
+            project_id: MONITORING
+            auth_url: http://identity.haze.yandex-team.ru/v2.0
+            region_name: myt5
+        domain: haze.yandex.net
+    fog:
+        client:
+            username: *username
+            api_key: *password
+            project_id: yandex_infra_stat_mon
+            auth_url: http://sas-openstack001.search.yandex.net:5000/v2.0
+            insecure: true
+        domain: i.fog.yandex.net
+
+# Racktables endpoint and credentials
+racktables:
+    url: https://racktables.yandex.net/
+    user: *username
+    password: *password

@@ -7,7 +7,7 @@ Standards-Version: 3.9.5
 Homepage: https://github.com/nikicat/dominator
 Vcs-Git: git://github.com/nikicat/dominator.git
 Vcs-Browser: https://github.com/nikicat/dominator
-X-Python3-Version: >= 3.3
+XS-Python3-Version: >= 3.3
 
 Package: dominator
 Architecture: all

@@ -4,13 +4,13 @@ instance $CONFIG
 
 pre-start script
     . /etc/default/dominator
-    dominator containers ${CONFIGDIR}/${CONFIG}.yaml | while read CONTAINER; do
+    dominator -c ${CONFIGDIR}/${CONFIG}.yaml list-containers `hostname` | while read CONTAINER; do
         start dominator-container CONFIG=$CONFIG CONTAINER=$CONTAINER
     done
 end script
 
 post-stop script
-    initctl list | grep -F 'dominator-container (${CONFIG}' | sed -r 's/.* \((.*)\) .*/\1/' | while read INSTANCE; do
+    initctl list | grep -F "dominator-container (${CONFIG}" | sed -r 's/.* \((.*)\) .*/\1/' | while read INSTANCE; do
         stop dominator-container CONFIG=${INSTANCE%/*} CONTAINER=${INSTANCE#*/}
     done
 end script

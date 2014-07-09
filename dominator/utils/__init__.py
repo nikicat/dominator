@@ -18,6 +18,7 @@ try:
 except ImportError:
     BaseFormatter = logging.Formatter
 
+
 class PartialFormatter(string.Formatter):
     def __init__(self):
         self._retrieved = []

@@ -107,7 +107,6 @@ def localexec(containers, shipname: str, containername: str, keep: bool=False):
     for cont in filter_containers(containers, shipname, containername):
         try:
             with cont.execute() as logs:
-                logger = utils.getlogger('dominator.docker.logs', container=cont)
                 for line in logs:
                     print(line)
         finally:

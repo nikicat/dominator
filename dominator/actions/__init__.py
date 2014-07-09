@@ -95,16 +95,27 @@ def localrestart(containers, shipname: str=None, containername: str=None):
 
 @command
 def localexec(containers, shipname: str, containername: str, keep: bool=False):
-    """Execute container until it stops
+    """Start container locally, attach to process, read stdout/stderr
+       and print it, then (optionally) remove it
 
     Usage: dominator localexec [options] <shipname> <containername>
+
+    Options:
+        -h, --help
+        -k, --keep  # keep container after stop [default: false]
     """
     for cont in filter_containers(containers, shipname, containername):
-        with cont.execute() as logs:
-            for line in logs:
-                print(line)
-        if not keep:
-            cont.remove()
+        try:
+            with cont.execute() as logs:
+                logger = utils.getlogger('dominator.docker.logs', container=cont)
+                for line in logs:
+                    print(line)
+        finally:
+            try:
+                if not keep:
+                    cont.remove(force=True)
+            except:
+                getlogger().exception("failed to remove container")
 
 
 @command

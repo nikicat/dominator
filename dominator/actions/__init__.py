@@ -40,7 +40,7 @@ import docopt
 from colorama import Fore
 import requests_cache
 
-from ..entities import Container, Image, DataVolume
+from ..entities import Container, Image, SourceImage, DataVolume
 from .. import utils
 from ..utils import getlogger, settings
 
@@ -327,6 +327,21 @@ def logs(containers, ship: str=None, container: str=None, follow: bool=False):
     for cont in filter_containers(containers, ship, container):
         cont.check()
         cont.logs(follow=follow)
+
+
+@command
+def build(containers, imagename: str=None, nocache: bool=False):
+    """Build source images
+
+    Usage: dominator build [options] [<imagename>]
+
+    Options:
+        -h, --help
+        --nocache      # disable Docker cache [default: false]
+    """
+    for cont in containers:
+        if isinstance(cont.image, SourceImage) and (imagename is None or cont.image.repository == imagename):
+            cont.image.build(push=False, nocache=nocache)
 
 
 def getversion():

@@ -221,9 +221,13 @@ class SourceImage(Image):
             return Image.getid(self)
         except docker.errors.DockerException as e:
             self.logger.info("pull failed, rebuilding (%s)", e)
-        self.build(fileobj=self.gettarfile(), custom_context=True)
-        self.push()
-        return Image.getid(self)
+            self.build()
+            return Image.getid(self)
+
+    def build(self, push=True, **kwargs):
+        Image.build(self, fileobj=self.gettarfile(), custom_context=True, **kwargs)
+        if push:
+            self.push()
 
     def gethash(self):
         """Used to calculate unique identifying tag for image

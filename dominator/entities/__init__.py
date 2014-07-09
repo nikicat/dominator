@@ -619,8 +619,7 @@ class YamlFile(BaseFile):
 
 
 class JsonFile(BaseFile):
-    def __init__(self, name: str, data: dict):
-        BaseFile.__init__(self, name)
+    def __init__(self, data: dict):
         self.content = data
 
     def data(self, _container):

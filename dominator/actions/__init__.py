@@ -140,17 +140,15 @@ def filter_containers(containers, shipname: str=None, containername: str=None):
 
 
 @command
-def list_containers(containers):
-    """List containers for local ship
-
-    Usage: dominator list-containers [-h]
+def list_containers(containers, shipname: str=None):
+    """Print container names
+    Usage: dominator list-containers [options] [<shipname>]
 
     Options:
         -h, --help
     """
-    for container in containers:
-        if container.ship.islocal:
-            print(container.name)
+    for cont in filter_containers(containers, shipname):
+        print(cont.name)
 
 
 def load_module(modulename, func):

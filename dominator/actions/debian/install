@@ -1,0 +1,1 @@
+debian/${ service }.yaml etc/dominator/service.d

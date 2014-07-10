@@ -1,0 +1,5 @@
+obedient-${ service } (${ __import__('datetime').datetime.now().strftime('%Y%m%d%H%M%S') }) trusty; urgency=low
+
+  * Automatically built.
+
+ -- Nikolay Bryskin <devel.niks@gmail.com>  Tue, 03 Jun 2014 12:12:17 +0400

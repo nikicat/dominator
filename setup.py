@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
-        version='3.2',
+        version='4.0',
         url='https://github.com/yandex-sysmon/dominator',
         license='GPLv3',
         author='Nikolay Bryskin',
@@ -35,7 +35,11 @@ if __name__ == '__main__':
         packages=['dominator.entities', 'dominator.actions', 'dominator.utils'],
         namespace_packages=['dominator'],
         entry_points={'console_scripts': ['dominator = dominator.actions:main']},
-        package_data={'dominator.utils': ['settings.yaml']},
+        package_data={
+            'dominator.utils': ['settings.yaml'],
+            'dominator.actions': ['debian/*', 'debian/source/*']
+        },
+        exclude_package_data={'dominator.actions': ['debian/source']},
         classifiers=[
             'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
             'Operating System :: POSIX :: Linux',
@@ -56,7 +60,7 @@ if __name__ == '__main__':
         extras_require={
             'cache': ['requests_cache'],
             'colorlog': ['colorlog'],
-            'dump': ['PyYAML.Yandex >= 3.21.1'],
+            'dump': ['PyYAML.Yandex >= 3.11.1'],
             'load': ['PyYAML']
         },
         cmdclass={'test': PyTest},

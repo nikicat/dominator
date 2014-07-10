@@ -17,6 +17,7 @@ import yaml
 import pkg_resources
 import docker
 import docker.errors
+import mako.template
 
 from .. import utils
 
@@ -598,7 +599,6 @@ class TemplateFile:
         self.file.dump(container, volume, name, self.data(container))
 
     def data(self, container):
-        import mako.template
         template = mako.template.Template(self.file.data(container))
         context = {'this': container}
         context.update(self.context)

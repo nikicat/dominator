@@ -101,7 +101,7 @@ def cached(fun):
     return functools.lru_cache(100)(fun)
 
 
-def groupby(objects, key):
+def groupbysorted(objects, key):
     return itertools.groupby(sorted(objects, key=key), key=key)
 
 

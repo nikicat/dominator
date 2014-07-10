@@ -60,7 +60,7 @@ if __name__ == '__main__':
         extras_require={
             'cache': ['requests_cache'],
             'colorlog': ['colorlog'],
-            'dump': ['PyYAML.Yandex >= 3.21.1'],
+            'dump': ['PyYAML.Yandex >= 3.11.1'],
             'load': ['PyYAML']
         },
         cmdclass={'test': PyTest},

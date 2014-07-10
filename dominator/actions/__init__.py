@@ -5,6 +5,7 @@ Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <f
 Commands:
     dump                dump config in yaml format
     list-containers     list local containers (used by upstart script)
+    makedeb             make debian/ dir ready to create obedient package
     start               start containers
     stop                stop containers
     restart             restart containers
@@ -14,6 +15,7 @@ Commands:
     localstop           stop containers locally
     localrestart        restart containers locally
     localstatus         show local containers' status
+    localexec           start and attach to container locally
 
 Options:
     -s, --settings <settings>    yaml file to load settings
@@ -31,6 +33,7 @@ import logging
 import logging.config
 import sys
 import re
+import os
 import importlib
 import itertools
 from contextlib import contextmanager
@@ -38,6 +41,7 @@ import pkg_resources
 
 import yaml
 import docopt
+import mako.template
 from colorama import Fore
 
 from ..entities import Container, Image, SourceImage, DataVolume
@@ -265,6 +269,35 @@ def restart(containers, ship: str=None, container: str=None, keep: bool=False):
     """
     for s, containers in group_containers(containers, ship, container):
         runremotely(containers, s, 'localrestart', keep)
+
+
+@command
+def makedeb(containers, servicename: str):
+    """Create debian/ directory in current dir ready for building debian package
+
+    Usage: dominator makedeb [options] <servicename>
+
+    Options:
+        -h, --help
+    """
+    def render_dir(name):
+        os.makedirs(name)
+        for file in pkg_resources.resource_listdir(__name__, name):
+            path = os.path.join(name, file)
+            if pkg_resources.resource_isdir(__name__, path):
+                render_dir(path)
+            else:
+                data = pkg_resources.resource_string(__name__, path)
+                template = mako.template.Template(data)
+                utils.getlogger().debug('rendering file %s', path)
+                rendered = template.render(service=servicename)
+                with open(path, 'w+') as output:
+                    output.write(rendered)
+
+    render_dir('debian')
+
+    with open('debian/{}.yaml'.format(servicename), 'w+') as config:
+        yaml.dump(containers, config)
 
 
 @utils.cached

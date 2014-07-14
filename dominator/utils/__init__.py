@@ -243,6 +243,7 @@ def compare_container(cont, cinfo):
         ('image.repo', cont.image.getfullrepository(), imagerepo),
         ('image.id', cont.image.getid(), imageid),
         ('memory', cont.memory, cinfo['Config']['Memory']),
+        ('network_mode', cont.network_mode, cinfo['HostConfig']['NetworkMode']),
     ]:
         yield from compare_values((key,), expected, actual)
 
@@ -256,7 +257,7 @@ def compare_container(cont, cinfo):
         env.update(cont.env)
         yield from compare_env(env, dict(var.split('=', 1) for var in cinfo['Config']['Env']))
 
-    yield from compare_ports(cont, cinfo['NetworkSettings']['Ports'])
+    yield from compare_ports(cont, cinfo['HostConfig']['PortBindings'])
     yield from compare_volumes(cont, cinfo)
 
 

@@ -289,8 +289,8 @@ class SourceImage(Image):
 
 class Container:
     def __init__(self, name: str, ship: Ship, image: Image, command: str=None, hostname: str=None,
-                 ports: dict=None, memory: int=0, volumes: dict=None,
-                 env: dict=None, extports: dict=None, portproto: dict=None):
+                 ports: dict=None, memory: int=0, volumes: dict=None, env: dict=None, extports: dict=None,
+                 portproto: dict=None, network_mode: str=''):
         self.name = name
         self.ship = ship
         self.image = image
@@ -304,6 +304,7 @@ class Container:
         self.id = ''
         self.status = 'not found'
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
+        self.network_mode = network_mode
 
     def __repr__(self):
         return 'Container(name={name}, ship={ship}, Image={image}, env={env}, id={id})'.format(**vars(self))
@@ -462,6 +463,7 @@ class Container:
                     for name, port in self.ports.items()
                 },
                 binds={v.getpath(self): {'bind': v.dest, 'ro': v.ro} for v in self.volumes.values()},
+                network_mode=self.network_mode,
             )
         try:
             _start()

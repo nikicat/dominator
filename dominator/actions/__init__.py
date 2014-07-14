@@ -414,6 +414,7 @@ def main():
                 containers = load_yaml(args['--config'])
             else:
                 if args['--no-cache']:
+                    getlogger().info('loading containers without cache')
                     containers = load_module(args['--module'], args['--function'])
                 else:
                     import requests_cache

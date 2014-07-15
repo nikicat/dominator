@@ -326,8 +326,8 @@ def getambassadorimage():
     image.push()
     return image
 
-def ambassador(ship, command):
 
+def getambassador(ship, command):
     return Container(
         name='dominator-ambassador',
         image=getambassadorimage(),
@@ -342,13 +342,13 @@ def ambassador(ship, command):
 
 
 def runremotely(containers, ship, command, keep: bool=False, printlogs: bool=False):
-    logger = getlogger(ship=ship, command=command, keep=keep)
-    logger.info('running remotely')
-
     if not printlogs:
         command = '-ldebug ' + command
 
-    cont = ambassador(ship, command)
+    logger = getlogger(ship=ship, command=command, keep=keep)
+    logger.info('running remotely')
+
+    cont = getambassador(ship, command)
 
     with cont.execute() as logs:
         with _docker_attach(ship.docker, cont) as stdin:

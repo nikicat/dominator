@@ -404,7 +404,9 @@ def build(containers, imagename: str=None, nocache: bool=False, push: bool=False
     """
     for cont in containers:
         if isinstance(cont.image, SourceImage) and (imagename is None or cont.image.repository == imagename):
-            cont.image.build(push=push, nocache=nocache)
+            cont.image.build(nocache=nocache)
+            if push:
+                cont.image.push()
 
 
 def getversion():

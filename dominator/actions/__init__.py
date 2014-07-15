@@ -302,8 +302,25 @@ def makedeb(containers, servicename: str):
 
 @utils.cached
 def getambassadorimage():
-    return Image(settings.get('deploy-image', 'yandex/dominator'))
-
+    image = SourceImage(
+        name='dominator',
+        parent=Image('yandex/trusty'),
+        scripts=[
+            'apt-get install -yyq python3-pip strace git mercurial',
+            'pip3 install dominator[dump,colorlog]=={}'.format(getversion()),
+        ],
+        files={
+            '/etc/dominator/settings.yaml': 'settings.docker.yaml',
+        },
+        volumes={
+            'data': '/var/lib/dominator',
+            'socket': '/run/docker.sock',
+        },
+        command='dominator -l debug -c - run',
+    )
+    image.getid()
+    image.push()
+    return image
 
 def ambassador(ship, command):
 

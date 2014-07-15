@@ -37,7 +37,7 @@ if __name__ == '__main__':
         entry_points={'console_scripts': ['dominator = dominator.actions:main']},
         package_data={
             'dominator.utils': ['settings.yaml'],
-            'dominator.actions': ['debian/*', 'debian/source/*']
+            'dominator.actions': ['debian/*', 'debian/source/*', 'settings.docker.yaml']
         },
         exclude_package_data={'dominator.actions': ['debian/source']},
         classifiers=[

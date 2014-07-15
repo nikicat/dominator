@@ -244,17 +244,21 @@ def print_diff(difflist):
 
 
 @command
-def start(containers, ship: str=None, container: str=None, keep: bool=False):
+def start(containers, shipname: str=None, containername: str=None, keep: bool=False):
     """Start containers on ship[s]
 
-    Usage: dominator start [options] [<ship> [<container>]]
+    Usage: dominator start [options] [<shipname> [<containername>]]
 
     Options:
         -h, --help
         -k, --keep  # keep ambassador container after run
     """
-    for s, containers in group_containers(containers, ship, container):
-        runremotely(containers, s, 'localstart', keep)
+    for image in {container.image for container in filter_containers(containers, shipname, containername)}:
+        image.getid()
+        image.push()
+
+    for ship, containers in group_containers(containers, shipname, containername):
+        runremotely(containers, ship, 'localstart', keep)
 
 
 @command
@@ -302,11 +306,28 @@ def makedeb(containers, servicename: str):
 
 @utils.cached
 def getambassadorimage():
-    return Image(settings.get('deploy-image', 'yandex/dominator'))
+    image = SourceImage(
+        name='dominator',
+        parent=Image('yandex/trusty'),
+        scripts=[
+            'apt-get install -yyq python3-pip strace git mercurial',
+            'pip3 install dominator[dump,colorlog]=={}'.format(getversion()),
+        ],
+        files={
+            '/etc/dominator/settings.yaml': 'settings.docker.yaml',
+        },
+        volumes={
+            'data': '/var/lib/dominator',
+            'socket': '/run/docker.sock',
+        },
+        command='dominator -l debug -c - run',
+    )
+    image.getid()
+    image.push()
+    return image
 
 
-def ambassador(ship, command):
-
+def getambassador(ship, command):
     return Container(
         name='dominator-ambassador',
         image=getambassadorimage(),
@@ -321,13 +342,13 @@ def ambassador(ship, command):
 
 
 def runremotely(containers, ship, command, keep: bool=False, printlogs: bool=False):
-    logger = getlogger(ship=ship, command=command, keep=keep)
-    logger.info('running remotely')
-
     if not printlogs:
         command = '-ldebug ' + command
 
-    cont = ambassador(ship, command)
+    logger = getlogger(ship=ship, command=command, keep=keep)
+    logger.info('running remotely')
+
+    cont = getambassador(ship, command)
 
     with cont.execute() as logs:
         with _docker_attach(ship.docker, cont) as stdin:
@@ -383,7 +404,9 @@ def build(containers, imagename: str=None, nocache: bool=False, push: bool=False
     """
     for cont in containers:
         if isinstance(cont.image, SourceImage) and (imagename is None or cont.image.repository == imagename):
-            cont.image.build(push=push, nocache=nocache)
+            cont.image.build(nocache=nocache)
+            if push:
+                cont.image.push()
 
 
 def getversion():

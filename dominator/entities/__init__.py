@@ -112,12 +112,12 @@ class Image:
     def logger(self):
         return utils.getlogger(image=self, bindto=3)
 
-    def getid(self):
+    def getid(self, dock=None):
         self.logger.debug('retrieving id')
         if self.id is '':
-            if self.tag not in self.gettags():
-                self.pull()
-            self.id = self.gettags()[self.tag]
+            if self.tag not in self.gettags(dock):
+                self.pull(dock)
+            self.id = self.gettags(dock)[self.tag]
         return self.id
 
     def _streamoperation(self, func, **kwargs):
@@ -152,9 +152,10 @@ class Image:
 
     @utils.cached
     @utils.asdict
-    def gettags(self):
+    def gettags(self, dock):
         self.logger.debug("retrieving tags")
-        images = utils.getdocker().images(self.getfullrepository(), all=True)
+        dock = dock or utils.getdocker()
+        images = dock.images(self.getfullrepository(), all=True)
         for image in images:
             for tag in image['RepoTags']:
                 yield tag.split(':')[-1], image['Id']
@@ -212,23 +213,19 @@ class SourceImage(Image):
             return filtered_state()
         except docker.errors.DockerException:
             # DockerException means that needed image not found in repository and needs rebuilding
-            pass
-        self.build(fileobj=self.gettarfile(), custom_context=True)
-        self.push()
-        return filtered_state()
+            self.build()
+            return filtered_state()
 
-    def getid(self):
+    def getid(self, dock=None):
         try:
-            return Image.getid(self)
+            return Image.getid(self, dock)
         except docker.errors.DockerException as e:
             self.logger.info("pull failed, rebuilding (%s)", e)
-            self.build()
-            return Image.getid(self)
+            self.build(dock)
+            return Image.getid(self, dock)
 
-    def build(self, push=True, **kwargs):
-        Image.build(self, fileobj=self.gettarfile(), custom_context=True, **kwargs)
-        if push:
-            self.push()
+    def build(self, dock=None, **kwargs):
+        return Image.build(self, dock, fileobj=self.gettarfile(), custom_context=True, **kwargs)
 
     def gethash(self):
         """Used to calculate unique identifying tag for image

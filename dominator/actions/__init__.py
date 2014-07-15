@@ -244,17 +244,21 @@ def print_diff(difflist):
 
 
 @command
-def start(containers, ship: str=None, container: str=None, keep: bool=False):
+def start(containers, shipname: str=None, containername: str=None, keep: bool=False):
     """Start containers on ship[s]
 
-    Usage: dominator start [options] [<ship> [<container>]]
+    Usage: dominator start [options] [<shipname> [<containername>]]
 
     Options:
         -h, --help
         -k, --keep  # keep ambassador container after run
     """
-    for s, containers in group_containers(containers, ship, container):
-        runremotely(containers, s, 'localstart', keep)
+    for image in {container.image for container in filter_containers(containers, shipname, containername)}:
+        image.getid()
+        image.push()
+
+    for ship, containers in group_containers(containers, shipname, containername):
+        runremotely(containers, ship, 'localstart', keep)
 
 
 @command

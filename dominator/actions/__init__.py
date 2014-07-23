@@ -276,10 +276,10 @@ def restart(containers, ship: str=None, container: str=None, keep: bool=False):
 
 
 @command
-def makedeb(containers, servicename: str):
+def makedeb(containers, packagename: str, packageversion: str):
     """Create debian/ directory in current dir ready for building debian package
 
-    Usage: dominator makedeb [options] <servicename>
+    Usage: dominator makedeb [options] <packagename> <packageversion>
 
     Options:
         -h, --help
@@ -293,14 +293,14 @@ def makedeb(containers, servicename: str):
             else:
                 data = pkg_resources.resource_string(__name__, path)
                 template = mako.template.Template(data)
-                utils.getlogger().debug('rendering file %s', path)
-                rendered = template.render(service=servicename)
+                utils.getlogger().debug("rendering file %s", path)
+                rendered = template.render(packagename=packagename, packageversion=packageversion)
                 with open(path, 'w+') as output:
                     output.write(rendered)
 
     render_dir('debian')
 
-    with open('debian/{}.yaml'.format(servicename), 'w+') as config:
+    with open('debian/{}.yaml'.format(packagename), 'w+') as config:
         yaml.dump(containers, config)
 
 

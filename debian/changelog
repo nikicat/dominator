@@ -1,11 +1,5 @@
-dominator (3.2) trusty; urgency=medium
+dominator (4.3) trusty; urgency=medium
 
   * Version bump
 
  -- Nikolay Bryskin <devel.niks@gmail.com>  Wed, 09 Jul 2014 16:43:18 +0000
-
-dominator (0.1) trusty; urgency=low
-
-  * Initial Release.
-
- -- Nikolay Bryskin <devel.niks@gmail.com>  Tue, 03 Jun 2014 12:12:17 +0400

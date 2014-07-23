@@ -1,4 +1,4 @@
-obedient-${ service } (${ __import__('datetime').datetime.now().strftime('%Y%m%d%H%M%S') }) trusty; urgency=low
+${ packagename } (${ packageversion }) trusty; urgency=low
 
   * Automatically built.
 

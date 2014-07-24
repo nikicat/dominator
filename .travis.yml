@@ -3,7 +3,6 @@ python:
 - 3.4
 env:
   matrix:
-  - TOXENV=py33
   - TOXENV=py34
   - TOXENV=flake8
   - TOXENV=pylint

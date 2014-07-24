@@ -1,1 +1,1 @@
-debian/${ service }.yaml etc/dominator/service.d
+debian/${ packagename }.yaml etc/dominator/service.d

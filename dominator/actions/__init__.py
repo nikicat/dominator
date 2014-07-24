@@ -276,14 +276,18 @@ def restart(containers, ship: str=None, container: str=None, keep: bool=False):
 
 
 @command
-def makedeb(containers, packagename: str, packageversion: str):
+def makedeb(containers, obedient, packagename):
     """Create debian/ directory in current dir ready for building debian package
 
-    Usage: dominator makedeb [options] <packagename> <packageversion>
+    Usage: dominator makedeb [options] <obedient> <packagename>
 
     Options:
         -h, --help
     """
+
+    distribution = pkg_resources.get_distribution(obedient)
+    metadata = dict(item.split(': ', 1) for item in distribution._get_metadata(distribution.PKG_INFO))
+
     def render_dir(name):
         os.makedirs(name)
         for file in pkg_resources.resource_listdir(__name__, name):
@@ -291,10 +295,10 @@ def makedeb(containers, packagename: str, packageversion: str):
             if pkg_resources.resource_isdir(__name__, path):
                 render_dir(path)
             else:
-                data = pkg_resources.resource_string(__name__, path)
-                template = mako.template.Template(data)
+                filename = pkg_resources.resource_filename(__name__, path)
+                template = mako.template.Template(filename=filename)
                 utils.getlogger().debug("rendering file %s", path)
-                rendered = template.render(packagename=packagename, packageversion=packageversion)
+                rendered = template.render(packagename=packagename, metadata=metadata, distribution=distribution)
                 with open(path, 'w+') as output:
                     output.write(rendered)
 

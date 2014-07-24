@@ -1,15 +1,15 @@
-Source: obedient-${ service }
+Source: ${ packagename }
 Section: misc
 Priority: optional
-Maintainer: Nikolay Bryskin <devel.niks@gmail.com>
+Maintainer: ${ metadata.get('Author', 'unknown') }
 Build-Depends: debhelper (>= 9.0.0)
 Standards-Version: 3.9.5
-Homepage: https://github.com/yandex-sysmon/dominator
+Homepage: ${ metadata.get('Home-page', 'unknown') }
 
-Package: obedient-${ service }
+<% import pkg_resources %>Package: ${ packagename }
 Architecture: all
-<%text>Depends: ${misc:Depends}, dominator</%text>
-Description: Dominator config for ${ service }
+Depends: ${ '${misc:Depends}' }, dominator (= ${ pkg_resources.get_distribution('dominator').version })
+Description: Dead Obedient for ${ packagename }
  Dominator is a tools to generate config for provisioning
  cloud services using Docker.
- This package provides config to run ${ service } using it.
+ This package provides config to run one node on it using it.

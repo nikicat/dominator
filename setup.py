@@ -58,10 +58,8 @@ if __name__ == '__main__':
             'vcrpy',
         ],
         extras_require={
-            'cache': ['requests_cache'],
-            'colorlog': ['colorlog'],
-            'dump': ['PyYAML.Yandex >= 3.11.1'],
-            'load': ['PyYAML']
+            'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'requests_cache', 'tzlocal'],
+            'tiny': ['PyYAML']
         },
         cmdclass={'test': PyTest},
     )

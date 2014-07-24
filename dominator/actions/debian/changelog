@@ -1,5 +1,8 @@
-${ packagename } (${ packageversion }) trusty; urgency=low
+<%
+    import datetime
+    import tzlocal
+%>${ packagename } (${ distribution.version }) trusty; urgency=low
 
-  * Automatically built.
+  * Generated from ${ distribution.project_name }.
 
- -- Nikolay Bryskin <devel.niks@gmail.com>  Tue, 03 Jun 2014 12:12:17 +0400
+ -- ${ metadata.get('Author', 'John Doe') } <${ metadata.get('Author-email', 'noreply@gmail.com') }>  ${ datetime.datetime.now(tz=tzlocal.get_localzone()).strftime('%a, %d %b %Y %H:%M:%S %z') }

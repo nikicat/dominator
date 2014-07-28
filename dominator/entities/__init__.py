@@ -12,6 +12,7 @@ import hashlib
 import tempfile
 import base64
 import io
+import datetime
 
 import yaml
 import pkg_resources
@@ -59,7 +60,7 @@ class Ship(BaseShip):
     @utils.cached
     def docker(self):
         self.logger.debug('connecting to ship', fqdn=self.fqdn)
-        return docker.Client('http://{}:4243/'.format(self.fqdn))
+        return docker.Client('http://{}:4243'.format(self.fqdn))
 
 
 class LocalShip(BaseShip):
@@ -622,3 +623,29 @@ class JsonFile(BaseFile):
 
     def data(self, _container):
         return json.dumps(self.content, sort_keys=True, indent='  ')
+
+
+class Shipment:
+    def __init__(self, distribution, entrypoint):
+        import pkginfo
+        import tzlocal
+        self.distribution = distribution
+        self.entrypoint = entrypoint
+
+        # extract metadata
+        dist = pkginfo.get_metadata(distribution)
+        self.version = dist.version
+        self.author = dist.author
+        self.author_email = dist.author_email
+        self.home_page = dist.home_page
+        self.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
+
+        # generate containers and ships
+        dist = pkg_resources.get_distribution(distribution)
+        if entrypoint is None:
+            entrypoint = list(dist.get_entry_map('obedient').keys())[0]
+            utils.getlogger().debug("loading shipment using autedetected entrypoint %s", entrypoint)
+
+        func = dist.load_entry_point('obedient', entrypoint)
+        self.containers = func()
+        self._ships = self.ships = list({container.ship for container in self.containers})

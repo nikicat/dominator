@@ -44,4 +44,3 @@ logging:
     root:
         level: DEBUG
         handlers: [default]
-

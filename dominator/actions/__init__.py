@@ -438,4 +438,4 @@ def main():
                         if k not in ['--help', command]})
         except:
             getlogger(command=command).exception("failed to execute command")
-            return
+            sys.exit(1)

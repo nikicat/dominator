@@ -46,7 +46,9 @@ def shipment():
             name='testcont',
             ship=ship,
             image=Image('busybox'),
-            command='sleep 10') for ship in ships()])
+            command='sleep 10')
+        for ship in ships()
+    ])
 
 
 @pytest.fixture

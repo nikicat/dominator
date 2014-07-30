@@ -1,8 +1,5 @@
-<%
-    import datetime
-    import tzlocal
-%>${ packagename } (${ distribution.version }) trusty; urgency=low
+${ packagename } (${ shipment.version }) trusty; urgency=low
 
-  * Generated from ${ distribution.project_name }.
+  * Generated from ${ shipment.distribution }:${ shipment.entrypoint }.
 
- -- ${ metadata.get('Author', 'John Doe') } <${ metadata.get('Author-email', 'noreply@gmail.com') }>  ${ datetime.datetime.now(tz=tzlocal.get_localzone()).strftime('%a, %d %b %Y %H:%M:%S %z') }
+ -- ${ shipment.author } <${ shipment.author_email }>  ${ shipment.timestamp.strftime('%a, %d %b %Y %H:%M:%S %z') }

@@ -1,41 +1,8 @@
-"""
-Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-m <module> [-f <function>]) \
-                 [--no-cache] [--clear-cache] [-n <namespace>] <command> [<args>...]
-
-Commands:
-    dump                dump config in yaml format
-    list-containers     list local containers (used by upstart script)
-    makedeb             make debian/ dir ready to create obedient package
-    start               start containers
-    stop                stop containers
-    restart             restart containers
-    status              show containers' status
-
-    localstart          start containers locally
-    localstop           stop containers locally
-    localrestart        restart containers locally
-    localstatus         show local containers' status
-    localexec           start and attach to container locally
-
-Options:
-    -s, --settings <settings>    yaml file to load settings
-    -l, --loglevel <loglevel>    log level [default: warn]
-    -c, --config <config>        yaml config file
-    -m, --module <modulename>    python module name
-    -f, --function <funcname>    python function name [default: create]
-    -n, --namespace <namespace>  docker namespace to use if not set (overrides config)
-    --no-cache                   disable requests cache when using -m/-f
-    --clear-cache                clear requests cache (requires no --no-cache)
-"""
-
-
 import logging
 import logging.config
 import sys
 import re
 import os
-import importlib
-import itertools
 from contextlib import contextmanager
 import pkg_resources
 
@@ -44,7 +11,7 @@ import docopt
 import mako.template
 from colorama import Fore
 
-from ..entities import Container, Image, SourceImage, DataVolume
+from ..entities import Container, Image, SourceImage, DataVolume, Shipment
 from .. import utils
 from ..utils import getlogger, settings
 
@@ -60,16 +27,16 @@ def command(func):
 
 
 @command
-def dump(containers):
+def dump(shipment):
     """Dump config as YAML
 
     Usage: dominator dump
     """
-    print(yaml.dump(containers))
+    print(yaml.dump(shipment))
 
 
 @command
-def localstart(containers, shipname: str=None, containername: str=None):
+def localstart(shipment, shipname: str=None, containername: str=None):
     """Start locally all or specified containers
 
     Usage: dominator localstart [options] [<shipname>] [<containername>]
@@ -77,12 +44,12 @@ def localstart(containers, shipname: str=None, containername: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(containers, shipname, containername):
+    for cont in filter_containers(shipment, shipname, containername):
         cont.run()
 
 
 @command
-def localrestart(containers, shipname: str=None, containername: str=None):
+def localrestart(shipment, shipname: str=None, containername: str=None):
     """Restart locally all or specified containers
 
     Usage: dominator localrestart [options] [<shipname>] [<containername>]
@@ -90,7 +57,7 @@ def localrestart(containers, shipname: str=None, containername: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(containers, shipname, containername):
+    for cont in filter_containers(shipment, shipname, containername):
         cont.check()
         if cont.running:
             cont.stop()
@@ -98,7 +65,7 @@ def localrestart(containers, shipname: str=None, containername: str=None):
 
 
 @command
-def localexec(containers, shipname: str, containername: str, keep: bool=False):
+def localexec(shipment, shipname: str, containername: str, keep: bool=False):
     """Start container locally, attach to process, read stdout/stderr
        and print it, then (optionally) remove it
 
@@ -108,7 +75,7 @@ def localexec(containers, shipname: str, containername: str, keep: bool=False):
         -h, --help
         -k, --keep  # keep container after stop [default: false]
     """
-    for cont in filter_containers(containers, shipname, containername):
+    for cont in filter_containers(shipment, shipname, containername):
         try:
             with cont.execute() as logs:
                 for line in logs:
@@ -122,7 +89,7 @@ def localexec(containers, shipname: str, containername: str, keep: bool=False):
 
 
 @command
-def stop(containers, ship: str=None, container: str=None):
+def stop(shipment, ship: str=None, container: str=None):
     """Stop container(s) on ship(s)
 
     Usage: dominator stop [options] [<ship> [<container>]]
@@ -130,21 +97,21 @@ def stop(containers, ship: str=None, container: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(containers, ship, container):
+    for cont in filter_containers(shipment, ship, container):
         cont.check()
         if cont.running:
             cont.stop()
 
 
-def group_containers(containers, shipname: str=None, containername: str=None):
-    return [(s, list(sconts)) for s, sconts in itertools.groupby(
-        filter_containers(containers, shipname, containername), lambda c: c.ship)]
+def group_containers(shipment, shipname: str=None, containername: str=None):
+    return [(ship, filter_containers(shipment, ship.name, containername))
+            for ship in shipment.ships if shipname is None or ship.name == shipname]
 
 
 @utils.makesorted(lambda c: (c.ship.name, c.name))
-def filter_containers(containers, shipname: str=None, containername: str=None):
+def filter_containers(shipment, shipname: str=None, containername: str=None):
     notfound = True
-    for cont in containers:
+    for cont in shipment.containers:
         if ((shipname is None or re.match(shipname, cont.ship.name)) and
            (containername is None or re.match(containername, cont.name))):
             notfound = False
@@ -154,24 +121,23 @@ def filter_containers(containers, shipname: str=None, containername: str=None):
 
 
 @command
-def list_containers(containers, shipname: str=None):
+def list_containers(shipment, shipname: str=None):
     """Print container names
     Usage: dominator list-containers [options] [<shipname>]
 
     Options:
         -h, --help
     """
-    for cont in filter_containers(containers, shipname):
+    for cont in filter_containers(shipment, shipname):
         print(cont.name)
 
 
-def load_module(modulename, func):
-    getlogger().info("loading config from module", configmodule=modulename, configfunc=func)
-    module = importlib.import_module(modulename)
-    return getattr(module, func)()
+def load_from_distribution(distribution, entrypoint):
+    getlogger().info("loading config from distribution entry point", distribution=distribution, entrypoint=entrypoint)
+    return Shipment(distribution=distribution, entrypoint=entrypoint)
 
 
-def load_yaml(filename):
+def load_from_yaml(filename):
     getlogger().info("loading config from yaml", path=filename)
     if filename == '-':
         return yaml.load(sys.stdin)
@@ -181,8 +147,8 @@ def load_yaml(filename):
 
 
 @command
-def localstatus(containers, ship: str=None, container: str=None, showdiff: bool=False):
-    """Show local containers' status
+def localstatus(shipment, shipname: str=None, containername: str=None, showdiff: bool=False):
+    """Show local shipment' status
 
     Usage: dominator localstatus [options] [<ship>] [<container>]
 
@@ -190,7 +156,7 @@ def localstatus(containers, ship: str=None, container: str=None, showdiff: bool=
         -h, --help
         -d, --showdiff  # show diff with running container [default: false]
     """
-    for c in filter_containers(containers, ship, container):
+    for c in filter_containers(shipment, shipname, containername):
         c.check()
         if c.running:
             diff = list(utils.compare_container(c, c.inspect()))
@@ -211,19 +177,19 @@ def localstatus(containers, ship: str=None, container: str=None, showdiff: bool=
 
 
 @command
-def status(containers, ship: str=None, container: str=None, showdiff: bool=False, keep: bool=True):
-    """Show local containers' status
+def status(shipment, shipname: str=None, containername: str=None, showdiff: bool=False, keep: bool=True):
+    """Show local shipment' status
 
-    Usage: dominator status [options] [<ship>] [<container>]
+    Usage: dominator status [options] [<shipname>] [<containername>]
 
     Options:
         -h, --help
         -d, --showdiff  # show diff with running container [default: false]
         -k, --keep      # keep ambassador container [default: false]
     """
-    for s, containers in group_containers(containers, ship, container):
-        getlogger(ship=s).debug("processing ship")
-        runremotely(containers, s, 'localstatus' + (' -d' if showdiff else ''), keep, printlogs=True)
+    for ship, _ in group_containers(shipment, shipname, containername):
+        getlogger(ship=ship).debug("processing ship")
+        runremotely(shipment, ship, 'localstatus' + (' -d' if showdiff else ''), keep, printlogs=True)
 
 
 def print_diff(difflist):
@@ -244,7 +210,7 @@ def print_diff(difflist):
 
 
 @command
-def start(containers, shipname: str=None, containername: str=None, keep: bool=False):
+def start(shipment, shipname: str=None, containername: str=None, keep: bool=False):
     """Start containers on ship[s]
 
     Usage: dominator start [options] [<shipname> [<containername>]]
@@ -253,40 +219,37 @@ def start(containers, shipname: str=None, containername: str=None, keep: bool=Fa
         -h, --help
         -k, --keep  # keep ambassador container after run
     """
-    for image in {container.image for container in filter_containers(containers, shipname, containername)}:
+    for image in {container.image for container in filter_containers(shipment, shipname, containername)}:
         image.getid()
         image.push()
 
-    for ship, containers in group_containers(containers, shipname, containername):
-        runremotely(containers, ship, 'localstart', keep)
+    for ship, _ in group_containers(shipment, shipname, containername):
+        runremotely(shipment, ship, 'localstart', keep)
 
 
 @command
-def restart(containers, ship: str=None, container: str=None, keep: bool=False):
+def restart(shipment, shipname: str=None, containername: str=None, keep: bool=False):
     """Restart selected containers
 
-    Usage: dominator restart [options] [<ship>] [<container>]
+    Usage: dominator restart [options] [<shipname>] [<containername>]
 
     Options:
         -h, --help
         -k, --keep  # keep ambassador container after run
     """
-    for s, containers in group_containers(containers, ship, container):
-        runremotely(containers, s, 'localrestart', keep)
+    for ship, _ in group_containers(shipment, shipname, containername):
+        runremotely(shipment, ship, 'localrestart', keep)
 
 
 @command
-def makedeb(containers, obedient, packagename):
+def makedeb(shipment, packagename):
     """Create debian/ directory in current dir ready for building debian package
 
-    Usage: dominator makedeb [options] <obedient> <packagename>
+    Usage: dominator makedeb [options] <packagename>
 
     Options:
         -h, --help
     """
-
-    distribution = pkg_resources.get_distribution(obedient)
-    metadata = dict(item.split(': ', 1) for item in distribution._get_metadata(distribution.PKG_INFO))
 
     def render_dir(name):
         os.makedirs(name)
@@ -298,37 +261,19 @@ def makedeb(containers, obedient, packagename):
                 filename = pkg_resources.resource_filename(__name__, path)
                 template = mako.template.Template(filename=filename)
                 utils.getlogger().debug("rendering file %s", path)
-                rendered = template.render(packagename=packagename, metadata=metadata, distribution=distribution)
+                rendered = template.render(packagename=packagename, shipment=shipment)
                 with open(path, 'w+') as output:
                     output.write(rendered)
 
     render_dir('debian')
 
     with open('debian/{}.yaml'.format(packagename), 'w+') as config:
-        yaml.dump(containers, config)
+        yaml.dump(shipment, config)
 
 
 @utils.cached
 def getambassadorimage():
-    image = SourceImage(
-        name='dominator',
-        parent=Image('yandex/trusty'),
-        scripts=[
-            'apt-get install -yyq python3-pip strace git mercurial',
-            'pip3 install dominator[dump,colorlog]=={}'.format(getversion()),
-        ],
-        files={
-            '/etc/dominator/settings.yaml': 'settings.docker.yaml',
-        },
-        volumes={
-            'data': '/var/lib/dominator',
-            'socket': '/run/docker.sock',
-        },
-        command='dominator -l debug -c - run',
-    )
-    image.getid()
-    image.push()
-    return image
+    return Image('yandex/dominator', tag=getversion())
 
 
 def getambassador(ship, command):
@@ -345,9 +290,10 @@ def getambassador(ship, command):
     )
 
 
-def runremotely(containers, ship, command, keep: bool=False, printlogs: bool=False):
+def runremotely(shipment, ship, command, keep: bool=False, printlogs: bool=False):
     if not printlogs:
         command = '-ldebug ' + command
+    command = '{command} {ship.name}'.format(**locals())
 
     logger = getlogger(ship=ship, command=command, keep=keep)
     logger.info('running remotely')
@@ -357,7 +303,7 @@ def runremotely(containers, ship, command, keep: bool=False, printlogs: bool=Fal
     with cont.execute() as logs:
         with _docker_attach(ship.docker, cont) as stdin:
             logger.debug('attached to stdin, sending config')
-            stdin.send(yaml.dump(containers).encode())
+            stdin.send(yaml.dump(shipment).encode())
             logger.debug('config sent, detaching stdin')
 
         logger = utils.getlogger('dominator.docker.logs', container=cont)
@@ -381,7 +327,7 @@ def _docker_attach(dock, cont):
 
 
 @command
-def logs(containers, ship: str=None, container: str=None, follow: bool=False):
+def logs(shipment, ship: str=None, container: str=None, follow: bool=False):
     """Fetch logs for container(s) on ship(s)
 
     Usage: dominator logs [options] [<ship>] [<container>]
@@ -390,13 +336,13 @@ def logs(containers, ship: str=None, container: str=None, follow: bool=False):
         -h, --help
         -f, --follow  # follow logs
     """
-    for cont in filter_containers(containers, ship, container):
+    for cont in filter_containers(shipment, ship, container):
         cont.check()
         cont.logs(follow=follow)
 
 
 @command
-def build(containers, imagename: str=None, nocache: bool=False, push: bool=False):
+def build(shipment, imagename: str=None, nocache: bool=False, push: bool=False):
     """Build source images
 
     Usage: dominator build [options] [<imagename>]
@@ -406,7 +352,7 @@ def build(containers, imagename: str=None, nocache: bool=False, push: bool=False
         -n, --nocache     # disable Docker cache [default: false]
         -p, --push        # push image to registry after build [default: false]
     """
-    for cont in containers:
+    for cont in shipment.containers:
         if isinstance(cont.image, SourceImage) and (imagename is None or cont.image.repository == imagename):
             cont.image.build(nocache=nocache)
             if push:
@@ -421,7 +367,37 @@ def getversion():
 
 
 def main():
-    args = docopt.docopt(__doc__, version=getversion(), options_first=True)
+    """
+    Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-d <distribution> [-e <entrypoint>]) \
+                     [--no-cache] [--clear-cache] [-n <namespace>] <command> [<args>...]
+
+    Commands:
+        dump                dump config in yaml format
+        list-containers     list local containers (used by upstart script)
+        makedeb             make debian/ dir ready to create obedient package
+        start               start containers
+        stop                stop containers
+        restart             restart containers
+        status              show containers' status
+
+        localstart          start containers locally
+        localstop           stop containers locally
+        localrestart        restart containers locally
+        localstatus         show local containers' status
+        localexec           start and attach to container locally
+
+    Options:
+        -s, --settings <settings>          yaml file to load settings
+        -l, --loglevel <loglevel>          log level [default: warn]
+        -c, --config <config>              yaml config file
+        -d, --distribution <distribution>  distribution name
+        -e, --entrypoint <entrypoint>      entry point, by default uses first found [default: None]
+        -n, --namespace <namespace>        docker namespace to use if not set (overrides config)
+        --no-cache                         disable requests cache when using -m/-f
+        --clear-cache                      clear requests cache (ignored with --no-cache)
+    """
+
+    args = docopt.docopt(main.__doc__, version=getversion(), options_first=True)
     command = args['<command>']
     argv = [command] + args['<args>']
     commandfunc = getattr(sys.modules[__name__], command.replace('-', '_'), None)
@@ -438,18 +414,18 @@ def main():
 
         try:
             if args['--config'] is not None:
-                containers = load_yaml(args['--config'])
+                shipment = load_from_yaml(args['--config'])
             else:
                 if args['--no-cache']:
                     getlogger().info('loading containers without cache')
-                    containers = load_module(args['--module'], args['--function'])
+                    shipment = load_from_distribution(args['--distribution'], args['--entrypoint'])
                 else:
                     import requests_cache
                     with requests_cache.enabled():
                         if args['--clear-cache']:
                             getlogger().info("clearing requests cache")
                             requests_cache.clear()
-                        containers = load_module(args['--module'], args['--function'])
+                        shipment = load_from_distribution(args['--distribution'], args['--entrypoint'])
         except:
             getlogger().exception("failed to load config")
             return
@@ -458,8 +434,8 @@ def main():
         def pythonize_arg(arg):
             return arg.replace('--', '').replace('<', '').replace('>', '')
         try:
-            commandfunc(containers, **{pythonize_arg(k): v for k, v in commandargs.items()
-                                       if k not in ['--help', command]})
+            commandfunc(shipment, **{pythonize_arg(k): v for k, v in commandargs.items()
+                        if k not in ['--help', command]})
         except:
             getlogger(command=command).exception("failed to execute command")
-            return
+            sys.exit(1)

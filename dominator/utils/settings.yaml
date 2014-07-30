@@ -11,7 +11,7 @@ configvolumedir: ~/.config/dominator/config
 datavolumedir: ~/.config/dominator/data
 
 # Uncomment to connect using tcp socket instead of unix-socket
-#dockerurl: http://localhost:4243
+#dockerurl: http://localhost:2375
 
 # FQDN for LocalShip's - used for developing. Put here some local ip
 # different from 127.0.0.1/::1 that local containers could reach

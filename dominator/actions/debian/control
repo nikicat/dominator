@@ -1,10 +1,10 @@
 Source: ${ packagename }
 Section: misc
 Priority: optional
-Maintainer: ${ metadata.get('Author', 'unknown') }
+Maintainer: ${ shipment.author } <${ shipment.author_email }>
 Build-Depends: debhelper (>= 9.0.0)
 Standards-Version: 3.9.5
-Homepage: ${ metadata.get('Home-page', 'unknown') }
+Homepage: ${ shipment.home_page }
 
 <% import pkg_resources %>Package: ${ packagename }
 Architecture: all

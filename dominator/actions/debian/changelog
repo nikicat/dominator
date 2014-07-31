@@ -1,4 +1,4 @@
-${ packagename } (${ shipment.version }) trusty; urgency=low
+${ packagename } (${ shipment.version }) ${ distribution }; urgency=${ urgency }
 
   * Generated from ${ shipment.distribution }:${ shipment.entrypoint }.
 

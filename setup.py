@@ -27,7 +27,7 @@ if __name__ == '__main__':
         name='dominator',
         version='5.0',
         url='https://github.com/yandex-sysmon/dominator',
-        license='GPLv3',
+        license='LGPLv3',
         author='Nikolay Bryskin',
         author_email='devel.niks@gmail.com',
         description='Cloud deployment toolbox',

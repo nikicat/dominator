@@ -357,11 +357,25 @@ def build(shipment, imagename: str=None, nocache: bool=False, push: bool=False):
         -n, --nocache     # disable Docker cache [default: false]
         -p, --push        # push image to registry after build [default: false]
     """
-    for cont in shipment.containers:
-        if isinstance(cont.image, SourceImage) and (imagename is None or cont.image.repository == imagename):
-            cont.image.build(nocache=nocache)
+    for image in shipment.images:
+        if isinstance(image, SourceImage) and (imagename is None or image.repository == imagename):
+            image.build(nocache=nocache)
             if push:
-                cont.image.push()
+                image.push()
+
+
+@command
+def images(shipment, imagename: str):
+    """Print image list in build order
+
+    Usage: dominator images [options] [<imagename>]
+
+    Options:
+        -h, --help
+    """
+    for image in shipment.images:
+        if isinstance(image, SourceImage) and (imagename is None or image.repository == imagename):
+            print(image)
 
 
 def getversion():

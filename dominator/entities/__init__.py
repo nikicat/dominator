@@ -13,6 +13,7 @@ import tempfile
 import base64
 import io
 import datetime
+import functools
 
 import yaml
 import pkg_resources
@@ -649,3 +650,15 @@ class Shipment:
         func = dist.load_entry_point('obedient', entrypoint)
         self.containers = func()
         self._ships = self.ships = list({container.ship for container in self.containers})
+
+    @property
+    def images(self):
+        def compare_source_images(x, y):
+            if isinstance(x, SourceImage) and isinstance(y, SourceImage):
+                if x.parent is y:
+                    return 1
+                if x is y.parent:
+                    return -1
+            return 0
+        return sorted(list(set(container.image for container in self.containers)),
+                      key=functools.cmp_to_key(compare_source_images))

@@ -347,7 +347,7 @@ def logs(shipment, ship: str=None, container: str=None, follow: bool=False):
 
 
 @command
-def build(shipment, imagename: str=None, nocache: bool=False, push: bool=False):
+def build(shipment, imagename: str, nocache: bool, push: bool, rebuild: bool):
     """Build source images
 
     Usage: dominator build [options] [<imagename>]
@@ -356,10 +356,14 @@ def build(shipment, imagename: str=None, nocache: bool=False, push: bool=False):
         -h, --help
         -n, --nocache     # disable Docker cache [default: false]
         -p, --push        # push image to registry after build [default: false]
+        -r, --rebuild     # rebuild image even if already built [default: false]
     """
     for image in shipment.images:
         if isinstance(image, SourceImage) and (imagename is None or image.repository == imagename):
-            image.build(nocache=nocache)
+            if rebuild:
+                image.build(nocache=nocache)
+            else:
+                image.getid(nocache=nocache)
             if push:
                 image.push()
 

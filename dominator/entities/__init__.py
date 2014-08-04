@@ -218,12 +218,12 @@ class SourceImage(Image):
             self.build()
             return filtered_state()
 
-    def getid(self, dock=None):
+    def getid(self, dock=None, nocache=False):
         try:
             return Image.getid(self, dock)
         except docker.errors.DockerException as e:
             self.logger.info("pull failed, rebuilding (%s)", e)
-            self.build(dock)
+            self.build(dock, nocache=nocache)
             return Image.getid(self, dock)
 
     def build(self, dock=None, **kwargs):

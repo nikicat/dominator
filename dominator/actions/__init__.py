@@ -402,7 +402,7 @@ def main():
         -l, --loglevel <loglevel>          log level [default: warn]
         -c, --config <config>              yaml config file
         -d, --distribution <distribution>  distribution name
-        -e, --entrypoint <entrypoint>      entry point, by default uses first found [default: None]
+        -e, --entrypoint <entrypoint>      entry point, by default uses first found
         -n, --namespace <namespace>        docker namespace to use if not set (overrides config)
         --no-cache                         disable requests cache when using -m/-f
         --clear-cache                      clear requests cache (ignored with --no-cache)

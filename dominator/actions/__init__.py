@@ -278,7 +278,7 @@ def makedeb(shipment, packagename: str, distribution: str, urgency: str):
 
 @utils.cached
 def getambassadorimage():
-    return Image('yandex/dominator', tag=getversion())
+    return Image(settings['deploy-image'])
 
 
 def getambassador(ship, command):

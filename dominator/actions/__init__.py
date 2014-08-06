@@ -229,17 +229,18 @@ def restart(shipment, shipname: str=None, containername: str=None, keep: bool=Fa
 
 
 @command
-def makedeb(shipment, packagename: str, distribution: str, urgency: str):
+def makedeb(shipment, packagename: str, distribution: str, urgency: str, target: str):
     """Create debian/ directory in current dir ready for building debian package
 
     Usage: dominator makedeb [options] <packagename> [<distribution>] [<urgency>]
 
     Options:
         -h, --help
+        -t, --target  target directory to create debian/ inside [default: ./]
     """
 
     def render_dir(name):
-        os.makedirs(name)
+        os.makedirs(os.path.join(target, name))
         for file in pkg_resources.resource_listdir(__name__, name):
             path = os.path.join(name, file)
             if pkg_resources.resource_isdir(__name__, path):
@@ -254,12 +255,12 @@ def makedeb(shipment, packagename: str, distribution: str, urgency: str):
                     distribution=distribution or 'unstable',
                     urgency=urgency or 'low',
                 )
-                with open(path, 'w+') as output:
+                with open(os.path.join(target, path), 'w+') as output:
                     output.write(rendered)
 
     render_dir('debian')
 
-    with open('debian/{}.yaml'.format(packagename), 'w+') as config:
+    with open(os.path.join(target, 'debian', '{}.yaml'.format(packagename)), 'w+') as config:
         yaml.dump(shipment, config)
 
 

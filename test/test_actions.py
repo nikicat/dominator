@@ -8,7 +8,7 @@ from vcr import VCR
 from colorama import Fore
 
 from dominator.entities import LocalShip, Container, Image, Shipment
-from dominator.actions import dump, localstatus, load_from_yaml, localstart, makedeb
+from dominator import actions
 from dominator.utils import settings as _settings
 
 
@@ -64,28 +64,38 @@ def docker():
 
 @vcr.use_cassette('localstart.yaml')
 def test_localstart(capsys, shipment):
-    localstart(shipment)
-    _, _ = capsys.readouterr()
-    localstatus(shipment)
+    actions.localstart(shipment)
+    _, err = capsys.readouterr()
+    assert err == ''
+
+    actions.localstatus(shipment)
     out, _ = capsys.readouterr()
     assert re.match(r'test-shipment[ \t]+localship[ \t]+testcont[ \t]+{color}[a-f0-9]{{7}}[ \t]+Up Less than a second'
                     .format(color=re.escape(Fore.GREEN)), out.split('\n')[-2])
 
+    actions.localrestart(shipment)
+    _, err = capsys.readouterr()
+    assert err == ''
+
+    actions.stop(shipment)
+    _, err = capsys.readouterr()
+    assert err == ''
+
 
 @vcr.use_cassette('dump.yaml')
 def test_dump(capsys, shipment):
-    dump(shipment)
+    actions.dump(shipment)
     dump1, _ = capsys.readouterr()
     assert dump1 != ''
     with tempfile.NamedTemporaryFile(mode='w') as tmp:
         tmp.write(dump1)
         tmp.flush()
-        dump(load_from_yaml(tmp.name))
+        actions.dump(actions.load_from_yaml(tmp.name))
     dump2, _ = capsys.readouterr()
     assert dump1 == dump2
 
 
 @vcr.use_cassette('makedeb.yaml')
 def test_makedeb(shipment, tmpdir):
-    makedeb(shipment, packagename='test-package', distribution='trusty', urgency='high', target=tmpdir.dirname)
+    actions.makedeb(shipment, packagename='test-package', distribution='trusty', urgency='high', target=tmpdir.dirname)
     assert tmpdir.ensure_dir('debian')

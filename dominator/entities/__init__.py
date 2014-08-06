@@ -61,7 +61,7 @@ class Ship(BaseShip):
     @utils.cached
     def docker(self):
         self.logger.debug('connecting to ship', fqdn=self.fqdn)
-        return docker.Client('http://{}:4243'.format(self.fqdn))
+        return docker.Client('http://{}:2375'.format(self.fqdn))
 
 
 class LocalShip(BaseShip):

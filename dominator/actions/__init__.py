@@ -150,7 +150,7 @@ def load_from_yaml(filename):
 def localstatus(shipment, shipname: str=None, containername: str=None, showdiff: bool=False):
     """Show local shipment' status
 
-    Usage: dominator localstatus [options] [<ship>] [<container>]
+    Usage: dominator localstatus [options] [<shipname>] [<containername>]
 
     Options:
         -h, --help

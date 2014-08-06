@@ -1,7 +1,6 @@
 import logging
 import logging.config
 import sys
-import re
 import os
 from contextlib import contextmanager
 import pkg_resources
@@ -44,7 +43,7 @@ def localstart(shipment, shipname: str=None, containername: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(shipment, shipname, containername):
+    for cont in shipment.filter_containers(shipname, containername):
         cont.run()
 
 
@@ -57,7 +56,7 @@ def localrestart(shipment, shipname: str=None, containername: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(shipment, shipname, containername):
+    for cont in shipment.filter_containers(shipname, containername):
         cont.check()
         if cont.running:
             cont.stop()
@@ -75,7 +74,7 @@ def localexec(shipment, shipname: str, containername: str, keep: bool=False):
         -h, --help
         -k, --keep  # keep container after stop [default: false]
     """
-    for cont in filter_containers(shipment, shipname, containername):
+    for cont in shipment.filter_containers(shipname, containername):
         try:
             with cont.execute() as logs:
                 for line in logs:
@@ -97,27 +96,15 @@ def stop(shipment, ship: str=None, container: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(shipment, ship, container):
+    for cont in shipment.filter_containers(ship, container):
         cont.check()
         if cont.running:
             cont.stop()
 
 
 def group_containers(shipment, shipname: str=None, containername: str=None):
-    return [(ship, filter_containers(shipment, ship.name, containername))
+    return [(ship, shipment.filter_containers(ship.name, containername))
             for ship in shipment.ships if shipname is None or ship.name == shipname]
-
-
-@utils.makesorted(lambda c: (c.ship.name, c.name))
-def filter_containers(shipment, shipname: str=None, containername: str=None):
-    notfound = True
-    for cont in shipment.containers:
-        if ((shipname is None or re.match(shipname, cont.ship.name)) and
-           (containername is None or re.match(containername, cont.name))):
-            notfound = False
-            yield cont
-    if notfound:
-        getlogger(shipname=shipname, containername=containername).error('no containers matched')
 
 
 @command
@@ -128,7 +115,7 @@ def list_containers(shipment, shipname: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(shipment, shipname):
+    for cont in shipment.filter_containers(shipname):
         print(cont.name)
 
 
@@ -156,7 +143,7 @@ def localstatus(shipment, shipname: str=None, containername: str=None, showdiff:
         -h, --help
         -d, --showdiff  # show diff with running container [default: false]
     """
-    for c in filter_containers(shipment, shipname, containername):
+    for c in shipment.filter_containers(shipname, containername):
         c.check()
         if c.running:
             diff = list(utils.compare_container(c, c.inspect()))
@@ -219,7 +206,7 @@ def start(shipment, shipname: str=None, containername: str=None, keep: bool=Fals
         -h, --help
         -k, --keep  # keep ambassador container after run
     """
-    for image in {container.image for container in filter_containers(shipment, shipname, containername)}:
+    for image in {container.image for container in shipment.filter_containers(shipname, containername)}:
         image.getid()
         image.push()
 
@@ -341,7 +328,7 @@ def logs(shipment, ship: str=None, container: str=None, follow: bool=False):
         -h, --help
         -f, --follow  # follow logs
     """
-    for cont in filter_containers(shipment, ship, container):
+    for cont in shipment.filter_containers(ship, container):
         cont.check()
         cont.logs(follow=follow)
 

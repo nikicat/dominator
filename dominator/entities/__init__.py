@@ -14,6 +14,7 @@ import base64
 import io
 import datetime
 import functools
+import re
 
 import yaml
 import pkg_resources
@@ -663,3 +664,14 @@ class Shipment:
             return 0
         return sorted(list(set(container.image for container in self.containers)),
                       key=functools.cmp_to_key(compare_source_images))
+
+    @utils.makesorted(lambda c: (c.ship.name, c.name))
+    def filter_containers(self, shipname: str=None, containername: str=None):
+        notfound = True
+        for cont in self.containers:
+            if ((shipname is None or re.match(shipname, cont.ship.name)) and
+               (containername is None or re.match(containername, cont.name))):
+                notfound = False
+                yield cont
+        if notfound:
+            utils.getlogger(shipname=shipname, containername=containername).error('no containers matched')

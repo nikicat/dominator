@@ -5,7 +5,7 @@ import pytest
 from vcr import VCR
 from colorama import Fore
 
-from dominator.entities import LocalShip, Container, Image
+from dominator.entities import LocalShip, Container, Image, Shipment
 from dominator.actions import dump, localstatus, load_from_yaml, localstart
 from dominator.utils import settings as _settings
 
@@ -33,7 +33,7 @@ def ships():
     return [LocalShip()]
 
 
-class MockShipment:
+class MockShipment(Shipment):
     def __init__(self, containers):
         self.containers = containers
         self._ships = self.ships = list({container.ship for container in containers})

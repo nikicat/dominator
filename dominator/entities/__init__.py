@@ -635,6 +635,7 @@ class Shipment:
 
         # extract metadata
         dist = pkginfo.get_metadata(distribution)
+        assert dist is not None, "Could not find installed distribution for {}".format(distribution)
         self.version = dist.version
         self.author = dist.author
         self.author_email = dist.author_email

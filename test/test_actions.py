@@ -35,22 +35,25 @@ def ships():
     return [LocalShip()]
 
 
-class MockShipment(Shipment):
-    def __init__(self, containers):
-        self.containers = containers
-        self._ships = self.ships = list({container.ship for container in containers})
-
-
 @pytest.fixture
 def shipment():
-    return MockShipment([
-        Container(
-            name='testcont',
-            ship=ship,
-            image=Image('busybox'),
-            command='sleep 10')
-        for ship in ships()
-    ])
+    shipment = Shipment(
+        name='test-shipment',
+        containers=[
+            Container(
+                name='testcont',
+                ship=ship,
+                image=Image('busybox'),
+                command='sleep 10')
+            for ship in ships()
+        ],
+    )
+    shipment.version = '1.2.3-alpha-123abcdef'
+    shipment.author = 'John Doe'
+    shipment.author_email = 'nobody@nonexistent.com'
+    shipment.home_page = 'https://nonexistent.com/~nobody'
+    shipment.timestamp = datetime.datetime(2000, 1, 1)
+    return shipment
 
 
 @pytest.fixture
@@ -65,8 +68,8 @@ def test_localstart(capsys, shipment):
     _, _ = capsys.readouterr()
     localstatus(shipment)
     out, _ = capsys.readouterr()
-    assert re.match(r'localship[ \t]+testcont[ \t]+{color}[a-f0-9]{{7}}[ \t]+Up Less than a second'.format(
-        color=re.escape(Fore.GREEN)), out.split('\n')[-2])
+    assert re.match(r'test-shipment[ \t]+localship[ \t]+testcont[ \t]+{color}[a-f0-9]{{7}}[ \t]+Up Less than a second'
+                    .format(color=re.escape(Fore.GREEN)), out.split('\n')[-2])
 
 
 @vcr.use_cassette('dump.yaml')

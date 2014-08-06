@@ -12,7 +12,6 @@ import hashlib
 import tempfile
 import base64
 import io
-import datetime
 import functools
 import re
 
@@ -305,6 +304,7 @@ class Container:
         self.status = 'not found'
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
         self.network_mode = network_mode
+        self.shipment = None
 
     def __repr__(self):
         return 'Container(name={name}, ship={ship}, Image={image}, env={env}, id={id})'.format(**vars(self))
@@ -328,11 +328,14 @@ class Container:
     def running(self):
         return 'Up' in self.status
 
+    def getfullname(self):
+        return '{}.{}'.format(self.shipment.name, self.name) if self.shipment else self.name
+
     def check(self, cinfo=None):
         if cinfo is None:
             self.logger.debug('checking container status')
             matched = [cont for cont in self.ship.docker.containers(all=True)
-                       if cont['Names'] and cont['Names'][0][1:] == self.name]
+                       if cont['Names'] and cont['Names'][0][1:] == self.getfullname()]
             if len(matched) > 0:
                 cinfo = matched[0]
 
@@ -427,7 +430,7 @@ class Container:
             command=self.command,
             mem_limit=self.memory,
             environment=self.env,
-            name=self.name,
+            name=self.getfullname(),
             ports=list(self.ports.values()),
             stdin_open=True,
             detach=False,
@@ -514,7 +517,7 @@ class DataVolume(Volume):
 
     def getpath(self, container):
         return self.path or os.path.expanduser(os.path.join(utils.settings['datavolumedir'],
-                                               container.name, self.dest[1:]))
+                                               container.shipment.name, container.name, self.dest[1:]))
 
 
 class ConfigVolume(Volume):
@@ -524,7 +527,7 @@ class ConfigVolume(Volume):
 
     def getpath(self, container):
         return os.path.expanduser(os.path.join(utils.settings['configvolumedir'],
-                                               container.name, self.dest[1:]))
+                                               container.shipment.name, container.name, self.dest[1:]))
 
     @property
     def ro(self):
@@ -628,29 +631,14 @@ class JsonFile(BaseFile):
 
 
 class Shipment:
-    def __init__(self, distribution, entrypoint):
-        import pkginfo
-        import tzlocal
-        self.distribution = distribution
-        self.entrypoint = entrypoint
+    def __init__(self, name, containers):
+        self.name = name
+        self.containers = []
+        for container in containers:
+            container.shipment = self
+            self.containers.append(container)
 
-        # extract metadata
-        dist = pkginfo.get_metadata(distribution)
-        assert dist is not None, "Could not find installed distribution for {}".format(distribution)
-        self.version = dist.version
-        self.author = dist.author
-        self.author_email = dist.author_email
-        self.home_page = dist.home_page
-        self.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
-
-        # generate containers and ships
-        dist = pkg_resources.get_distribution(distribution)
-        if entrypoint is None:
-            entrypoint = list(dist.get_entry_map('obedient').keys())[0]
-            utils.getlogger().debug("loading shipment using autedetected entrypoint %s", entrypoint)
-
-        func = dist.load_entry_point('obedient', entrypoint)
-        self.containers = func()
+        # HACK: add "_ships" field to place it before "ships" field in yaml
         self._ships = self.ships = list({container.ship for container in self.containers})
 
     @property

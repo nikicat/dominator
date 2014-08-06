@@ -4,13 +4,14 @@ import sys
 import os
 from contextlib import contextmanager
 import pkg_resources
+import datetime
 
 import yaml
 import docopt
 import mako.template
 from colorama import Fore
 
-from ..entities import Container, Image, SourceImage, DataVolume, Shipment
+from ..entities import Container, Image, SourceImage, DataVolume
 from .. import utils
 from ..utils import getlogger, settings
 
@@ -121,7 +122,30 @@ def list_containers(shipment, shipname: str=None):
 
 def load_from_distribution(distribution, entrypoint):
     getlogger().info("loading config from distribution entry point", distribution=distribution, entrypoint=entrypoint)
-    return Shipment(distribution=distribution, entrypoint=entrypoint)
+    dist = pkg_resources.get_distribution(distribution)
+    assert dist is not None, "Could not load distribution for {}".format(distribution)
+
+    if entrypoint is None:
+        entrypoint = list(dist.get_entry_map('obedient').keys())[0]
+        getlogger().debug("autodetected entrypoint is %s", entrypoint)
+
+    func = dist.load_entry_point('obedient', entrypoint)
+    assert func is not None, "Could not load entrypoint {} from distribution {}".format(entrypoint, distribution)
+
+    import pkginfo
+    meta = pkginfo.get_metadata(distribution)
+
+    shipment = func()
+
+    shipment.version = meta.version
+    shipment.author = meta.author
+    shipment.author_email = meta.author_email
+    shipment.home_page = meta.home_page
+
+    import tzlocal
+    shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
+
+    return shipment
 
 
 def load_from_yaml(filename):
@@ -154,11 +178,8 @@ def localstatus(shipment, shipname: str=None, containername: str=None, showdiff:
                 color = Fore.GREEN
         else:
             color = Fore.RED
-        print('{c.ship.name:10.10} {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'.format(
-            c=c,
-            color=color,
-            reset=Fore.RESET,
-        ))
+        print('{c.shipment.name:20.20} {c.ship.name:10.10} {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'
+              .format(c=c, color=color, reset=Fore.RESET))
         if c.running and showdiff:
             print_diff(diff)
 

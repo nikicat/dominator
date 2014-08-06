@@ -239,7 +239,7 @@ def compare_container(cont, cinfo):
     imagerepo = ':'.join(imageinfo[:-1])
 
     for key, expected, actual in [
-        ('name', cont.name, cinfo['Name'][1:]),
+        ('name', cont.getfullname(), cinfo['Name'][1:]),
         ('image.repo', cont.image.getfullrepository(), imagerepo),
         ('image.id', cont.image.getid(), imageid),
         ('memory', cont.memory, cinfo['Config']['Memory']),
@@ -273,6 +273,21 @@ def docker_lines(records):
 def getcallingmodule(deep):
     parent_frame = inspect.stack()[1+deep]
     return inspect.getmodule(parent_frame[0])
+
+
+def make_shipment(name):
+    """
+        Returns decorator that converts function return value from
+        Container iterable to Shipment with provided name
+    """
+    from ..entities import Shipment
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper():
+            return Shipment(name=name, containers=func())
+        return wrapper
+    return decorator
 
 
 class Settings(dict):

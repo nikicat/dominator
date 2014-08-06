@@ -1,0 +1,19 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/images/json?all=1&only_ids=0&filter=busybox
+  response:
+    body: {string: '[{"Created":1401926735,"Id":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","ParentId":"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16","RepoTags":["busybox:latest"],"Size":0,"VirtualSize":2433303}
+
+        ]'}
+    headers:
+      Content-Length: ['236']
+      Content-Type: [application/json]
+      Date: ['Wed, 06 Aug 2014 19:09:33 GMT']
+    status: {code: 200, message: OK}
+version: 1

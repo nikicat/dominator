@@ -1,12 +1,14 @@
 import tempfile
 import logging
 import re
+import datetime
+
 import pytest
 from vcr import VCR
 from colorama import Fore
 
 from dominator.entities import LocalShip, Container, Image, Shipment
-from dominator.actions import dump, localstatus, load_from_yaml, localstart
+from dominator.actions import dump, localstatus, load_from_yaml, localstart, makedeb
 from dominator.utils import settings as _settings
 
 
@@ -78,3 +80,9 @@ def test_dump(capsys, shipment):
         dump(load_from_yaml(tmp.name))
     dump2, _ = capsys.readouterr()
     assert dump1 == dump2
+
+
+@vcr.use_cassette('makedeb.yaml')
+def test_makedeb(shipment, tmpdir):
+    makedeb(shipment, packagename='test-package', distribution='trusty', urgency='high', target=tmpdir.dirname)
+    assert tmpdir.ensure_dir('debian')

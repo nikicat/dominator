@@ -6,16 +6,16 @@ interactions:
       Accept-Encoding: ['gzip, deflate, compress']
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: GET
-    uri: http://localhost:4243/v1.12/containers/json?limit=-1&size=0&all=1&trunc_cmd=1
+    uri: http://localhost:4243/v1.12/containers/json?trunc_cmd=1&all=1&limit=-1&size=0
   response:
-    body: {string: '[{"Command":"sleep 10","Created":1407367809,"Id":"2a9a3874ec7b82325cbb5392290dc599a89703c0f2828f82d69cb34c73d4530d","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Exited
-        (0) 17 seconds ago"}
+    body: {string: '[{"Command":"sleep 10","Created":1407407434,"Id":"f695e4b837e6636da85c82257e1aae85359bda05da9dba651d22818480f6b76c","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Exited
+        (-1) 2 minutes ago"}
 
         ]'}
     headers:
       Content-Length: ['227']
       Content-Type: [application/json]
-      Date: ['Wed, 06 Aug 2014 23:30:39 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:43 GMT']
     status: {code: 200, message: OK}
 - request:
     body: null
@@ -25,11 +25,11 @@ interactions:
       Content-Length: ['0']
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: DELETE
-    uri: http://localhost:4243/v1.12/containers/2a9a3874ec7b82325cbb5392290dc599a89703c0f2828f82d69cb34c73d4530d?v=False&force=False&link=False
+    uri: http://localhost:4243/v1.12/containers/f695e4b837e6636da85c82257e1aae85359bda05da9dba651d22818480f6b76c?v=False&link=False&force=False
   response:
     body: {string: ''}
     headers:
-      Date: ['Wed, 06 Aug 2014 23:30:39 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:43 GMT']
     status: {code: 204, message: No Content}
 - request:
     body: null
@@ -38,7 +38,7 @@ interactions:
       Accept-Encoding: ['gzip, deflate, compress']
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: GET
-    uri: http://localhost:4243/v1.12/images/json?only_ids=0&filter=busybox&all=1
+    uri: http://localhost:4243/v1.12/images/json?only_ids=0&all=1&filter=busybox
   response:
     body: {string: '[{"Created":1401926735,"Id":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","ParentId":"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16","RepoTags":["busybox:latest"],"Size":0,"VirtualSize":2433303}
 
@@ -46,13 +46,14 @@ interactions:
     headers:
       Content-Length: ['236']
       Content-Type: [application/json]
-      Date: ['Wed, 06 Aug 2014 23:30:39 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:43 GMT']
     status: {code: 200, message: OK}
 - request:
-    body: '{"Cmd": ["sleep", "10"], "MemorySwap": 0, "StdinOnce": true, "Tty": false,
-      "AttachStdout": true, "OpenStdin": true, "AttachStdin": true, "Image": "busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721",
-      "Memory": 0, "NetworkDisabled": false, "ExposedPorts": {}, "Env": [], "AttachStderr":
-      true, "Hostname": "testcont-localship"}'
+    body: '{"Tty": false, "Memory": 0, "MemorySwap": 0, "NetworkDisabled": false,
+      "OpenStdin": true, "Env": [], "AttachStdout": true, "ExposedPorts": {}, "StdinOnce":
+      true, "Cmd": ["sleep", "10"], "Hostname": "testcont-localship", "AttachStdin":
+      true, "Image": "busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721",
+      "AttachStderr": true}'
     headers:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate, compress']
@@ -62,28 +63,28 @@ interactions:
     method: POST
     uri: http://localhost:4243/v1.12/containers/create?name=test-shipment.testcont
   response:
-    body: {string: '{"Id":"aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5","Warnings":null}
+    body: {string: '{"Id":"c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c","Warnings":null}
 
 '}
     headers:
       Content-Length: ['90']
       Content-Type: [application/json]
-      Date: ['Wed, 06 Aug 2014 23:30:39 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:43 GMT']
     status: {code: 201, message: Created}
 - request:
-    body: '{"PublishAllPorts": false, "Privileged": false}'
+    body: '{"PublishAllPorts": false, "Privileged": false, "Binds": ["/tmp/dominator-test-config/test-shipment/testcont/tmp:/tmp:ro"]}'
     headers:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate, compress']
-      Content-Length: ['47']
+      Content-Length: ['123']
       Content-Type: [application/json]
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: POST
-    uri: http://localhost:4243/v1.12/containers/aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5/start
+    uri: http://localhost:4243/v1.12/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/start
   response:
     body: {string: ''}
     headers:
-      Date: ['Wed, 06 Aug 2014 23:30:39 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:43 GMT']
     status: {code: 204, message: No Content}
 - request:
     body: null
@@ -92,16 +93,16 @@ interactions:
       Accept-Encoding: ['gzip, deflate, compress']
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: GET
-    uri: http://localhost:4243/v1.12/containers/json?limit=-1&size=0&all=1&trunc_cmd=1
+    uri: http://localhost:4243/v1.12/containers/json?trunc_cmd=1&all=1&limit=-1&size=0
   response:
-    body: {string: '[{"Command":"sleep 10","Created":1407367839,"Id":"aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Up
+    body: {string: '[{"Command":"sleep 10","Created":1407407563,"Id":"c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Up
         Less than a second"}
 
         ]'}
     headers:
       Content-Length: ['223']
       Content-Type: [application/json]
-      Date: ['Wed, 06 Aug 2014 23:30:39 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:43 GMT']
     status: {code: 200, message: OK}
 - request:
     body: null
@@ -110,15 +111,15 @@ interactions:
       Accept-Encoding: ['gzip, deflate, compress']
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: GET
-    uri: http://localhost:4243/v1.12/containers/aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5/json
+    uri: http://localhost:4243/v1.12/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/json
   response:
-    body: {string: '{"Args":["10"],"Config":{"AttachStderr":true,"AttachStdin":true,"AttachStdout":true,"Cmd":["sleep","10"],"CpuShares":0,"Cpuset":"","Domainname":"","Entrypoint":null,"Env":["HOME=/","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],"ExposedPorts":null,"Hostname":"testcont-localship","Image":"busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","Memory":0,"MemorySwap":0,"NetworkDisabled":false,"OnBuild":null,"OpenStdin":true,"PortSpecs":null,"StdinOnce":true,"Tty":false,"User":"","Volumes":null,"WorkingDir":""},"Created":"2014-08-06T23:30:39.741167429Z","Driver":"aufs","ExecDriver":"native-0.2","HostConfig":{"Binds":null,"CapAdd":null,"CapDrop":null,"ContainerIDFile":"","Devices":null,"Dns":null,"DnsSearch":null,"Links":null,"LxcConf":null,"NetworkMode":"","PortBindings":null,"Privileged":false,"PublishAllPorts":false,"VolumesFrom":null},"HostnamePath":"/var/lib/docker/containers/aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5/hostname","HostsPath":"/var/lib/docker/containers/aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5/hosts","Id":"aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5","Image":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","MountLabel":"","Name":"/test-shipment.testcont","NetworkSettings":{"Bridge":"docker0","Gateway":"172.17.42.1","IPAddress":"172.17.0.10","IPPrefixLen":16,"PortMapping":null,"Ports":{}},"Path":"sleep","ProcessLabel":"","ResolvConfPath":"/etc/resolv.conf","State":{"ExitCode":0,"FinishedAt":"0001-01-01T00:00:00Z","Paused":false,"Pid":14219,"Running":true,"StartedAt":"2014-08-06T23:30:39.941646582Z"},"Volumes":{},"VolumesRW":{}}
+    body: {string: '{"Args":["10"],"Config":{"AttachStderr":true,"AttachStdin":true,"AttachStdout":true,"Cmd":["sleep","10"],"CpuShares":0,"Cpuset":"","Domainname":"","Entrypoint":null,"Env":["HOME=/","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],"ExposedPorts":null,"Hostname":"testcont-localship","Image":"busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","Memory":0,"MemorySwap":0,"NetworkDisabled":false,"OnBuild":null,"OpenStdin":true,"PortSpecs":null,"StdinOnce":true,"Tty":false,"User":"","Volumes":null,"WorkingDir":""},"Created":"2014-08-07T10:32:43.757761341Z","Driver":"aufs","ExecDriver":"native-0.2","HostConfig":{"Binds":["/tmp/dominator-test-config/test-shipment/testcont/tmp:/tmp:ro"],"CapAdd":null,"CapDrop":null,"ContainerIDFile":"","Devices":null,"Dns":null,"DnsSearch":null,"Links":null,"LxcConf":null,"NetworkMode":"","PortBindings":null,"Privileged":false,"PublishAllPorts":false,"VolumesFrom":null},"HostnamePath":"/var/lib/docker/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/hostname","HostsPath":"/var/lib/docker/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/hosts","Id":"c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c","Image":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","MountLabel":"","Name":"/test-shipment.testcont","NetworkSettings":{"Bridge":"docker0","Gateway":"172.17.42.1","IPAddress":"172.17.0.22","IPPrefixLen":16,"PortMapping":null,"Ports":{}},"Path":"sleep","ProcessLabel":"","ResolvConfPath":"/etc/resolv.conf","State":{"ExitCode":0,"FinishedAt":"0001-01-01T00:00:00Z","Paused":false,"Pid":25798,"Running":true,"StartedAt":"2014-08-07T10:32:43.884030682Z"},"Volumes":{"/tmp":"/tmp/dominator-test-config/test-shipment/testcont/tmp"},"VolumesRW":{"/tmp":false}}
 
 '}
     headers:
-      Content-Length: ['1694']
+      Content-Length: ['1829']
       Content-Type: [application/json]
-      Date: ['Wed, 06 Aug 2014 23:30:39 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:43 GMT']
     status: {code: 200, message: OK}
 - request:
     body: null
@@ -135,7 +136,7 @@ interactions:
     headers:
       Content-Length: ['1504']
       Content-Type: [application/json]
-      Date: ['Wed, 06 Aug 2014 23:30:39 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:43 GMT']
     status: {code: 200, message: OK}
 - request:
     body: null
@@ -144,16 +145,16 @@ interactions:
       Accept-Encoding: ['gzip, deflate, compress']
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: GET
-    uri: http://localhost:4243/v1.12/containers/json?limit=-1&size=0&all=1&trunc_cmd=1
+    uri: http://localhost:4243/v1.12/containers/json?trunc_cmd=1&all=1&limit=-1&size=0
   response:
-    body: {string: '[{"Command":"sleep 10","Created":1407367839,"Id":"aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Up
+    body: {string: '[{"Command":"sleep 10","Created":1407407563,"Id":"c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Up
         Less than a second"}
 
         ]'}
     headers:
       Content-Length: ['223']
       Content-Type: [application/json]
-      Date: ['Wed, 06 Aug 2014 23:30:40 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:43 GMT']
     status: {code: 200, message: OK}
 - request:
     body: null
@@ -163,26 +164,26 @@ interactions:
       Content-Length: ['0']
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: POST
-    uri: http://localhost:4243/v1.12/containers/aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5/stop?t=2
+    uri: http://localhost:4243/v1.12/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/stop?t=2
   response:
     body: {string: ''}
     headers:
-      Date: ['Wed, 06 Aug 2014 23:30:42 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:46 GMT']
     status: {code: 204, message: No Content}
 - request:
-    body: '{"PublishAllPorts": false, "Privileged": false}'
+    body: '{"PublishAllPorts": false, "Privileged": false, "Binds": ["/tmp/dominator-test-config/test-shipment/testcont/tmp:/tmp:ro"]}'
     headers:
       Accept: ['*/*']
       Accept-Encoding: ['gzip, deflate, compress']
-      Content-Length: ['47']
+      Content-Length: ['123']
       Content-Type: [application/json]
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: POST
-    uri: http://localhost:4243/v1.12/containers/aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5/start
+    uri: http://localhost:4243/v1.12/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/start
   response:
     body: {string: ''}
     headers:
-      Date: ['Wed, 06 Aug 2014 23:30:42 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:46 GMT']
     status: {code: 204, message: No Content}
 - request:
     body: null
@@ -191,16 +192,102 @@ interactions:
       Accept-Encoding: ['gzip, deflate, compress']
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: GET
-    uri: http://localhost:4243/v1.12/containers/json?limit=-1&size=0&all=1&trunc_cmd=1
+    uri: http://localhost:4243/v1.12/containers/json?trunc_cmd=1&all=1&limit=-1&size=0
   response:
-    body: {string: '[{"Command":"sleep 10","Created":1407367839,"Id":"aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Up
+    body: {string: '[{"Command":"sleep 10","Created":1407407563,"Id":"c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Up
         Less than a second"}
 
         ]'}
     headers:
       Content-Length: ['223']
       Content-Type: [application/json]
-      Date: ['Wed, 06 Aug 2014 23:30:42 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:46 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/json
+  response:
+    body: {string: '{"Args":["10"],"Config":{"AttachStderr":true,"AttachStdin":true,"AttachStdout":true,"Cmd":["sleep","10"],"CpuShares":0,"Cpuset":"","Domainname":"","Entrypoint":null,"Env":["HOME=/","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],"ExposedPorts":null,"Hostname":"testcont-localship","Image":"busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","Memory":0,"MemorySwap":0,"NetworkDisabled":false,"OnBuild":null,"OpenStdin":true,"PortSpecs":null,"StdinOnce":true,"Tty":false,"User":"","Volumes":null,"WorkingDir":""},"Created":"2014-08-07T10:32:43.757761341Z","Driver":"aufs","ExecDriver":"native-0.2","HostConfig":{"Binds":["/tmp/dominator-test-config/test-shipment/testcont/tmp:/tmp:ro"],"CapAdd":null,"CapDrop":null,"ContainerIDFile":"","Devices":null,"Dns":null,"DnsSearch":null,"Links":null,"LxcConf":null,"NetworkMode":"","PortBindings":null,"Privileged":false,"PublishAllPorts":false,"VolumesFrom":null},"HostnamePath":"/var/lib/docker/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/hostname","HostsPath":"/var/lib/docker/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/hosts","Id":"c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c","Image":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","MountLabel":"","Name":"/test-shipment.testcont","NetworkSettings":{"Bridge":"docker0","Gateway":"172.17.42.1","IPAddress":"172.17.0.23","IPPrefixLen":16,"PortMapping":null,"Ports":{}},"Path":"sleep","ProcessLabel":"","ResolvConfPath":"/etc/resolv.conf","State":{"ExitCode":0,"FinishedAt":"2014-08-07T10:32:46.29013224Z","Paused":false,"Pid":25820,"Running":true,"StartedAt":"2014-08-07T10:32:46.891768176Z"},"Volumes":{"/tmp":"/tmp/dominator-test-config/test-shipment/testcont/tmp"},"VolumesRW":{"/tmp":false}}
+
+'}
+    headers:
+      Content-Length: ['1838']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:46 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/images/a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721/json
+  response:
+    body: {string: "{\"Architecture\":\"amd64\",\"Author\":\"J\xE9r\xF4me Petazzoni
+        \\u003cjerome@docker.com\\u003e\",\"Comment\":\"\",\"Config\":{\"AttachStderr\":false,\"AttachStdin\":false,\"AttachStdout\":false,\"Cmd\":[\"/bin/sh\"],\"CpuShares\":0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Container\":\"bb3475b3130b6a47104549a0291a6569d24e41fa57a7f094591f0d4611fd15bc\",\"ContainerConfig\":{\"AttachStderr\":false,\"AttachStdin\":false,\"AttachStdout\":false,\"Cmd\":[\"/bin/sh\",\"-c\",\"#(nop)
+        CMD [/bin/sh]\"],\"CpuShares\":0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Created\":\"2014-06-05T00:05:35.990887725Z\",\"DockerVersion\":\"0.10.0\",\"Id\":\"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721\",\"Os\":\"linux\",\"Parent\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Size\":0}\n"}
+    headers:
+      Content-Length: ['1504']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:46 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/containers/json?trunc_cmd=1&all=1&limit=-1&size=0
+  response:
+    body: {string: '[{"Command":"sleep 10","Created":1407407563,"Id":"c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Up
+        Less than a second"}
+
+        ]'}
+    headers:
+      Content-Length: ['223']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:46 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/json
+  response:
+    body: {string: '{"Args":["10"],"Config":{"AttachStderr":true,"AttachStdin":true,"AttachStdout":true,"Cmd":["sleep","10"],"CpuShares":0,"Cpuset":"","Domainname":"","Entrypoint":null,"Env":["HOME=/","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],"ExposedPorts":null,"Hostname":"testcont-localship","Image":"busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","Memory":0,"MemorySwap":0,"NetworkDisabled":false,"OnBuild":null,"OpenStdin":true,"PortSpecs":null,"StdinOnce":true,"Tty":false,"User":"","Volumes":null,"WorkingDir":""},"Created":"2014-08-07T10:32:43.757761341Z","Driver":"aufs","ExecDriver":"native-0.2","HostConfig":{"Binds":["/tmp/dominator-test-config/test-shipment/testcont/tmp:/tmp:ro"],"CapAdd":null,"CapDrop":null,"ContainerIDFile":"","Devices":null,"Dns":null,"DnsSearch":null,"Links":null,"LxcConf":null,"NetworkMode":"","PortBindings":null,"Privileged":false,"PublishAllPorts":false,"VolumesFrom":null},"HostnamePath":"/var/lib/docker/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/hostname","HostsPath":"/var/lib/docker/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/hosts","Id":"c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c","Image":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","MountLabel":"","Name":"/test-shipment.testcont","NetworkSettings":{"Bridge":"docker0","Gateway":"172.17.42.1","IPAddress":"172.17.0.23","IPPrefixLen":16,"PortMapping":null,"Ports":{}},"Path":"sleep","ProcessLabel":"","ResolvConfPath":"/etc/resolv.conf","State":{"ExitCode":0,"FinishedAt":"2014-08-07T10:32:46.29013224Z","Paused":false,"Pid":25820,"Running":true,"StartedAt":"2014-08-07T10:32:46.891768176Z"},"Volumes":{"/tmp":"/tmp/dominator-test-config/test-shipment/testcont/tmp"},"VolumesRW":{"/tmp":false}}
+
+'}
+    headers:
+      Content-Length: ['1838']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:46 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/images/a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721/json
+  response:
+    body: {string: "{\"Architecture\":\"amd64\",\"Author\":\"J\xE9r\xF4me Petazzoni
+        \\u003cjerome@docker.com\\u003e\",\"Comment\":\"\",\"Config\":{\"AttachStderr\":false,\"AttachStdin\":false,\"AttachStdout\":false,\"Cmd\":[\"/bin/sh\"],\"CpuShares\":0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Container\":\"bb3475b3130b6a47104549a0291a6569d24e41fa57a7f094591f0d4611fd15bc\",\"ContainerConfig\":{\"AttachStderr\":false,\"AttachStdin\":false,\"AttachStdout\":false,\"Cmd\":[\"/bin/sh\",\"-c\",\"#(nop)
+        CMD [/bin/sh]\"],\"CpuShares\":0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Created\":\"2014-06-05T00:05:35.990887725Z\",\"DockerVersion\":\"0.10.0\",\"Id\":\"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721\",\"Os\":\"linux\",\"Parent\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Size\":0}\n"}
+    headers:
+      Content-Length: ['1504']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:47 GMT']
     status: {code: 200, message: OK}
 - request:
     body: null
@@ -210,10 +297,146 @@ interactions:
       Content-Length: ['0']
       User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
     method: POST
-    uri: http://localhost:4243/v1.12/containers/aa1d5543f53a2c6df953fa13bc656760f4d901ab7d12b059c1586a972476e3c5/stop?t=2
+    uri: http://localhost:4243/v1.12/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c/stop?t=2
   response:
     body: {string: ''}
     headers:
-      Date: ['Wed, 06 Aug 2014 23:30:44 GMT']
+      Date: ['Thu, 07 Aug 2014 10:32:49 GMT']
+    status: {code: 204, message: No Content}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: DELETE
+    uri: http://localhost:4243/v1.12/containers/c75f24ff67f6c0dadb973d62ccffd7eeb65957fcd2d59603c973e8ddae980a1c?v=False&link=False&force=False
+  response:
+    body: {string: ''}
+    headers:
+      Date: ['Thu, 07 Aug 2014 10:32:49 GMT']
+    status: {code: 204, message: No Content}
+- request:
+    body: '{"Tty": false, "Memory": 0, "MemorySwap": 0, "NetworkDisabled": false,
+      "OpenStdin": true, "Env": [], "AttachStdout": true, "ExposedPorts": {}, "StdinOnce":
+      true, "Cmd": ["sleep", "10"], "Hostname": "testcont-localship", "AttachStdin":
+      true, "Image": "busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721",
+      "AttachStderr": true}'
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      Content-Length: ['347']
+      Content-Type: [application/json]
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: POST
+    uri: http://localhost:4243/v1.12/containers/create?name=test-shipment.testcont
+  response:
+    body: {string: '{"Id":"484cc6567aa446b50951b52ff9da1678a3d36dba1f011fe468695b4c2b94676e","Warnings":null}
+
+'}
+    headers:
+      Content-Length: ['90']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:49 GMT']
+    status: {code: 201, message: Created}
+- request:
+    body: '{"PublishAllPorts": false, "Privileged": false, "Binds": ["/tmp/dominator-test-config/test-shipment/testcont/tmp:/tmp:ro"]}'
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      Content-Length: ['123']
+      Content-Type: [application/json]
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: POST
+    uri: http://localhost:4243/v1.12/containers/484cc6567aa446b50951b52ff9da1678a3d36dba1f011fe468695b4c2b94676e/start
+  response:
+    body: {string: ''}
+    headers:
+      Date: ['Thu, 07 Aug 2014 10:32:49 GMT']
+    status: {code: 204, message: No Content}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/containers/json?trunc_cmd=1&all=1&limit=-1&size=0
+  response:
+    body: {string: '[{"Command":"sleep 10","Created":1407407569,"Id":"484cc6567aa446b50951b52ff9da1678a3d36dba1f011fe468695b4c2b94676e","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Up
+        Less than a second"}
+
+        ]'}
+    headers:
+      Content-Length: ['223']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:49 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/containers/484cc6567aa446b50951b52ff9da1678a3d36dba1f011fe468695b4c2b94676e/json
+  response:
+    body: {string: '{"Args":["10"],"Config":{"AttachStderr":true,"AttachStdin":true,"AttachStdout":true,"Cmd":["sleep","10"],"CpuShares":0,"Cpuset":"","Domainname":"","Entrypoint":null,"Env":["HOME=/","PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],"ExposedPorts":null,"Hostname":"testcont-localship","Image":"busybox:a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","Memory":0,"MemorySwap":0,"NetworkDisabled":false,"OnBuild":null,"OpenStdin":true,"PortSpecs":null,"StdinOnce":true,"Tty":false,"User":"","Volumes":null,"WorkingDir":""},"Created":"2014-08-07T10:32:49.212335781Z","Driver":"aufs","ExecDriver":"native-0.2","HostConfig":{"Binds":["/tmp/dominator-test-config/test-shipment/testcont/tmp:/tmp:ro"],"CapAdd":null,"CapDrop":null,"ContainerIDFile":"","Devices":null,"Dns":null,"DnsSearch":null,"Links":null,"LxcConf":null,"NetworkMode":"","PortBindings":null,"Privileged":false,"PublishAllPorts":false,"VolumesFrom":null},"HostnamePath":"/var/lib/docker/containers/484cc6567aa446b50951b52ff9da1678a3d36dba1f011fe468695b4c2b94676e/hostname","HostsPath":"/var/lib/docker/containers/484cc6567aa446b50951b52ff9da1678a3d36dba1f011fe468695b4c2b94676e/hosts","Id":"484cc6567aa446b50951b52ff9da1678a3d36dba1f011fe468695b4c2b94676e","Image":"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721","MountLabel":"","Name":"/test-shipment.testcont","NetworkSettings":{"Bridge":"docker0","Gateway":"172.17.42.1","IPAddress":"172.17.0.24","IPPrefixLen":16,"PortMapping":null,"Ports":{}},"Path":"sleep","ProcessLabel":"","ResolvConfPath":"/etc/resolv.conf","State":{"ExitCode":0,"FinishedAt":"0001-01-01T00:00:00Z","Paused":false,"Pid":25838,"Running":true,"StartedAt":"2014-08-07T10:32:49.893729452Z"},"Volumes":{"/tmp":"/tmp/dominator-test-config/test-shipment/testcont/tmp"},"VolumesRW":{"/tmp":false}}
+
+'}
+    headers:
+      Content-Length: ['1829']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:49 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/images/a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721/json
+  response:
+    body: {string: "{\"Architecture\":\"amd64\",\"Author\":\"J\xE9r\xF4me Petazzoni
+        \\u003cjerome@docker.com\\u003e\",\"Comment\":\"\",\"Config\":{\"AttachStderr\":false,\"AttachStdin\":false,\"AttachStdout\":false,\"Cmd\":[\"/bin/sh\"],\"CpuShares\":0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Container\":\"bb3475b3130b6a47104549a0291a6569d24e41fa57a7f094591f0d4611fd15bc\",\"ContainerConfig\":{\"AttachStderr\":false,\"AttachStdin\":false,\"AttachStdout\":false,\"Cmd\":[\"/bin/sh\",\"-c\",\"#(nop)
+        CMD [/bin/sh]\"],\"CpuShares\":0,\"Cpuset\":\"\",\"Domainname\":\"\",\"Entrypoint\":null,\"Env\":[\"HOME=/\",\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"],\"ExposedPorts\":null,\"Hostname\":\"f7d939e68b5a\",\"Image\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Memory\":0,\"MemorySwap\":0,\"NetworkDisabled\":false,\"OnBuild\":[],\"OpenStdin\":false,\"PortSpecs\":null,\"StdinOnce\":false,\"Tty\":false,\"User\":\"\",\"Volumes\":null,\"WorkingDir\":\"\"},\"Created\":\"2014-06-05T00:05:35.990887725Z\",\"DockerVersion\":\"0.10.0\",\"Id\":\"a9eb172552348a9a49180694790b33a1097f546456d041b6e82e4d7716ddb721\",\"Os\":\"linux\",\"Parent\":\"120e218dd395ec314e7b6249f39d2853911b3d6def6ea164ae05722649f34b16\",\"Size\":0}\n"}
+    headers:
+      Content-Length: ['1504']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:49 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: GET
+    uri: http://localhost:4243/v1.12/containers/json?trunc_cmd=1&all=1&limit=-1&size=0
+  response:
+    body: {string: '[{"Command":"sleep 10","Created":1407407569,"Id":"484cc6567aa446b50951b52ff9da1678a3d36dba1f011fe468695b4c2b94676e","Image":"busybox:latest","Names":["/test-shipment.testcont"],"Ports":[],"Status":"Up
+        Less than a second"}
+
+        ]'}
+    headers:
+      Content-Length: ['223']
+      Content-Type: [application/json]
+      Date: ['Thu, 07 Aug 2014 10:32:50 GMT']
+    status: {code: 200, message: OK}
+- request:
+    body: null
+    headers:
+      Accept: ['*/*']
+      Accept-Encoding: ['gzip, deflate, compress']
+      Content-Length: ['0']
+      User-Agent: [python-requests/2.2.1 CPython/3.4.1 Linux/3.15.7-1-aufs_friendly]
+    method: POST
+    uri: http://localhost:4243/v1.12/containers/484cc6567aa446b50951b52ff9da1678a3d36dba1f011fe468695b4c2b94676e/stop?t=2
+  response:
+    body: {string: ''}
+    headers:
+      Date: ['Thu, 07 Aug 2014 10:32:52 GMT']
     status: {code: 204, message: No Content}
 version: 1

@@ -1,5 +1,5 @@
 ${ packagename } (${ shipment.version }) ${ distribution }; urgency=${ urgency }
 
-  * Generated from ${ shipment.distribution }:${ shipment.entrypoint }.
+  * Automatically built.
 
  -- ${ shipment.author } <${ shipment.author_email }>  ${ shipment.timestamp.strftime('%a, %d %b %Y %H:%M:%S %z') }

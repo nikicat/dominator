@@ -2,13 +2,13 @@
 # Copy this file to ~/.config/dominator/settings.yaml and edit
 
 # Image for deploying config files to remote ships
-deploy-image: nikicat/dominator
+deploy-image: yandex/dominator
 
 # Directory to place config files
-configvolumedir: ~/.config/dominator/config
+configvolumedir: /var/lib/dominator/config
 
 # Directory to place data
-datavolumedir: ~/.config/dominator/data
+datavolumedir: /var/lib/dominator/data
 
 # Uncomment to connect using tcp socket instead of unix-socket
 #dockerurl: http://localhost:4243

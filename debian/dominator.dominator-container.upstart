@@ -6,5 +6,5 @@ kill timeout 10
 
 script
 	. /etc/default/dominator
-	exec dominator -c ${CONFIGDIR}/${CONFIG}.yaml localexec `hostname` $CONTAINER
+	exec dominator -c ${CONFIGDIR}/${CONFIG}.yaml -l debug localexec `hostname` $CONTAINER
 end script

@@ -1,17 +1,17 @@
 import logging
 import logging.config
 import sys
-import re
 import os
 from contextlib import contextmanager
 import pkg_resources
+import datetime
 
 import yaml
 import docopt
 import mako.template
 from colorama import Fore
 
-from ..entities import Container, Image, SourceImage, DataVolume, Shipment
+from ..entities import Container, Image, SourceImage, DataVolume
 from .. import utils
 from ..utils import getlogger, settings
 
@@ -44,7 +44,7 @@ def localstart(shipment, shipname: str=None, containername: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(shipment, shipname, containername):
+    for cont in shipment.filter_containers(shipname, containername):
         cont.run()
 
 
@@ -57,7 +57,7 @@ def localrestart(shipment, shipname: str=None, containername: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(shipment, shipname, containername):
+    for cont in shipment.filter_containers(shipname, containername):
         cont.check()
         if cont.running:
             cont.stop()
@@ -75,7 +75,7 @@ def localexec(shipment, shipname: str, containername: str, keep: bool=False):
         -h, --help
         -k, --keep  # keep container after stop [default: false]
     """
-    for cont in filter_containers(shipment, shipname, containername):
+    for cont in shipment.filter_containers(shipname, containername):
         try:
             with cont.execute() as logs:
                 for line in logs:
@@ -97,27 +97,15 @@ def stop(shipment, ship: str=None, container: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(shipment, ship, container):
+    for cont in shipment.filter_containers(ship, container):
         cont.check()
         if cont.running:
             cont.stop()
 
 
 def group_containers(shipment, shipname: str=None, containername: str=None):
-    return [(ship, filter_containers(shipment, ship.name, containername))
+    return [(ship, shipment.filter_containers(ship.name, containername))
             for ship in shipment.ships if shipname is None or ship.name == shipname]
-
-
-@utils.makesorted(lambda c: (c.ship.name, c.name))
-def filter_containers(shipment, shipname: str=None, containername: str=None):
-    notfound = True
-    for cont in shipment.containers:
-        if ((shipname is None or re.match(shipname, cont.ship.name)) and
-           (containername is None or re.match(containername, cont.name))):
-            notfound = False
-            yield cont
-    if notfound:
-        getlogger(shipname=shipname, containername=containername).error('no containers matched')
 
 
 @command
@@ -128,13 +116,36 @@ def list_containers(shipment, shipname: str=None):
     Options:
         -h, --help
     """
-    for cont in filter_containers(shipment, shipname):
+    for cont in shipment.filter_containers(shipname):
         print(cont.name)
 
 
 def load_from_distribution(distribution, entrypoint):
     getlogger().info("loading config from distribution entry point", distribution=distribution, entrypoint=entrypoint)
-    return Shipment(distribution=distribution, entrypoint=entrypoint)
+    dist = pkg_resources.get_distribution(distribution)
+    assert dist is not None, "Could not load distribution for {}".format(distribution)
+
+    if entrypoint is None:
+        entrypoint = list(dist.get_entry_map('obedient').keys())[0]
+        getlogger().debug("autodetected entrypoint is %s", entrypoint)
+
+    func = dist.load_entry_point('obedient', entrypoint)
+    assert func is not None, "Could not load entrypoint {} from distribution {}".format(entrypoint, distribution)
+
+    import pkginfo
+    meta = pkginfo.get_metadata(distribution)
+
+    shipment = func()
+
+    shipment.version = meta.version
+    shipment.author = meta.author
+    shipment.author_email = meta.author_email
+    shipment.home_page = meta.home_page
+
+    import tzlocal
+    shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
+
+    return shipment
 
 
 def load_from_yaml(filename):
@@ -150,13 +161,13 @@ def load_from_yaml(filename):
 def localstatus(shipment, shipname: str=None, containername: str=None, showdiff: bool=False):
     """Show local shipment' status
 
-    Usage: dominator localstatus [options] [<ship>] [<container>]
+    Usage: dominator localstatus [options] [<shipname>] [<containername>]
 
     Options:
         -h, --help
         -d, --showdiff  # show diff with running container [default: false]
     """
-    for c in filter_containers(shipment, shipname, containername):
+    for c in shipment.filter_containers(shipname, containername):
         c.check()
         if c.running:
             diff = list(utils.compare_container(c, c.inspect()))
@@ -167,11 +178,8 @@ def localstatus(shipment, shipname: str=None, containername: str=None, showdiff:
                 color = Fore.GREEN
         else:
             color = Fore.RED
-        print('{c.ship.name:10.10} {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'.format(
-            c=c,
-            color=color,
-            reset=Fore.RESET,
-        ))
+        print('{c.shipment.name:20.20} {c.ship.name:10.10} {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'
+              .format(c=c, color=color, reset=Fore.RESET))
         if c.running and showdiff:
             print_diff(diff)
 
@@ -219,7 +227,7 @@ def start(shipment, shipname: str=None, containername: str=None, keep: bool=Fals
         -h, --help
         -k, --keep  # keep ambassador container after run
     """
-    for image in {container.image for container in filter_containers(shipment, shipname, containername)}:
+    for image in {container.image for container in shipment.filter_containers(shipname, containername)}:
         image.getid()
         image.push()
 
@@ -242,17 +250,18 @@ def restart(shipment, shipname: str=None, containername: str=None, keep: bool=Fa
 
 
 @command
-def makedeb(shipment, packagename: str, distribution: str, urgency: str):
+def makedeb(shipment, packagename: str, distribution: str, urgency: str, target: str):
     """Create debian/ directory in current dir ready for building debian package
 
     Usage: dominator makedeb [options] <packagename> [<distribution>] [<urgency>]
 
     Options:
         -h, --help
+        -t, --target  target directory to create debian/ inside [default: ./]
     """
 
     def render_dir(name):
-        os.makedirs(name)
+        os.makedirs(os.path.join(target, name))
         for file in pkg_resources.resource_listdir(__name__, name):
             path = os.path.join(name, file)
             if pkg_resources.resource_isdir(__name__, path):
@@ -267,18 +276,18 @@ def makedeb(shipment, packagename: str, distribution: str, urgency: str):
                     distribution=distribution or 'unstable',
                     urgency=urgency or 'low',
                 )
-                with open(path, 'w+') as output:
+                with open(os.path.join(target, path), 'w+') as output:
                     output.write(rendered)
 
     render_dir('debian')
 
-    with open('debian/{}.yaml'.format(packagename), 'w+') as config:
+    with open(os.path.join(target, 'debian', '{}.yaml'.format(packagename)), 'w+') as config:
         yaml.dump(shipment, config)
 
 
 @utils.cached
 def getambassadorimage():
-    return Image('yandex/dominator', tag=getversion())
+    return Image(settings['deploy-image'])
 
 
 def getambassador(ship, command):
@@ -341,13 +350,13 @@ def logs(shipment, ship: str=None, container: str=None, follow: bool=False):
         -h, --help
         -f, --follow  # follow logs
     """
-    for cont in filter_containers(shipment, ship, container):
+    for cont in shipment.filter_containers(ship, container):
         cont.check()
         cont.logs(follow=follow)
 
 
 @command
-def build(shipment, imagename: str=None, nocache: bool=False, push: bool=False):
+def build(shipment, imagename: str, nocache: bool, push: bool, rebuild: bool):
     """Build source images
 
     Usage: dominator build [options] [<imagename>]
@@ -356,10 +365,14 @@ def build(shipment, imagename: str=None, nocache: bool=False, push: bool=False):
         -h, --help
         -n, --nocache     # disable Docker cache [default: false]
         -p, --push        # push image to registry after build [default: false]
+        -r, --rebuild     # rebuild image even if already built [default: false]
     """
     for image in shipment.images:
         if isinstance(image, SourceImage) and (imagename is None or image.repository == imagename):
-            image.build(nocache=nocache)
+            if rebuild:
+                image.build(nocache=nocache)
+            else:
+                image.getid(nocache=nocache)
             if push:
                 image.push()
 
@@ -410,7 +423,7 @@ def main():
         -l, --loglevel <loglevel>          log level [default: warn]
         -c, --config <config>              yaml config file
         -d, --distribution <distribution>  distribution name
-        -e, --entrypoint <entrypoint>      entry point, by default uses first found [default: None]
+        -e, --entrypoint <entrypoint>      entry point, by default uses first found
         -n, --namespace <namespace>        docker namespace to use if not set (overrides config)
         --no-cache                         disable requests cache when using -m/-f
         --clear-cache                      clear requests cache (ignored with --no-cache)

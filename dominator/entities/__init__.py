@@ -507,6 +507,12 @@ class Volume:
 
 
 class DataVolume(Volume):
+    """DataVolume that just mounts volume inside container.
+
+    dest -- mount point inside container
+    path -- mount point on the host
+    ro   -- should volume be mounted read-only
+    """
     def __init__(self, dest: str, path: str=None, ro=False):
         self.dest = dest
         self.path = path
@@ -528,6 +534,10 @@ class ConfigVolume(Volume):
     def getpath(self, container):
         return os.path.expanduser(os.path.join(utils.settings['configvolumedir'],
                                                container.shipment.name, container.name, self.dest[1:]))
+
+    def getfilepath(self, filename):
+        assert filename in self.files
+        return os.path.join(self.dest, filename)
 
     @property
     def ro(self):

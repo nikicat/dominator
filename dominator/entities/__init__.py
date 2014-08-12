@@ -649,7 +649,7 @@ class Shipment:
             self.containers.append(container)
 
         # HACK: add "_ships" field to place it before "ships" field in yaml
-        self._ships = self.ships = list({container.ship for container in self.containers})
+        self._ships = self.ships = sorted(list({container.ship for container in self.containers}), key=lambda s: s.name)
 
     @property
     def images(self):

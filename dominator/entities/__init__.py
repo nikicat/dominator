@@ -536,7 +536,7 @@ class ConfigVolume(Volume):
                                                container.shipment.name, container.name, self.dest[1:]))
 
     def getfilepath(self, filename):
-        assert filename in self.files
+        assert filename in self.files, "no such file in config volume"
         return os.path.join(self.dest, filename)
 
     @property

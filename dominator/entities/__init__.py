@@ -674,3 +674,7 @@ class Shipment:
                 yield cont
         if notfound:
             utils.getlogger(shipname=shipname, containername=containername).error('no containers matched')
+
+    def group_containers(self, shipname: str=None, containername: str=None):
+        return [(ship, self.filter_containers(ship.name, containername))
+                for ship in self.ships if shipname is None or re.match(shipname, ship.name)]

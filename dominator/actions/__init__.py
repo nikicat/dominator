@@ -103,11 +103,6 @@ def stop(shipment, ship: str=None, container: str=None):
             cont.stop()
 
 
-def group_containers(shipment, shipname: str=None, containername: str=None):
-    return [(ship, shipment.filter_containers(ship.name, containername))
-            for ship in shipment.ships if shipname is None or ship.name == shipname]
-
-
 @command
 def list_containers(shipment, shipname: str=None):
     """Print container names
@@ -195,7 +190,7 @@ def status(shipment, shipname: str=None, containername: str=None, showdiff: bool
         -d, --showdiff  # show diff with running container [default: false]
         -k, --keep      # keep ambassador container [default: false]
     """
-    for ship, _ in group_containers(shipment, shipname, containername):
+    for ship, _ in shipment.group_containers(shipname, containername):
         getlogger(ship=ship).debug("processing ship")
         runremotely(shipment, ship, 'localstatus' + (' -d' if showdiff else ''), keep, printlogs=True)
 
@@ -231,7 +226,7 @@ def start(shipment, shipname: str=None, containername: str=None, keep: bool=Fals
         image.getid()
         image.push()
 
-    for ship, _ in group_containers(shipment, shipname, containername):
+    for ship, _ in shipment.group_containers(shipname, containername):
         runremotely(shipment, ship, 'localstart', keep)
 
 
@@ -245,7 +240,7 @@ def restart(shipment, shipname: str=None, containername: str=None, keep: bool=Fa
         -h, --help
         -k, --keep  # keep ambassador container after run
     """
-    for ship, _ in group_containers(shipment, shipname, containername):
+    for ship, _ in shipment.group_containers(shipname, containername):
         runremotely(shipment, ship, 'localrestart', keep)
 
 

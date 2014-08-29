@@ -46,9 +46,10 @@ class Ship(BaseShip):
     """
     Ship objects represents host running Docker listening on 4243 external port.
     """
-    def __init__(self, name, fqdn, **kwargs):
+    def __init__(self, name, fqdn, port=2375, **kwargs):
         self.name = name
         self.fqdn = fqdn
+        self.port = port
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -61,7 +62,7 @@ class Ship(BaseShip):
     @utils.cached
     def docker(self):
         self.logger.debug('connecting to ship', fqdn=self.fqdn)
-        return docker.Client('http://{}:2375'.format(self.fqdn))
+        return docker.Client('http://{}:{}'.format(self.fqdn, self.port))
 
 
 class LocalShip(BaseShip):
@@ -673,3 +674,7 @@ class Shipment:
                 yield cont
         if notfound:
             utils.getlogger(shipname=shipname, containername=containername).error('no containers matched')
+
+    def group_containers(self, shipname: str=None, containername: str=None):
+        return [(ship, self.filter_containers(ship.name, containername))
+                for ship in self.ships if shipname is None or re.match(shipname, ship.name)]

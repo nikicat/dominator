@@ -333,6 +333,10 @@ class Container:
         return '{}.{}'.format(self.shipment.name, self.name) if self.shipment else self.name
 
     def check(self, cinfo=None):
+        """This function tries to find container on the associated ship
+        by listing all containers. If found, it fills `id` and `status` attrs.
+        If `cinfo` is provided, then skips docker api call for container listing.
+        """
         if cinfo is None:
             self.logger.debug('checking container status')
             matched = [cont for cont in self.ship.docker.containers(all=True)

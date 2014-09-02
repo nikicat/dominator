@@ -14,12 +14,15 @@ import base64
 import io
 import functools
 import re
+import shutil
 
 import yaml
 import pkg_resources
 import docker
 import docker.errors
 import mako.template
+import subprocess
+import difflib
 
 from .. import utils
 
@@ -46,10 +49,14 @@ class Ship(BaseShip):
     """
     Ship objects represents host running Docker listening on 4243 external port.
     """
-    def __init__(self, name, fqdn, port=2375, **kwargs):
+    def __init__(self, name, fqdn, username='root', datadir='/var/lib/dominator/data',
+                 configdir='/var/lib/dominator/config', port=2375, **kwargs):
         self.name = name
         self.fqdn = fqdn
         self.port = port
+        self.datadir = datadir
+        self.configdir = configdir
+        self.username = username
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -61,8 +68,32 @@ class Ship(BaseShip):
     @property
     @utils.cached
     def docker(self):
-        self.logger.debug('connecting to ship', fqdn=self.fqdn)
+        self.logger.debug('connecting to docker api on ship', fqdn=self.fqdn)
         return docker.Client('http://{}:{}'.format(self.fqdn, self.port))
+
+    def getssh(self):
+        self.logger.debug("ssh'ing to ship", fqdn=self.fqdn)
+        import openssh_wrapper
+        conn = openssh_wrapper.SSHConnection(self.fqdn, login=self.username)
+        return conn
+
+    def upload(self, localpath, remotepath):
+        """Upload directory recursively to ship using ssh
+        """
+        self.logger.debug("uploading from %s to %s", localpath, remotepath)
+        ssh = self.getssh()
+        ret = ssh.run('rm -rf {0} && mkdir -p {0}'.format(remotepath))
+        if ret.returncode != 0:
+            raise RuntimeError(ret.stderr)
+        ssh.scp([os.path.join(localpath, entry) for entry in os.listdir(localpath)], remotepath)
+
+    def download(self, remotepath, localpath):
+        """Download directory recursively from ship using ssh
+        """
+        self.logger.debug("downloading from %s to %s", remotepath, localpath)
+        ssh = self.getssh()
+        tar = ssh.run('tar -cC {} .'.format(remotepath)).stdout
+        subprocess.check_output('tar -x --one-top-level={}'.format(localpath), input=tar, shell=True)
 
 
 class LocalShip(BaseShip):
@@ -92,6 +123,26 @@ class LocalShip(BaseShip):
     @utils.cached
     def docker(self):
         return docker.Client(utils.settings.get('dockerurl'))
+
+    @property
+    def datadir(self):
+        return utils.settings['datavolumedir']
+
+    @property
+    def configdir(self):
+        return utils.settings['configvolumedir']
+
+    def upload(self, localpath, remotepath):
+        """Upload directory recursively to localship using shutil
+        """
+        shutil.rmtree(remotepath, ignore_errors=True)
+        shutil.copytree(localpath, remotepath)
+
+    def download(self, remotepath, localpath):
+        """Download directory recursively from localship using shutil
+        """
+        shutil.rmtree(localpath, ignore_errors=True)
+        shutil.copytree(remotepath, localpath)
 
 
 class Image:
@@ -141,12 +192,12 @@ class Image:
     def push(self, dock=None):
         self.logger.info("pushing repo")
         dock = dock or utils.getdocker()
-        return self._streamoperation(dock.push, repository=self.getfullrepository())
+        return self._streamoperation(dock.push, repository=self.getfullrepository(), tag=self.tag)
 
     def pull(self, dock=None):
         self.logger.info("pulling repo")
         dock = dock or utils.getdocker()
-        return self._streamoperation(dock.pull, repository=self.getfullrepository(), tag=self.tag)
+        return self._streamoperation(dock.pull, repository=self.getfullrepository())
 
     def build(self, dock=None, **kwargs):
         self.logger.info("building image")
@@ -333,6 +384,10 @@ class Container:
         return '{}.{}'.format(self.shipment.name, self.name) if self.shipment else self.name
 
     def check(self, cinfo=None):
+        """This function tries to find container on the associated ship
+        by listing all containers. If found, it fills `id` and `status` attrs.
+        If `cinfo` is provided, then skips docker api call for container listing.
+        """
         if cinfo is None:
             self.logger.debug('checking container status')
             matched = [cont for cont in self.ship.docker.containers(all=True)
@@ -417,7 +472,15 @@ class Container:
             # image not found - pull repo and try again
             # Check if ship has needed image
             self.logger.info('could not find requested image, pulling repo')
-            self.image.pull(self.ship.docker)
+            try:
+                self.image.pull(self.ship.docker)
+            except docker.errors.DockerException as e:
+                if not re.search('HTTP code: 404', str(e)) and not re.search('Tag .* not found in repository', str(e)):
+                    raise
+                self.logger.info("could not find requested image in registry, pushing repo")
+                self.image.getid()
+                self.image.push()
+                self.image.pull(self.ship.docker)
             cinfo = self._create()
 
         self.check(cinfo)
@@ -523,7 +586,7 @@ class DataVolume(Volume):
         pass
 
     def getpath(self, container):
-        return self.path or os.path.expanduser(os.path.join(utils.settings['datavolumedir'],
+        return self.path or os.path.expanduser(os.path.join(container.ship.datadir,
                                                container.shipment.name, container.name, self.dest[1:]))
 
 
@@ -533,7 +596,7 @@ class ConfigVolume(Volume):
         self.files = files or {}
 
     def getpath(self, container):
-        return os.path.expanduser(os.path.join(utils.settings['configvolumedir'],
+        return os.path.expanduser(os.path.join(container.ship.configdir,
                                                container.shipment.name, container.name, self.dest[1:]))
 
     def getfilepath(self, filename):
@@ -544,15 +607,27 @@ class ConfigVolume(Volume):
     def ro(self):
         return True
 
-    def render(self, cont):
+    def render(self, container):
         self.logger.debug('rendering')
-        path = self.getpath(cont)
-        os.makedirs(path, exist_ok=True)
+        with tempfile.TemporaryDirectory() as tempdir:
+            for name, file in self.files.items():
+                file.dump(container, os.path.join(tempdir, name))
+            container.ship.upload(tempdir, self.getpath(container))
 
-        for filename in os.listdir(path):
-            os.remove(os.path.join(path, filename))
-        for name, file in self.files.items():
-            file.dump(cont, self, name)
+    @utils.aslist
+    def compare_files(self, container):
+        self.logger.debug('comparing files')
+        with tempfile.TemporaryDirectory() as tempdir:
+            container.ship.download(self.getpath(container), tempdir)
+            for name, file in self.files.items():
+                try:
+                    actual = file.load(container, os.path.join(tempdir, name))
+                except FileNotFoundError:
+                    actual = ''
+                expected = file.data(container)
+                if actual != expected:
+                    diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
+                    yield ('volumes', self.dest, 'files', name), [line for line in diff if line[:2] != '  ']
 
 
 class BaseFile:
@@ -563,19 +638,14 @@ class BaseFile:
     def logger(self):
         return utils.getlogger(file=self, bindto=3)
 
-    def getpath(self, container: Container, volume: Volume, name: str):
-        return os.path.join(volume.getpath(container), name)
-
-    def dump(self, container: Container, volume: Volume, name: str, data: str=None):
+    def dump(self, container: Container, path: str, data: str=None):
         if data is None:
             data = self.data(container)
-        path = self.getpath(container, volume, name)
         self.logger.debug("writing file", path=path)
         with open(path, 'w+', encoding='utf8') as f:
             f.write(data)
 
-    def load(self, container: Container, volume: Volume, name: str):
-        path = self.getpath(container, volume, name)
+    def load(self, container: Container, path: str):
         self.logger.debug("loading text file contents", path=path)
         with open(path) as f:
             return f.read()
@@ -610,9 +680,9 @@ class TemplateFile:
     def logger(self):
         return utils.getlogger(file=self, bindto=3)
 
-    def dump(self, container, volume, name):
+    def dump(self, container: Container, path: str):
         self.logger.debug("rendering file")
-        self.file.dump(container, volume, name, self.data(container))
+        self.file.dump(container, path, self.data(container))
 
     def data(self, container):
         template = mako.template.Template(self.file.data(container))
@@ -621,8 +691,8 @@ class TemplateFile:
         self.logger.debug('rendering template file', context=context)
         return template.render(**context)
 
-    def load(self, container, volume, name):
-        return self.file.load(container, volume, name)
+    def load(self, container: Container, path: str):
+        return self.file.load(container, path)
 
 
 class YamlFile(BaseFile):

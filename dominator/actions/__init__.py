@@ -2,7 +2,6 @@ import logging
 import logging.config
 import sys
 import os
-from contextlib import contextmanager
 import pkg_resources
 import datetime
 
@@ -11,7 +10,7 @@ import docopt
 import mako.template
 from colorama import Fore
 
-from ..entities import Container, Image, SourceImage, DataVolume
+from ..entities import SourceImage
 from .. import utils
 from ..utils import getlogger, settings
 
@@ -36,23 +35,26 @@ def dump(shipment):
 
 
 @command
-def localstart(shipment, shipname: str=None, containername: str=None):
-    """Start locally all or specified containers
+def start(shipment, shipname: str=None, containername: str=None):
+    """Push images, render config volumes and Start containers
 
-    Usage: dominator localstart [options] [<shipname>] [<containername>]
+    Usage: dominator start [options] [<shipname>] [<containername>]
 
     Options:
         -h, --help
     """
-    for cont in shipment.filter_containers(shipname, containername):
+
+    containers = shipment.filter_containers(shipname, containername)
+
+    for cont in containers:
         cont.run()
 
 
 @command
-def localrestart(shipment, shipname: str=None, containername: str=None):
-    """Restart locally all or specified containers
+def restart(shipment, shipname: str=None, containername: str=None):
+    """Restart containers
 
-    Usage: dominator localrestart [options] [<shipname>] [<containername>]
+    Usage: dominator restart [options] [<shipname>] [<containername>]
 
     Options:
         -h, --help
@@ -65,8 +67,8 @@ def localrestart(shipment, shipname: str=None, containername: str=None):
 
 
 @command
-def localexec(shipment, shipname: str, containername: str, keep: bool=False):
-    """Start container locally, attach to process, read stdout/stderr
+def exec(shipment, shipname: str, containername: str, keep: bool=False):
+    """Start container, attach to process, read stdout/stderr
        and print it, then (optionally) remove it
 
     Usage: dominator localexec [options] <shipname> <containername>
@@ -153,10 +155,10 @@ def load_from_yaml(filename):
 
 
 @command
-def localstatus(shipment, shipname: str=None, containername: str=None, showdiff: bool=False):
-    """Show local shipment' status
+def status(shipment, shipname: str=None, containername: str=None, showdiff: bool=False):
+    """Show shipment's status
 
-    Usage: dominator localstatus [options] [<shipname>] [<containername>]
+    Usage: dominator status [options] [<shipname>] [<containername>]
 
     Options:
         -h, --help
@@ -179,22 +181,6 @@ def localstatus(shipment, shipname: str=None, containername: str=None, showdiff:
             print_diff(diff)
 
 
-@command
-def status(shipment, shipname: str=None, containername: str=None, showdiff: bool=False, keep: bool=True):
-    """Show local shipment' status
-
-    Usage: dominator status [options] [<shipname>] [<containername>]
-
-    Options:
-        -h, --help
-        -d, --showdiff  # show diff with running container [default: false]
-        -k, --keep      # keep ambassador container [default: false]
-    """
-    for ship, _ in shipment.group_containers(shipname, containername):
-        getlogger(ship=ship).debug("processing ship")
-        runremotely(shipment, ship, 'localstatus' + (' -d' if showdiff else ''), keep, printlogs=True)
-
-
 def print_diff(difflist):
     fore = Fore
     for key, diff in difflist:
@@ -210,38 +196,6 @@ def print_diff(difflist):
 {fore.GREEN}{expected!s:50.50}{fore.RESET}'.format(**locals()))
         else:
             assert False, "invalid diff format for {key}: {diff}".format(**locals())
-
-
-@command
-def start(shipment, shipname: str=None, containername: str=None, keep: bool=False):
-    """Start containers on ship[s]
-
-    Usage: dominator start [options] [<shipname> [<containername>]]
-
-    Options:
-        -h, --help
-        -k, --keep  # keep ambassador container after run
-    """
-    for image in {container.image for container in shipment.filter_containers(shipname, containername)}:
-        image.getid()
-        image.push()
-
-    for ship, _ in shipment.group_containers(shipname, containername):
-        runremotely(shipment, ship, 'localstart', keep)
-
-
-@command
-def restart(shipment, shipname: str=None, containername: str=None, keep: bool=False):
-    """Restart selected containers
-
-    Usage: dominator restart [options] [<shipname>] [<containername>]
-
-    Options:
-        -h, --help
-        -k, --keep  # keep ambassador container after run
-    """
-    for ship, _ in shipment.group_containers(shipname, containername):
-        runremotely(shipment, ship, 'localrestart', keep)
 
 
 @command
@@ -278,61 +232,6 @@ def makedeb(shipment, packagename: str, distribution: str, urgency: str, target:
 
     with open(os.path.join(target, 'debian', '{}.yaml'.format(packagename)), 'w+') as config:
         yaml.dump(shipment, config)
-
-
-@utils.cached
-def getambassadorimage():
-    return Image(settings['deploy-image'])
-
-
-def getambassador(ship, command):
-    return Container(
-        name='dominator-ambassador',
-        image=getambassadorimage(),
-        ship=ship,
-        hostname=ship.name,
-        command='dominator -c - {}'.format(command),
-        volumes={
-            'data': DataVolume(path='/var/lib/dominator', dest='/var/lib/dominator'),
-            'docker': DataVolume(path='/run/docker.sock', dest='/run/docker.sock'),
-        },
-    )
-
-
-def runremotely(shipment, ship, command, keep: bool=False, printlogs: bool=False):
-    if not printlogs:
-        command = '-ldebug ' + command
-    command = '{command} {ship.name}'.format(**locals())
-
-    logger = getlogger(ship=ship, command=command, keep=keep)
-    logger.info('running remotely')
-
-    cont = getambassador(ship, command)
-
-    with cont.execute() as logs:
-        with _docker_attach(ship.docker, cont) as stdin:
-            logger.debug('attached to stdin, sending config')
-            stdin.send(yaml.dump(shipment).encode())
-            logger.debug('config sent, detaching stdin')
-
-        logger = utils.getlogger('dominator.docker.logs', container=cont)
-        for line in logs:
-            if printlogs:
-                print(line)
-            else:
-                logger.debug(line)
-
-    if not keep:
-        cont.remove()
-
-
-@contextmanager
-def _docker_attach(dock, cont):
-    """some hacks to workaround docker-py bugs"""
-    u = dock._url('/containers/{0}/attach'.format(cont.id))
-    r = dock._post(u, params={'stdin': 1, 'stream': 1}, stream=True)
-    yield r.raw._fp.fp.raw._sock
-    r.close()
 
 
 @command
@@ -406,12 +305,9 @@ def main():
         stop                stop containers
         restart             restart containers
         status              show containers' status
-
-        localstart          start containers locally
-        localstop           stop containers locally
-        localrestart        restart containers locally
-        localstatus         show local containers' status
-        localexec           start and attach to container locally
+        exec                start and attach to container locally
+        build               build image
+        images              show images list
 
     Options:
         -s, --settings <settings>          yaml file to load settings

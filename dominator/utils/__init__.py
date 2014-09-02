@@ -1,6 +1,5 @@
 import functools
 import itertools
-import difflib
 import inspect
 import string
 import pprint
@@ -201,7 +200,7 @@ def compare_volumes(cont, cinfo):
             if volume.getpath(cont) != path:
                 yield ('volumes', dest, 'path'), (volume.getpath(cont), path)
             elif hasattr(volume, 'files'):
-                yield from compare_files(cont, volume)
+                yield from volume.compare_files(cont)
 
             if volume.ro != ro:
                 yield ('volumes', dest, 'ro'), (volume.ro, ro)
@@ -210,20 +209,6 @@ def compare_volumes(cont, cinfo):
         matched_actual_path = [path for dest, path in cinfo['Volumes'].items() if dest == volume.dest]
         if len(matched_actual_path) == 0:
             yield ('volumes',), (volume.dest, '')
-
-
-@aslist
-def compare_files(container, volume):
-    getlogger().debug('comparing files')
-    for name, file in volume.files.items():
-        try:
-            actual = file.load(container, volume, name)
-        except FileNotFoundError:
-            actual = ''
-        expected = file.data(container)
-        if actual != expected:
-            diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
-            yield ('volumes', volume.dest, 'files', name), [line for line in diff if line[:2] != '  ']
 
 
 def compare_values(key, expected, actual):

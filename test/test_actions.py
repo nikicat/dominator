@@ -77,30 +77,30 @@ def docker():
 
 
 @vcr.use_cassette('localstart.yaml')
-def test_localstart(capsys, shipment):
-    actions.localstart(shipment)
+def test_start(capsys, shipment):
+    actions.start(shipment)
     _, err = capsys.readouterr()
     assert err == ''
 
-    actions.localstatus(shipment, showdiff=True)
+    actions.status(shipment, showdiff=True)
     out, _ = capsys.readouterr()
     lines = out.split('\n')
     assert len(lines) == 2
     assert re.match(r'test-shipment[ \t]+localship[ \t]+testcont[ \t]+{color}[a-f0-9]{{7}}[ \t]+Up Less than a second'
                     .format(color=re.escape(Fore.GREEN)), lines[-2])
 
-    actions.localrestart(shipment)
+    actions.restart(shipment)
     _, _ = capsys.readouterr()
 
     shipment.containers[0].volumes['testconf'].files['testfile'].content = 'some other content'
-    actions.localstatus(shipment, showdiff=True)
+    actions.status(shipment, showdiff=True)
     out, _ = capsys.readouterr()
     lines = out.split('\n')
     assert len(lines) == 6
     assert '++++++' in lines[-3]
 
-    actions.localstart(shipment)
-    actions.localstatus(shipment, showdiff=True)
+    actions.start(shipment)
+    actions.status(shipment, showdiff=True)
     out, _ = capsys.readouterr()
     lines = out.split('\n')
     assert len(lines) == 2

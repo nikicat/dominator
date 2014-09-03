@@ -71,7 +71,7 @@ def exec(shipment, shipname: str, containername: str, keep: bool=False):
     """Start container, attach to process, read stdout/stderr
        and print it, then (optionally) remove it
 
-    Usage: dominator localexec [options] <shipname> <containername>
+    Usage: dominator exec [options] <shipname> <containername>
 
     Options:
         -h, --help

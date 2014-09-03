@@ -43,10 +43,7 @@ def start(shipment, shipname: str=None, containername: str=None):
     Options:
         -h, --help
     """
-
-    containers = shipment.filter_containers(shipname, containername)
-
-    for cont in containers:
+    for cont in shipment.filter_containers(shipname, containername):
         cont.run()
 
 
@@ -138,6 +135,7 @@ def load_from_distribution(distribution, entrypoint):
     shipment.author = meta.author
     shipment.author_email = meta.author_email
     shipment.home_page = meta.home_page
+    shipment.dominator_version = getversion()
 
     import tzlocal
     shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
@@ -263,10 +261,8 @@ def build(shipment, imagename: str, nocache: bool, push: bool, rebuild: bool):
     """
     for image in shipment.images:
         if isinstance(image, SourceImage) and (imagename is None or image.repository == imagename):
-            if rebuild:
+            if rebuild or image.getid() is '':
                 image.build(nocache=nocache)
-            else:
-                image.getid(nocache=nocache)
             if push:
                 image.push()
 

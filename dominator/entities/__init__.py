@@ -145,22 +145,37 @@ class LocalShip(BaseShip):
         shutil.copytree(remotepath, localpath)
 
 
+DEFAULT_NAMESPACE = object()
+DEFAULT_REGISTRY = object()
+
+
 class Image:
-    def __init__(self, repository: str, tag: str='latest', id: str=''):
+    def __init__(self, repository: str, tag: str='latest', id: str='',
+                 namespace=DEFAULT_NAMESPACE, registry=DEFAULT_REGISTRY):
         self.tag = tag
+        self._init(namespace, repository, registry, id)
+        if self.id is '':
+            self.getid()
+
+    def _init(self, namespace, repository, registry, id=''):
         self.id = id
-        self.registry, self.repository = utils.getrepo(repository)
+        self.repository = repository
+        self.namespace = namespace if namespace is not DEFAULT_NAMESPACE else utils.settings.get('docker-namespace')
+        self.registry = registry if registry is not DEFAULT_REGISTRY else utils.settings.get('docker-registry')
 
     def __repr__(self):
-        return 'Image(repository={repository}, tag={tag}, id={id:.7}, registry={registry})'.format(**vars(self))
+        return '{classname}({namespace}/{repository}:{tag} [{id:.7}] registry={registry})'.format(
+            classname=type(self).__name__, **vars(self))
 
     def __getstate__(self):
         if self.id is '':
-            self.getid()
+            raise RuntimeError('image needs to be rebuilt')
         return vars(self)
 
     def getfullrepository(self):
-        return self.repository if self.registry is None else '{}/{}'.format(self.registry, self.repository)
+        registry = self.registry + '/' if self.registry else ''
+        namespace = self.namespace + '/' if self.namespace else ''
+        return registry + namespace + self.repository
 
     @property
     def logger(self):
@@ -168,10 +183,8 @@ class Image:
 
     def getid(self, dock=None):
         self.logger.debug('retrieving id')
-        if self.id is '':
-            if self.tag not in self.gettags(dock):
-                self.pull(dock)
-            self.id = self.gettags(dock)[self.tag]
+        if self.id is '' and self.tag is not '':
+            self.id = self.gettags(dock).get(self.tag, '')
         return self.id
 
     def _streamoperation(self, func, **kwargs):
@@ -187,22 +200,25 @@ class Image:
                     for line in message.split('\n'):
                         if line:
                             logger.debug(line, response=resp)
-        Image.gettags.cache_clear()
 
     def push(self, dock=None):
         self.logger.info("pushing repo")
         dock = dock or utils.getdocker()
-        return self._streamoperation(dock.push, repository=self.getfullrepository(), tag=self.tag)
+        self._streamoperation(dock.push, repository=self.getfullrepository(), tag=self.tag)
 
-    def pull(self, dock=None):
+    def pull(self, dock=None, tag=None):
         self.logger.info("pulling repo")
         dock = dock or utils.getdocker()
-        return self._streamoperation(dock.pull, repository=self.getfullrepository())
+        self._streamoperation(dock.pull, repository=self.getfullrepository(), tag=tag)
+        Image.gettags.cache_clear()
+        self.getid()
 
     def build(self, dock=None, **kwargs):
         self.logger.info("building image")
         dock = dock or utils.getdocker()
-        return self._streamoperation(dock.build, tag='{}:{}'.format(self.getfullrepository(), self.tag), **kwargs)
+        self._streamoperation(dock.build, tag='{}:{}'.format(self.getfullrepository(), self.tag), **kwargs)
+        Image.gettags.cache_clear()
+        self.getid()
 
     @utils.cached
     @utils.asdict
@@ -256,29 +272,18 @@ class SourceImage(Image):
 
         self.files = {path: getfileobj(fileobj_or_filename) for path, fileobj_or_filename in (files or {}).items()}
         self.env = env or {}
-        Image.__init__(self, name)
+        self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
+        self.getid()
 
     def __getstate__(self):
         """Used when dumping to yaml"""
-        def filtered_state():
-            return {k: v for k, v in Image.__getstate__(self).items() if k not in ['files']}
-        try:
-            return filtered_state()
-        except docker.errors.DockerException:
-            # DockerException means that needed image not found in repository and needs rebuilding
-            self.build()
-            return filtered_state()
-
-    def getid(self, dock=None, nocache=False):
-        try:
-            return Image.getid(self, dock)
-        except docker.errors.DockerException as e:
-            self.logger.info("pull failed, rebuilding (%s)", e)
-            self.build(dock, nocache=nocache)
-            return Image.getid(self, dock)
+        return {k: v for k, v in Image.__getstate__(self).items() if k not in ['files']}
 
     def build(self, dock=None, **kwargs):
+        self.logger.info("building source image")
+        if isinstance(self.parent, SourceImage):
+            self.parent.build(dock, **kwargs)
         return Image.build(self, dock, fileobj=self.gettarfile(), custom_context=True, **kwargs)
 
     def gethash(self):
@@ -287,6 +292,7 @@ class SourceImage(Image):
         """
         dump = json.dumps({
             'repository': self.repository,
+            'namespace': self.namespace,
             'parent': self.parent.gethash(),
             'scripts': self.scripts,
             'command': self.command,
@@ -341,7 +347,7 @@ class SourceImage(Image):
 class Container:
     def __init__(self, name: str, ship: Ship, image: Image, command: str=None, hostname: str=None,
                  ports: dict=None, memory: int=0, volumes: dict=None, env: dict=None, extports: dict=None,
-                 portproto: dict=None, network_mode: str=''):
+                 portproto: dict=None, network_mode: str='', user=None):
         self.name = name
         self.ship = ship
         self.image = image
@@ -357,6 +363,7 @@ class Container:
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
         self.network_mode = network_mode
         self.shipment = None
+        self.user = user
 
     def __repr__(self):
         return 'Container(name={name}, ship={ship}, Image={image}, env={env}, id={id})'.format(**vars(self))
@@ -473,12 +480,11 @@ class Container:
             # Check if ship has needed image
             self.logger.info('could not find requested image, pulling repo')
             try:
-                self.image.pull(self.ship.docker)
+                self.image.pull(self.ship.docker, tag=self.image.tag)
             except docker.errors.DockerException as e:
                 if not re.search('HTTP code: 404', str(e)) and not re.search('Tag .* not found in repository', str(e)):
                     raise
                 self.logger.info("could not find requested image in registry, pushing repo")
-                self.image.getid()
                 self.image.push()
                 self.image.pull(self.ship.docker)
             cinfo = self._create()
@@ -498,6 +504,7 @@ class Container:
             ports=list(self.ports.values()),
             stdin_open=True,
             detach=False,
+            user=self.user,
         )
 
     def run(self):

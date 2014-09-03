@@ -4,7 +4,6 @@ import inspect
 import string
 import pprint
 import logging
-import re
 import os.path
 from pkg_resources import resource_stream
 
@@ -132,19 +131,6 @@ def getdocker(url=None):
     url = url or settings.get('dockerurl')
     getlogger(url=url).debug('creating docker client')
     return docker.Client(url)
-
-
-def getrepo(repo):
-    if '/' not in repo and 'docker-namespace' in settings:
-        repo = '{}/{}'.format(settings['docker-namespace'], repo)
-
-    mo = re.match('^(.*)/(.*/.*)$', repo)
-    if mo is not None:
-        registry = mo.groups[0]
-        repo = mo.groups[1]
-    else:
-        registry = settings.get('docker-registry')
-    return registry, repo
 
 
 @aslist

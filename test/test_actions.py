@@ -41,6 +41,7 @@ def ships():
     return [entities.LocalShip()]
 
 
+@vcr.use_cassette('shipment.yaml')
 @pytest.fixture
 def shipment():
     shipment = entities.Shipment(

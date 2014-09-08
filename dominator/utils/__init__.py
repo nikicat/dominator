@@ -5,7 +5,7 @@ import string
 import pprint
 import logging
 import os.path
-from pkg_resources import resource_stream
+import pkg_resources
 
 import yaml
 import docker
@@ -244,6 +244,10 @@ def docker_lines(records):
 def getcallingmodule(deep):
     parent_frame = inspect.stack()[1+deep]
     return inspect.getmodule(parent_frame[0])
+
+
+def resource_string(name):
+    return pkg_resources.resource_string(getcallingmodule(1).__name__, name).decode()
 
 
 def make_shipment(name):

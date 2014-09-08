@@ -237,8 +237,8 @@ def status(containers, showdiff):
         else:
             color = Fore.RED
         click.echo('{c.shipment.name:20.20} {c.ship.name:10.10} {c.name:20.20} '
-                   '{color}{c.id:10.7} {c.status:30.30}{reset}'
-                   .format(c=c, color=color, reset=Fore.RESET))
+                   '{color}{id:10.7} {c.status:30.30}{reset}'
+                   .format(c=c, color=color, id=c.id or '', reset=Fore.RESET))
         if c.running and showdiff:
             print_diff(diff)
 

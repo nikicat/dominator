@@ -293,8 +293,7 @@ class SourceImage(Image):
             'env': self.env,
             'volumes': self.volumes,
             'ports': self.ports,
-            'files': {path: hashlib.sha256(data.encode()).hexdigest()
-                      for path, data in self.files.items()},
+            'files': self.files,
         }, sort_keys=True)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()

@@ -34,7 +34,7 @@ if __name__ == '__main__':
         platforms='linux',
         packages=['dominator.entities', 'dominator.actions', 'dominator.utils'],
         namespace_packages=['dominator'],
-        entry_points={'console_scripts': ['dominator = dominator.actions:main']},
+        entry_points={'console_scripts': ['dominator = dominator.actions:cli']},
         package_data={
             'dominator.utils': ['settings.yaml'],
             'dominator.actions': ['debian/*', 'debian/source/*', 'settings.docker.yaml']
@@ -49,9 +49,9 @@ if __name__ == '__main__':
         ],
         install_requires=[
             'docker-py >= 0.3.2',
-            'docopt',
             'mako',
             'colorama',
+            'click',
         ],
         tests_require=[
             'pytest',

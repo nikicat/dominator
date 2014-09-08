@@ -37,8 +37,9 @@ class BaseShip:
     def __repr__(self):
         return '{}(name={})'.format(type(self).__name__, self.name)
 
-    def containers(self, containers):
-        return [c for c in containers if c.ship == self]
+    @property
+    def containers(self):
+        return [c for c in self.shipment.containers if c.ship == self]
 
     @property
     def logger(self):
@@ -733,18 +734,3 @@ class Shipment:
             return 0
         return sorted(list(set(container.image for container in self.containers)),
                       key=functools.cmp_to_key(compare_source_images))
-
-    @utils.makesorted(lambda c: (c.ship.name, c.name))
-    def filter_containers(self, shipname: str=None, containername: str=None):
-        notfound = True
-        for cont in self.containers:
-            if ((shipname is None or re.match(shipname, cont.ship.name)) and
-               (containername is None or re.match(containername, cont.name))):
-                notfound = False
-                yield cont
-        if notfound:
-            utils.getlogger(shipname=shipname, containername=containername).error('no containers matched')
-
-    def group_containers(self, shipname: str=None, containername: str=None):
-        return [(ship, self.filter_containers(ship.name, containername))
-                for ship in self.ships if shipname is None or re.match(shipname, ship.name)]

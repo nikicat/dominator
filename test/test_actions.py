@@ -1,13 +1,14 @@
-import tempfile
 import logging
 import re
 import datetime
 import shutil
 import os
+import os.path
 
+import yaml
 import pytest
 from vcr import VCR
-from colorama import Fore
+from click.testing import CliRunner
 
 from dominator import entities
 from dominator import actions
@@ -45,7 +46,7 @@ def ships():
 @pytest.fixture
 def shipment():
     shipment = entities.Shipment(
-        name='test-shipment',
+        name='testshipment',
         containers=[
             entities.Container(
                 name='testcont',
@@ -79,50 +80,51 @@ def docker():
 
 @vcr.use_cassette('localstart.yaml')
 def test_start(capsys, shipment):
-    actions.start(shipment)
-    _, err = capsys.readouterr()
-    assert err == ''
+    runner = CliRunner()
+    result = runner.invoke(actions.containers, ['start'], obj=shipment)
+    assert result.exit_code == 0
 
-    actions.status(shipment, showdiff=True)
-    out, _ = capsys.readouterr()
-    lines = out.split('\n')
+    result = runner.invoke(actions.containers, ['status', '-d'], obj=shipment)
+    assert result.exit_code == 0
+    lines = result.output.split('\n')
     assert len(lines) == 2
-    assert re.match(r'test-shipment[ \t]+localship[ \t]+testcont[ \t]+{color}[a-f0-9]{{7}}[ \t]+Up Less than a second'
-                    .format(color=re.escape(Fore.GREEN)), lines[-2])
+    print(lines[-2])
+    assert re.match(r'testshipment[ \t]+localship[ \t]+testcont[ \t]+[a-f0-9]{7}[ \t]+Up Less than a second[ \t]+',
+                    lines[-2])
 
-    actions.restart(shipment)
-    _, _ = capsys.readouterr()
+    result = runner.invoke(actions.containers, ['restart'], obj=shipment)
+    assert result.exit_code == 0
 
     shipment.containers[0].volumes['testconf'].files['testfile'].content = 'some other content'
-    actions.status(shipment, showdiff=True)
-    out, _ = capsys.readouterr()
-    lines = out.split('\n')
+    result = runner.invoke(actions.containers, ['status', '-d'], obj=shipment)
+    assert result.exit_code == 0
+    lines = result.output.split('\n')
     assert len(lines) == 6
     assert '++++++' in lines[-3]
 
-    actions.start(shipment)
-    actions.status(shipment, showdiff=True)
-    out, _ = capsys.readouterr()
-    lines = out.split('\n')
+    result = runner.invoke(actions.containers, ['start'], obj=shipment)
+    assert result.exit_code == 0
+    result = runner.invoke(actions.containers, ['status', '-d'], obj=shipment)
+    assert result.exit_code == 0
+    lines = result.output.split('\n')
     assert len(lines) == 2
 
-    actions.stop(shipment)
+    result = runner.invoke(actions.containers, ['stop'], obj=shipment)
+    assert result.exit_code == 0
 
 
 @vcr.use_cassette('dump.yaml')
 def test_dump(capsys, shipment):
-    actions.dump(shipment)
-    dump1, _ = capsys.readouterr()
-    assert dump1 != ''
-    with tempfile.NamedTemporaryFile(mode='w') as tmp:
-        tmp.write(dump1)
-        tmp.flush()
-        actions.dump(actions.load_from_yaml(tmp.name))
-    dump2, _ = capsys.readouterr()
+    dump1 = yaml.dump(shipment)
+    assert dump1 != 'null'
+    dump2 = yaml.dump(yaml.load(dump1))
     assert dump1 == dump2
 
 
 @vcr.use_cassette('makedeb.yaml')
 def test_makedeb(shipment, tmpdir):
-    actions.makedeb(shipment, packagename='test-package', distribution='trusty', urgency='high', target=tmpdir.dirname)
-    assert tmpdir.ensure_dir('debian')
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(actions.shipment, ['makedeb', 'test-package', 'trusty', 'high'], obj=shipment)
+        assert result.exit_code == 0
+        assert os.path.isdir('debian')

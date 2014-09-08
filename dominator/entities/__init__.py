@@ -728,8 +728,13 @@ class Shipment:
             container.shipment = self
             self.containers.append(container)
 
+        self.ships = sorted(list({container.ship for container in self.containers}), key=lambda s: s.name)
+
+        for ship in self.ships:
+            ship.shipment = self
+
         # HACK: add "_ships" field to place it before "ships" field in yaml
-        self._ships = self.ships = sorted(list({container.ship for container in self.containers}), key=lambda s: s.name)
+        self._ships = self.ships
 
     @property
     def images(self):

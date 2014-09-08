@@ -295,9 +295,7 @@ def images(ctx, pattern, regex):
     images = []
     if not regex:
         pattern = fnmatch.translate(pattern)
-    for image in shipment.images:
-        if re.match(pattern, image.repository):
-            images.append(image)
+    images = [image for image in shipment.images if re.match(pattern, image.repository)]
     ctx.obj = images
 
 

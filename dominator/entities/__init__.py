@@ -265,22 +265,11 @@ class SourceImage(Image):
         self.workdir = workdir
         self.volumes = volumes or {}
         self.ports = ports or {}
-
-        def getfileobj(fileobj_or_filename):
-            if isinstance(fileobj_or_filename, str):
-                return pkg_resources.resource_stream(utils.getcallingmodule(3).__name__, fileobj_or_filename)
-            else:
-                return fileobj_or_filename
-
-        self.files = {path: getfileobj(fileobj_or_filename) for path, fileobj_or_filename in (files or {}).items()}
+        self.files = files or {}
         self.env = env or {}
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
         self.getid()
-
-    def __getstate__(self):
-        """Used when dumping to yaml"""
-        return {k: v for k, v in Image.__getstate__(self).items() if k not in ['files']}
 
     def build(self, dock=None, **kwargs):
         self.logger.info("building source image")
@@ -302,8 +291,8 @@ class SourceImage(Image):
             'env': self.env,
             'volumes': self.volumes,
             'ports': self.ports,
-            'files': {path: hashlib.sha256(file.seek(0) or file.read()).hexdigest()
-                      for path, file in self.files.items()},
+            'files': {path: hashlib.sha256(data.encode()).hexdigest()
+                      for path, data in self.files.items()},
         }, sort_keys=True)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
@@ -325,14 +314,11 @@ class SourceImage(Image):
                 dockerfile.write('EXPOSE {}\n'.format(port).encode())
             if self.command:
                 dockerfile.write('CMD {}\n'.format(self.command).encode())
-            for path, fileobj in self.files.items():
+            for path, data in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
-                if isinstance(fileobj, io.BytesIO):
-                    tinfo = tarfile.TarInfo(path)
-                    tinfo.size = len(fileobj.getvalue())
-                else:
-                    tinfo = tfile.gettarinfo(fileobj=fileobj, arcname=path)
-                fileobj.seek(0)
+                tinfo = tarfile.TarInfo(path)
+                tinfo.size = len(data)
+                fileobj = io.BytesIO(data.encode())
                 tfile.addfile(tinfo, fileobj)
             dfinfo = tarfile.TarInfo('Dockerfile')
             dfinfo.size = len(dockerfile.getvalue())

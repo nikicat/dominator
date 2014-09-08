@@ -11,7 +11,7 @@ import mako.template
 from colorama import Fore
 import click
 
-from ..entities import SourceImage
+from ..entities import SourceImage, LogVolume
 from .. import utils
 from ..utils import getlogger
 
@@ -284,6 +284,21 @@ def containers_dump(containers):
                     if hasattr(file, 'context'):
                         file.context = 'skipped'
         click.echo_via_pager(yaml.dump(container))
+
+
+@containers.command()
+@click.pass_obj
+@click.option('-p', '--pattern', default='*', help="pattern to filter logs")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def logs(containers, pattern, regex):
+    if not regex:
+        pattern = fnmatch.translate(pattern)
+    for container in containers:
+        for volume in container.volumes.values():
+            if isinstance(volume, LogVolume):
+                for name, log in volume.logs.items():
+                    if re.match(pattern, name):
+                        container.ship.spawn('less -S {}'.format(os.path.join(volume.getpath(container), name)))
 
 
 @cli.group()

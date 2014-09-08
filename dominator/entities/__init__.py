@@ -15,6 +15,7 @@ import io
 import functools
 import re
 import shutil
+import datetime
 
 import yaml
 import pkg_resources
@@ -96,6 +97,13 @@ class Ship(BaseShip):
         ssh = self.getssh()
         tar = ssh.run('tar -cC {} .'.format(remotepath)).stdout
         subprocess.check_output('tar -x --one-top-level={}'.format(localpath), input=tar, shell=True)
+
+    def spawn(self, command):
+        ssh = self.getssh()
+        sshcommand = ssh.ssh_command(command, forward_ssh_agent=False)
+        sshcommand.insert(1, b'-t')
+        i = utils.PtyInterceptor()
+        i.spawn(sshcommand)
 
     def restart(self):
         ssh = self.getssh()
@@ -591,6 +599,12 @@ class DataVolume(Volume):
                                                container.shipment.name, container.name, self.dest[1:]))
 
 
+class LogVolume(DataVolume):
+    def __init__(self, dest: str=None, path: str=None, logs=None):
+        DataVolume.__init__(self, dest, path)
+        self.logs = logs or {}
+
+
 class ConfigVolume(Volume):
     def __init__(self, dest: str, files: dict=None):
         self.dest = dest
@@ -743,3 +757,15 @@ class Shipment:
             return 0
         return sorted(list(set(container.image for container in self.containers)),
                       key=functools.cmp_to_key(compare_source_images))
+
+
+class LogFile:
+    def __init__(self, format, length=None):
+        if length is None:
+            length = len(datetime.datetime.strftime(datetime.datetime.now(), format))
+        self.length = length
+        self.format = format
+
+
+class RotatedLogFile(LogFile):
+    pass

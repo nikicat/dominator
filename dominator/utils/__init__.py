@@ -16,6 +16,10 @@ try:
 except ImportError:
     BaseFormatter = logging.Formatter
 
+# import PtyInterceptor to make it accessible from utils package
+from .pty import PtyInterceptor
+PtyInterceptor  # to avoid flake8 warning
+
 
 class PartialFormatter(string.Formatter):
     def __init__(self):

@@ -219,6 +219,7 @@ class Image:
         dock = dock or utils.getdocker()
         self._streamoperation(dock.build, tag='{}:{}'.format(self.getfullrepository(), self.tag), **kwargs)
         Image.gettags.cache_clear()
+        self.id = ''
         self.getid()
 
     @utils.cached

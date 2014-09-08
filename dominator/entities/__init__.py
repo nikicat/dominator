@@ -152,14 +152,14 @@ DEFAULT_REGISTRY = object()
 
 
 class Image:
-    def __init__(self, repository: str, tag: str='latest', id: str='',
+    def __init__(self, repository: str, tag: str='latest', id: str=None,
                  namespace=DEFAULT_NAMESPACE, registry=DEFAULT_REGISTRY):
         self.tag = tag
         self._init(namespace, repository, registry, id)
-        if self.id is '':
+        if self.id is None:
             self.getid()
 
-    def _init(self, namespace, repository, registry, id=''):
+    def _init(self, namespace, repository, registry, id=None):
         self.id = id
         self.repository = repository
         self.namespace = namespace if namespace is not DEFAULT_NAMESPACE else utils.settings.get('docker-namespace')
@@ -167,7 +167,8 @@ class Image:
 
     def __repr__(self):
         return '{classname}({namespace}/{repository}:{tag} [{id:.7}] registry={registry})'.format(
-            classname=type(self).__name__, **vars(self))
+            classname=type(self).__name__, namespace=self.namespace, repository=self.repository, tag=self.tag,
+            id=self.id or '-', registry=self.registry)
 
     def __getstate__(self):
         if self.id is '':
@@ -185,8 +186,8 @@ class Image:
 
     def getid(self, dock=None):
         self.logger.debug('retrieving id')
-        if self.id is '' and self.tag is not '':
-            self.id = self.gettags(dock).get(self.tag, '')
+        if self.id is None and self.tag is not None:
+            self.id = self.gettags(dock).get(self.tag)
         return self.id
 
     def _streamoperation(self, func, **kwargs):
@@ -220,7 +221,7 @@ class Image:
         dock = dock or utils.getdocker()
         self._streamoperation(dock.build, tag='{}:{}'.format(self.getfullrepository(), self.tag), **kwargs)
         Image.gettags.cache_clear()
-        self.id = ''
+        self.id = None
         self.getid()
 
     @utils.cached
@@ -347,7 +348,7 @@ class Container:
         self.env = env or {}
         self.extports = extports or {}
         self.portproto = portproto or {}
-        self.id = ''
+        self.id = None
         self.status = 'not found'
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
         self.network_mode = network_mode
@@ -366,7 +367,7 @@ class Container:
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.id = ''
+        self.id = None
         self.status = 'not found'
 
     def getvolume(self, volumename):
@@ -395,7 +396,7 @@ class Container:
             self.id = cinfo.get('Id', self.id)
             self.status = cinfo.get('Status', self.status)
         else:
-            self.id = ''
+            self.id = None
             self.status = 'not found'
 
     @contextlib.contextmanager
@@ -452,7 +453,7 @@ class Container:
                     self.ship.docker.remove_container(self.id, force=force)
             else:
                 raise
-        self.check({'Id': '', 'Status': 'not found'})
+        self.check({'Id': None, 'Status': 'not found'})
 
     def create(self):
         self.logger.debug('preparing to create container')

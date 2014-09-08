@@ -37,8 +37,9 @@ class BaseShip:
     def __repr__(self):
         return '{}(name={})'.format(type(self).__name__, self.name)
 
-    def containers(self, containers):
-        return [c for c in containers if c.ship == self]
+    @property
+    def containers(self):
+        return [c for c in self.shipment.containers if c.ship == self]
 
     @property
     def logger(self):
@@ -71,6 +72,7 @@ class Ship(BaseShip):
         self.logger.debug('connecting to docker api on ship', fqdn=self.fqdn)
         return docker.Client('http://{}:{}'.format(self.fqdn, self.port))
 
+    @utils.cached
     def getssh(self):
         self.logger.debug("ssh'ing to ship", fqdn=self.fqdn)
         import openssh_wrapper
@@ -150,14 +152,14 @@ DEFAULT_REGISTRY = object()
 
 
 class Image:
-    def __init__(self, repository: str, tag: str='latest', id: str='',
+    def __init__(self, repository: str, tag: str='latest', id: str=None,
                  namespace=DEFAULT_NAMESPACE, registry=DEFAULT_REGISTRY):
         self.tag = tag
         self._init(namespace, repository, registry, id)
-        if self.id is '':
+        if self.id is None:
             self.getid()
 
-    def _init(self, namespace, repository, registry, id=''):
+    def _init(self, namespace, repository, registry, id=None):
         self.id = id
         self.repository = repository
         self.namespace = namespace if namespace is not DEFAULT_NAMESPACE else utils.settings.get('docker-namespace')
@@ -165,7 +167,8 @@ class Image:
 
     def __repr__(self):
         return '{classname}({namespace}/{repository}:{tag} [{id:.7}] registry={registry})'.format(
-            classname=type(self).__name__, **vars(self))
+            classname=type(self).__name__, namespace=self.namespace, repository=self.repository, tag=self.tag,
+            id=self.id or '-', registry=self.registry)
 
     def __getstate__(self):
         if self.id is '':
@@ -183,8 +186,8 @@ class Image:
 
     def getid(self, dock=None):
         self.logger.debug('retrieving id')
-        if self.id is '' and self.tag is not '':
-            self.id = self.gettags(dock).get(self.tag, '')
+        if self.id is None and self.tag is not None:
+            self.id = self.gettags(dock).get(self.tag)
         return self.id
 
     def _streamoperation(self, func, **kwargs):
@@ -218,6 +221,7 @@ class Image:
         dock = dock or utils.getdocker()
         self._streamoperation(dock.build, tag='{}:{}'.format(self.getfullrepository(), self.tag), **kwargs)
         Image.gettags.cache_clear()
+        self.id = None
         self.getid()
 
     @utils.cached
@@ -263,22 +267,11 @@ class SourceImage(Image):
         self.workdir = workdir
         self.volumes = volumes or {}
         self.ports = ports or {}
-
-        def getfileobj(fileobj_or_filename):
-            if isinstance(fileobj_or_filename, str):
-                return pkg_resources.resource_stream(utils.getcallingmodule(3).__name__, fileobj_or_filename)
-            else:
-                return fileobj_or_filename
-
-        self.files = {path: getfileobj(fileobj_or_filename) for path, fileobj_or_filename in (files or {}).items()}
+        self.files = files or {}
         self.env = env or {}
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
         self.getid()
-
-    def __getstate__(self):
-        """Used when dumping to yaml"""
-        return {k: v for k, v in Image.__getstate__(self).items() if k not in ['files']}
 
     def build(self, dock=None, **kwargs):
         self.logger.info("building source image")
@@ -300,8 +293,8 @@ class SourceImage(Image):
             'env': self.env,
             'volumes': self.volumes,
             'ports': self.ports,
-            'files': {path: hashlib.sha256(file.seek(0) or file.read()).hexdigest()
-                      for path, file in self.files.items()},
+            'files': {path: hashlib.sha256(data.encode()).hexdigest()
+                      for path, data in self.files.items()},
         }, sort_keys=True)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
@@ -323,14 +316,11 @@ class SourceImage(Image):
                 dockerfile.write('EXPOSE {}\n'.format(port).encode())
             if self.command:
                 dockerfile.write('CMD {}\n'.format(self.command).encode())
-            for path, fileobj in self.files.items():
+            for path, data in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
-                if isinstance(fileobj, io.BytesIO):
-                    tinfo = tarfile.TarInfo(path)
-                    tinfo.size = len(fileobj.getvalue())
-                else:
-                    tinfo = tfile.gettarinfo(fileobj=fileobj, arcname=path)
-                fileobj.seek(0)
+                tinfo = tarfile.TarInfo(path)
+                tinfo.size = len(data)
+                fileobj = io.BytesIO(data.encode())
                 tfile.addfile(tinfo, fileobj)
             dfinfo = tarfile.TarInfo('Dockerfile')
             dfinfo.size = len(dockerfile.getvalue())
@@ -358,7 +348,7 @@ class Container:
         self.env = env or {}
         self.extports = extports or {}
         self.portproto = portproto or {}
-        self.id = ''
+        self.id = None
         self.status = 'not found'
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
         self.network_mode = network_mode
@@ -377,7 +367,7 @@ class Container:
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self.id = ''
+        self.id = None
         self.status = 'not found'
 
     def getvolume(self, volumename):
@@ -406,7 +396,7 @@ class Container:
             self.id = cinfo.get('Id', self.id)
             self.status = cinfo.get('Status', self.status)
         else:
-            self.id = ''
+            self.id = None
             self.status = 'not found'
 
     @contextlib.contextmanager
@@ -463,7 +453,7 @@ class Container:
                     self.ship.docker.remove_container(self.id, force=force)
             else:
                 raise
-        self.check({'Id': '', 'Status': 'not found'})
+        self.check({'Id': None, 'Status': 'not found'})
 
     def create(self):
         self.logger.debug('preparing to create container')
@@ -726,8 +716,13 @@ class Shipment:
             container.shipment = self
             self.containers.append(container)
 
+        self.ships = sorted(list({container.ship for container in self.containers}), key=lambda s: s.name)
+
+        for ship in self.ships:
+            ship.shipment = self
+
         # HACK: add "_ships" field to place it before "ships" field in yaml
-        self._ships = self.ships = sorted(list({container.ship for container in self.containers}), key=lambda s: s.name)
+        self._ships = self.ships
 
     @property
     def images(self):
@@ -740,18 +735,3 @@ class Shipment:
             return 0
         return sorted(list(set(container.image for container in self.containers)),
                       key=functools.cmp_to_key(compare_source_images))
-
-    @utils.makesorted(lambda c: (c.ship.name, c.name))
-    def filter_containers(self, shipname: str=None, containername: str=None):
-        notfound = True
-        for cont in self.containers:
-            if ((shipname is None or re.match(shipname, cont.ship.name)) and
-               (containername is None or re.match(containername, cont.name))):
-                notfound = False
-                yield cont
-        if notfound:
-            utils.getlogger(shipname=shipname, containername=containername).error('no containers matched')
-
-    def group_containers(self, shipname: str=None, containername: str=None):
-        return [(ship, self.filter_containers(ship.name, containername))
-                for ship in self.ships if shipname is None or re.match(shipname, ship.name)]

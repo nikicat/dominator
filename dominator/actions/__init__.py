@@ -1,18 +1,19 @@
 import logging
 import logging.config
-import sys
 import os
 import pkg_resources
 import datetime
+import fnmatch
+import re
 
 import yaml
-import docopt
 import mako.template
 from colorama import Fore
+import click
 
 from ..entities import SourceImage
 from .. import utils
-from ..utils import getlogger, settings
+from ..utils import getlogger
 
 
 def literal_str_representer(dumper, data):
@@ -20,102 +21,52 @@ def literal_str_representer(dumper, data):
 yaml.add_representer(str, literal_str_representer)
 
 
-def command(func):
-    func.iscommand = True
-    return func
-
-
-@command
-def dump(shipment):
-    """Dump config as YAML
-
-    Usage: dominator dump
-    """
-    print(yaml.dump(shipment))
-
-
-@command
-def start(shipment, shipname: str=None, containername: str=None):
-    """Push images, render config volumes and Start containers
-
-    Usage: dominator start [options] [<shipname>] [<containername>]
-
-    Options:
-        -h, --help
-    """
-    for cont in shipment.filter_containers(shipname, containername):
-        cont.run()
-
-
-@command
-def restart(shipment, shipname: str=None, containername: str=None):
-    """Restart containers
-
-    Usage: dominator restart [options] [<shipname>] [<containername>]
-
-    Options:
-        -h, --help
-    """
-    for cont in shipment.filter_containers(shipname, containername):
-        cont.check()
-        if cont.running:
-            cont.stop()
-        cont.start()
-
-
-@command
-def exec(shipment, shipname: str, containername: str, keep: bool=False):
-    """Start container, attach to process, read stdout/stderr
-       and print it, then (optionally) remove it
-
-    Usage: dominator exec [options] <shipname> <containername>
-
-    Options:
-        -h, --help
-        -k, --keep  # keep container after stop [default: false]
-    """
-    for cont in shipment.filter_containers(shipname, containername):
+def validate_loglevel(ctx, param, value):
+    try:
         try:
-            with cont.execute() as logs:
-                for line in logs:
-                    print(line)
-        finally:
-            try:
-                if not keep:
-                    cont.remove(force=True)
-            except:
-                getlogger().exception("failed to remove container")
+            level = int(value)
+        except ValueError:
+            level = logging._nameToLevel[value.upper()]
+        return level
+    except ValueError:
+        raise click.BadParameter('loglevel should be logging level name or number')
 
 
-@command
-def stop(shipment, ship: str=None, container: str=None):
-    """Stop container(s) on ship(s)
+@click.group()
+@click.option('-c', '--config', type=click.File('r'), help="file path to load config from")
+@click.option('-s', '--settings', type=click.File('r'), help="file path to load settings from")
+@click.option('-n', '--namespace', help="override docker namespace from settings")
+@click.option('-l', '--loglevel', callback=validate_loglevel, default='warn')
+@click.version_option()
+@click.pass_context
+def cli(ctx, config, loglevel, settings, namespace):
+    logging.basicConfig(level=loglevel)
+    utils.settings.load(settings)
+    if namespace:
+        utils.settings['docker-namespace'] = namespace
+    logging.config.dictConfig(utils.settings.get('logging', {}))
+    logging.disable(level=loglevel-1)
 
-    Usage: dominator stop [options] [<ship> [<container>]]
+    if config is not None:
+        ctx.obj = yaml.load(config)
 
-    Options:
-        -h, --help
+
+@cli.group(chain=True)
+def shipment():
+    pass
+
+
+@shipment.command()
+@click.argument('distribution', metavar='<distribution>')
+@click.argument('entrypoint', metavar='<entrypoint>')
+@click.option('--cache/--no-cache', default=True)
+@click.option('--clear-cache', is_flag=True, default=False, help="clear requests_cache before run (requires --cache)")
+def generate(distribution, entrypoint, cache, clear_cache):
+    """Generates yaml config file for shipment obtained as result of invoking
+    <entrypoint> from <distribution>
     """
-    for cont in shipment.filter_containers(ship, container):
-        cont.check()
-        if cont.running:
-            cont.stop()
+    getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
 
-
-@command
-def list_containers(shipment, shipname: str=None):
-    """Print container names
-    Usage: dominator list-containers [options] [<shipname>]
-
-    Options:
-        -h, --help
-    """
-    for cont in shipment.filter_containers(shipname):
-        print(cont.name)
-
-
-def load_from_distribution(distribution, entrypoint):
-    getlogger().info("loading config from distribution entry point", distribution=distribution, entrypoint=entrypoint)
     dist = pkg_resources.get_distribution(distribution)
     assert dist is not None, "Could not load distribution for {}".format(distribution)
 
@@ -129,7 +80,15 @@ def load_from_distribution(distribution, entrypoint):
     import pkginfo
     meta = pkginfo.get_metadata(distribution)
 
-    shipment = func()
+    if cache:
+        import requests_cache
+        if clear_cache:
+            requests_cache.clear()
+        with requests_cache.enabled():
+            shipment = func()
+    else:
+        getlogger().info('loading containers without cache')
+        shipment = func()
 
     shipment.version = meta.version
     shipment.author = meta.author
@@ -140,71 +99,17 @@ def load_from_distribution(distribution, entrypoint):
     import tzlocal
     shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
 
-    return shipment
+    click.echo_via_pager(yaml.dump(shipment))
 
 
-def load_from_yaml(filename):
-    getlogger().info("loading config from yaml", path=filename)
-    if filename == '-':
-        return yaml.load(sys.stdin)
-    else:
-        with open(filename) as f:
-            return yaml.load(f)
-
-
-@command
-def status(shipment, shipname: str=None, containername: str=None, showdiff: bool=False):
-    """Show shipment's status
-
-    Usage: dominator status [options] [<shipname>] [<containername>]
-
-    Options:
-        -h, --help
-        -d, --showdiff  # show diff with running container [default: false]
-    """
-    for c in shipment.filter_containers(shipname, containername):
-        c.check()
-        if c.running:
-            diff = list(utils.compare_container(c, c.inspect()))
-            getlogger().debug('compare result', diff=diff)
-            if len(diff) > 0:
-                color = Fore.YELLOW
-            else:
-                color = Fore.GREEN
-        else:
-            color = Fore.RED
-        print('{c.shipment.name:20.20} {c.ship.name:10.10} {c.name:20.20} {color}{c.id:10.7} {c.status:30.30}{reset}'
-              .format(c=c, color=color, reset=Fore.RESET))
-        if c.running and showdiff:
-            print_diff(diff)
-
-
-def print_diff(difflist):
-    fore = Fore
-    for key, diff in difflist:
-        keystr = ' '.join(key)
-        if isinstance(diff, list):
-            # files diff
-            for line in diff:
-                color = {'- ': Fore.RED, '+ ': Fore.GREEN, '? ': Fore.BLUE}.get(line[:2], '')
-                print('  {keystr:60.60} {color}{line}{fore.RESET}'.format(**locals()))
-        elif len(diff) == 2:
-            expected, actual = diff
-            print('  {keystr:60.60} {fore.RED}{actual!s:50.50}{fore.RESET} \
-{fore.GREEN}{expected!s:50.50}{fore.RESET}'.format(**locals()))
-        else:
-            assert False, "invalid diff format for {key}: {diff}".format(**locals())
-
-
-@command
-def makedeb(shipment, packagename: str, distribution: str, urgency: str, target: str):
-    """Create debian/ directory in current dir ready for building debian package
-
-    Usage: dominator makedeb [options] <packagename> [<distribution>] [<urgency>]
-
-    Options:
-        -h, --help
-        -t, --target  target directory to create debian/ inside [default: ./]
+@shipment.command()
+@click.pass_obj
+@click.argument('packagename')
+@click.argument('distribution', default='unstable')
+@click.argument('urgency', default='low')
+@click.option('-t', '--target', type=click.Path(), default='./', help="target directory to create debian/ inside")
+def makedeb(shipment, packagename, distribution, urgency, target):
+    """Create debian/ directory in target dir ready for building debian package
     """
 
     def render_dir(name):
@@ -220,8 +125,8 @@ def makedeb(shipment, packagename: str, distribution: str, urgency: str, target:
                 rendered = template.render(
                     packagename=packagename,
                     shipment=shipment,
-                    distribution=distribution or 'unstable',
-                    urgency=urgency or 'low',
+                    distribution=distribution,
+                    urgency=urgency,
                 )
                 with open(os.path.join(target, path), 'w+') as output:
                     output.write(rendered)
@@ -232,53 +137,195 @@ def makedeb(shipment, packagename: str, distribution: str, urgency: str, target:
         yaml.dump(shipment, config)
 
 
-@command
-def logs(shipment, ship: str=None, container: str=None, follow: bool=False):
-    """Fetch logs for container(s) on ship(s)
+@cli.group()
+@click.pass_context
+@click.option('-s', '--ship', 'shippattern', default='*', help="pattern to filter ships")
+@click.option('-c', '--container', 'containerpattern', default='*', help="pattern to filter containers")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def containers(ctx, shippattern, containerpattern, regex):
+    shipment = ctx.obj
+    if not regex:
+        shippattern, containerpattern = map(fnmatch.translate, (shippattern, containerpattern))
 
-    Usage: dominator logs [options] [<ship>] [<container>]
+    containers = []
 
-    Options:
-        -h, --help
-        -f, --follow  # follow logs
+    for ship in shipment.ships:
+        if re.match(shippattern, ship.name):
+            for container in ship.containers:
+                if re.match(containerpattern, container.name):
+                    containers.append(container)
+
+    ctx.obj = containers
+
+
+@containers.command()
+@click.pass_obj
+def start(containers):
+    """Push images, render config volumes and Start containers
     """
-    for cont in shipment.filter_containers(ship, container):
+    for cont in containers:
+        cont.run()
+
+
+@containers.command()
+@click.pass_obj
+def restart(containers):
+    """Restart containers
+    """
+    for cont in containers:
+        cont.check()
+        if cont.running:
+            cont.stop()
+        cont.start()
+
+
+@containers.command()
+@click.pass_obj
+@click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
+def exec(containers, keep):
+    """Start container, attach to process, read stdout/stderr
+    and print it, then (optionally) remove it
+    """
+    for cont in containers:
+        try:
+            with cont.execute() as logs:
+                for line in logs:
+                    click.echo(line)
+        finally:
+            try:
+                if not keep:
+                    cont.remove(force=True)
+            except:
+                getlogger().exception("failed to remove container")
+
+
+@containers.command()
+@click.pass_obj
+def stop(containers):
+    """Stop container(s) on ship(s)
+    """
+    for cont in containers:
+        cont.check()
+        if cont.running:
+            cont.stop()
+
+
+@containers.command('list')
+@click.pass_obj
+def list_containers(containers):
+    """Print container names
+    """
+    for container in containers:
+        click.echo(container.name)
+
+
+@containers.command()
+@click.pass_obj
+@click.option('-d', '--showdiff', is_flag=True, default=False, help="show diff with running container")
+def status(containers, showdiff):
+    """Show shipment's status
+    """
+    for c in containers:
+        c.check()
+        if c.running:
+            diff = list(utils.compare_container(c, c.inspect()))
+            getlogger().debug('compare result', diff=diff)
+            if len(diff) > 0:
+                color = Fore.YELLOW
+            else:
+                color = Fore.GREEN
+        else:
+            color = Fore.RED
+        click.echo('{c.shipment.name:20.20} {c.ship.name:10.10} {c.name:20.20} '
+                   '{color}{c.id:10.7} {c.status:30.30}{reset}'
+                   .format(c=c, color=color, reset=Fore.RESET))
+        if c.running and showdiff:
+            print_diff(diff)
+
+
+def print_diff(difflist):
+    fore = Fore
+    for key, diff in difflist:
+        keystr = ' '.join(key)
+        if isinstance(diff, list):
+            # files diff
+            for line in diff:
+                color = {'- ': Fore.RED, '+ ': Fore.GREEN, '? ': Fore.BLUE}.get(line[:2], '')
+                click.echo('  {keystr:60.60} {color}{line}{fore.RESET}'.format(**locals()))
+        elif len(diff) == 2:
+            expected, actual = diff
+            click.echo('  {keystr:60.60} {fore.RED}{actual!s:50.50}{fore.RESET} '
+                       '{fore.GREEN}{expected!s:50.50}{fore.RESET}'.format(**locals()))
+        else:
+            assert False, "invalid diff format for {key}: {diff}".format(**locals())
+
+
+@containers.command()
+@click.pass_obj
+@click.option('-f', '--follow', is_flag=True, default=False, help="follow logs")
+def log(containers, follow):
+    """Fetch logs for containers
+    """
+    for cont in containers:
         cont.check()
         cont.logs(follow=follow)
 
 
-@command
-def build(shipment, imagename: str, nocache: bool, push: bool, rebuild: bool):
+@containers.command('dump')
+@click.pass_obj
+def containers_dump(containers):
+    """Dump container info"""
+    for container in containers:
+        container.ship = None
+        container.shipment = None
+        for volume in container.volumes.values():
+            if hasattr(volume, 'files'):
+                for file in volume.files.values():
+                    if hasattr(file, 'context'):
+                        file.context = 'skipped'
+        click.echo_via_pager(yaml.dump(container))
+
+
+@cli.group()
+@click.pass_context
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter images")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def images(ctx, pattern, regex):
+    shipment = ctx.obj
+    images = []
+    if not regex:
+        pattern = fnmatch.translate(pattern)
+    for image in shipment.images:
+        if re.match(pattern, image.repository):
+            images.append(image)
+    ctx.obj = images
+
+
+@images.command()
+@click.pass_obj
+@click.option('-n', '--nocache', is_flag=True, default=False, help="disable Docker cache")
+@click.option('-p', '--push', is_flag=True, default=False, help="push image to registry after the build")
+@click.option('-r', '--rebuild', is_flag=True, default=False, help="rebuild image even if alredy built (hashtag found)")
+def build(images, nocache, push, rebuild):
     """Build source images
-
-    Usage: dominator build [options] [<imagename>]
-
-    Options:
-        -h, --help
-        -n, --nocache     # disable Docker cache [default: false]
-        -p, --push        # push image to registry after build [default: false]
-        -r, --rebuild     # rebuild image even if already built [default: false]
     """
-    for image in shipment.images:
-        if isinstance(image, SourceImage) and (imagename is None or image.repository == imagename):
-            if rebuild or image.getid() is '':
-                image.build(nocache=nocache)
-            if push:
-                image.push()
+    for image in images:
+        if not isinstance(image, SourceImage):
+            continue
+        # image.getid() == None means that image with given tag doesn't exist
+        if rebuild or image.getid() is None:
+            image.build(nocache=nocache)
+        if push:
+            image.push()
 
 
-@command
-def images(shipment, imagename: str):
+@images.command('list')
+@click.pass_obj
+def list_images(images):
     """Print image list in build order
-
-    Usage: dominator images [options] [<imagename>]
-
-    Options:
-        -h, --help
     """
-    for image in shipment.images:
-        if isinstance(image, SourceImage) and (imagename is None or image.repository == imagename):
-            print(image)
+    for image in images:
+        click.echo(image)
 
 
 def getversion():
@@ -286,75 +333,3 @@ def getversion():
         return pkg_resources.get_distribution('dominator').version
     except pkg_resources.DistributionNotFound:
         return '(local)'
-
-
-def main():
-    """
-    Usage: dominator [-s <settings>] [-l <loglevel>] (-c <config>|-d <distribution> [-e <entrypoint>]) \
-                     [--no-cache] [--clear-cache] [-n <namespace>] <command> [<args>...]
-
-    Commands:
-        dump                dump config in yaml format
-        list-containers     list local containers (used by upstart script)
-        makedeb             make debian/ dir ready to create obedient package
-        start               start containers
-        stop                stop containers
-        restart             restart containers
-        status              show containers' status
-        exec                start and attach to container locally
-        build               build image
-        images              show images list
-
-    Options:
-        -s, --settings <settings>          yaml file to load settings
-        -l, --loglevel <loglevel>          log level [default: warn]
-        -c, --config <config>              yaml config file
-        -d, --distribution <distribution>  distribution name
-        -e, --entrypoint <entrypoint>      entry point, by default uses first found
-        -n, --namespace <namespace>        docker namespace to use if not set (overrides config)
-        --no-cache                         disable requests cache when using -m/-f
-        --clear-cache                      clear requests cache (ignored with --no-cache)
-    """
-
-    args = docopt.docopt(main.__doc__, version=getversion(), options_first=True)
-    command = args['<command>']
-    argv = [command] + args['<args>']
-    commandfunc = getattr(sys.modules[__name__], command.replace('-', '_'), None)
-    if not hasattr(commandfunc, 'iscommand'):
-        exit("no such command, see 'dominator help'.")
-    else:
-        loglevel = getattr(logging, args['--loglevel'].upper())
-        logging.basicConfig(level=loglevel)
-        settings.load(args['--settings'])
-        if args['--namespace']:
-            settings['docker-namespace'] = args['--namespace']
-        logging.config.dictConfig(settings.get('logging', {}))
-        logging.disable(level=loglevel-1)
-
-        try:
-            if args['--config'] is not None:
-                shipment = load_from_yaml(args['--config'])
-            else:
-                if args['--no-cache']:
-                    getlogger().info('loading containers without cache')
-                    shipment = load_from_distribution(args['--distribution'], args['--entrypoint'])
-                else:
-                    import requests_cache
-                    with requests_cache.enabled():
-                        if args['--clear-cache']:
-                            getlogger().info("clearing requests cache")
-                            requests_cache.clear()
-                        shipment = load_from_distribution(args['--distribution'], args['--entrypoint'])
-        except:
-            getlogger().exception("failed to load config")
-            return
-        commandargs = docopt.docopt(commandfunc.__doc__, argv=argv)
-
-        def pythonize_arg(arg):
-            return arg.replace('--', '').replace('<', '').replace('>', '')
-        try:
-            commandfunc(shipment, **{pythonize_arg(k): v for k, v in commandargs.items()
-                        if k not in ['--help', command]})
-        except:
-            getlogger(command=command).exception("failed to execute command")
-            sys.exit(1)

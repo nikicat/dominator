@@ -4,7 +4,7 @@ instance $CONFIG
 
 pre-start script
     . /etc/default/dominator
-    dominator -c ${CONFIGDIR}/${CONFIG}.yaml list-containers `hostname` | while read CONTAINER; do
+    dominator -c ${CONFIGDIR}/${CONFIG}.yaml containers -s `hostname` list | while read CONTAINER; do
         start dominator-container CONFIG=$CONFIG CONTAINER=$CONTAINER
     done
 end script

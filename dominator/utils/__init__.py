@@ -5,7 +5,7 @@ import string
 import pprint
 import logging
 import os.path
-from pkg_resources import resource_stream
+import pkg_resources
 
 import yaml
 import docker
@@ -246,6 +246,10 @@ def getcallingmodule(deep):
     return inspect.getmodule(parent_frame[0])
 
 
+def resource_string(name):
+    return pkg_resources.resource_string(getcallingmodule(1).__name__, name).decode()
+
+
 def make_shipment(name):
     """
         Returns decorator that converts function return value from
@@ -262,21 +266,21 @@ def make_shipment(name):
 
 
 class Settings(dict):
-    def load(self, filename):
-        if filename is None:
+    def load(self, file):
+        if file is None:
             for filename in ['settings.yaml',
                              os.path.expanduser('~/.config/dominator/settings.yaml'),
                              '/etc/dominator/settings.yaml']:
                 getlogger().debug("checking existense of %s", filename)
                 if os.path.exists(filename):
                     getlogger().info("loading settings from %s", filename)
-                    stream = open(filename)
+                    data = open(filename).read()
                     break
             else:
                 getlogger().warning("could not find any settings file, using default")
-                stream = resource_stream(__name__, 'settings.yaml')
+                data = resource_string('settings.yaml')
         else:
-            stream = open(filename)
-        self.update(yaml.load(stream))
+            data = file.read()
+        self.update(yaml.load(data))
 
 settings = Settings()

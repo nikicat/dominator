@@ -312,6 +312,7 @@ def build(images, nocache, push, rebuild):
     for image in images:
         if not isinstance(image, SourceImage):
             continue
+        # image.getid() == '' means that image with given tag doesn't exist
         if rebuild or image.getid() is '':
             image.build(nocache=nocache)
         if push:

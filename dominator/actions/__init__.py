@@ -137,7 +137,7 @@ def makedeb(shipment, packagename, distribution, urgency, target):
         yaml.dump(shipment, config)
 
 
-@cli.group()
+@cli.group(chain=True)
 @click.pass_context
 @click.option('-s', '--ship', 'shippattern', default='*', help="pattern to filter ships")
 @click.option('-c', '--container', 'containerpattern', default='*', help="pattern to filter containers")

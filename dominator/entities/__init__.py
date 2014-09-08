@@ -175,11 +175,6 @@ class Image:
             classname=type(self).__name__, namespace=self.namespace, repository=self.repository, tag=self.tag,
             id=self.id or '-', registry=self.registry)
 
-    def __getstate__(self):
-        if self.id is '':
-            raise RuntimeError('image needs to be rebuilt')
-        return vars(self)
-
     def getfullrepository(self):
         registry = self.registry + '/' if self.registry else ''
         namespace = self.namespace + '/' if self.namespace else ''

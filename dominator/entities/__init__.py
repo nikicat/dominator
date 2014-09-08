@@ -71,6 +71,7 @@ class Ship(BaseShip):
         self.logger.debug('connecting to docker api on ship', fqdn=self.fqdn)
         return docker.Client('http://{}:{}'.format(self.fqdn, self.port))
 
+    @utils.cached
     def getssh(self):
         self.logger.debug("ssh'ing to ship", fqdn=self.fqdn)
         import openssh_wrapper

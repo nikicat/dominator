@@ -326,6 +326,33 @@ def list_images(images):
         click.echo(image)
 
 
+@cli.group()
+@click.pass_context
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def ships(ctx, pattern, regex):
+    shipment = ctx.obj
+    ships = []
+    if not regex:
+        pattern = fnmatch.translate(pattern)
+    ships = [ship for ship in shipment.ships if re.match(pattern, ship.name)]
+    ctx.obj = ships
+
+
+@ships.command('list')
+@click.pass_obj
+def list_ships(ships):
+    for ship in ships:
+        click.echo('{:15.15}{}'.format(ship.name, ship.fqdn))
+
+
+@ships.command('restart')
+@click.pass_obj
+def restart_ship(ships):
+    for ship in ships:
+        ship.restart()
+
+
 def getversion():
     try:
         return pkg_resources.get_distribution('dominator').version

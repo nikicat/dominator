@@ -97,6 +97,11 @@ class Ship(BaseShip):
         tar = ssh.run('tar -cC {} .'.format(remotepath)).stdout
         subprocess.check_output('tar -x --one-top-level={}'.format(localpath), input=tar, shell=True)
 
+    def restart(self):
+        ssh = self.getssh()
+        self.logger.debug("restarting docker service")
+        ssh.run('restart docker')
+
 
 class LocalShip(BaseShip):
     @property

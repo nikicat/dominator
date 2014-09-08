@@ -557,6 +557,11 @@ class Container:
         return self.extports.get(name, self.ports[name])
 
 
+class Task:
+    def __init__(self, container):
+        self.container = container
+
+
 class Volume:
     def __repr__(self):
         return '{}(dest={dest})'.format(type(self).__name__, **vars(self))
@@ -708,15 +713,19 @@ class JsonFile(BaseFile):
 
 
 class Shipment:
-    def __init__(self, name, containers):
+    def __init__(self, name, containers, tasks=None):
         self.name = name
-        self.containers = []
+
+        self.containers = containers
         for container in containers:
             container.shipment = self
-            self.containers.append(container)
 
-        self.ships = sorted(list({container.ship for container in self.containers}), key=lambda s: s.name)
+        self.tasks = tasks or []
+        for task in self.tasks:
+            task.container.shipment = self
 
+        ships = {container.ship for container in self.containers}.union({task.container.ship for task in self.tasks})
+        self.ships = sorted(list(ships), key=lambda ship: ship.name)
         for ship in self.ships:
             ship.shipment = self
 

@@ -759,7 +759,7 @@ class Shipment:
 
 
 class LogFile:
-    def __init__(self, format, length=None):
+    def __init__(self, format='', length=None):
         if length is None:
             length = len(datetime.datetime.strftime(datetime.datetime.now(), format))
         self.length = length

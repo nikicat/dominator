@@ -99,6 +99,13 @@ def generate(distribution, entrypoint, cache, clear_cache):
     import tzlocal
     shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
 
+    for image in shipment.images:
+        if not isinstance(image, SourceImage):
+            if image.getid() is None:
+                image.pull()
+                if image.getid() is None:
+                    raise RuntimeError("Could not find id for image {}".format(image))
+
     click.echo_via_pager(yaml.dump(shipment))
 
 

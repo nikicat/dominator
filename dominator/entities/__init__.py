@@ -15,6 +15,7 @@ import io
 import functools
 import re
 import shutil
+import datetime
 
 import yaml
 import pkg_resources
@@ -97,6 +98,18 @@ class Ship(BaseShip):
         tar = ssh.run('tar -cC {} .'.format(remotepath)).stdout
         subprocess.check_output('tar -x --one-top-level={}'.format(localpath), input=tar, shell=True)
 
+    def spawn(self, command):
+        ssh = self.getssh()
+        sshcommand = ssh.ssh_command(command, forward_ssh_agent=False)
+        sshcommand.insert(1, b'-t')
+        i = utils.PtyInterceptor()
+        i.spawn(sshcommand)
+
+    def restart(self):
+        ssh = self.getssh()
+        self.logger.debug("restarting docker service")
+        ssh.run('restart docker')
+
 
 class LocalShip(BaseShip):
     @property
@@ -169,11 +182,6 @@ class Image:
         return '{classname}({namespace}/{repository}:{tag} [{id:.7}] registry={registry})'.format(
             classname=type(self).__name__, namespace=self.namespace, repository=self.repository, tag=self.tag,
             id=self.id or '-', registry=self.registry)
-
-    def __getstate__(self):
-        if self.id is '':
-            raise RuntimeError('image needs to be rebuilt')
-        return vars(self)
 
     def getfullrepository(self):
         registry = self.registry + '/' if self.registry else ''
@@ -293,8 +301,7 @@ class SourceImage(Image):
             'env': self.env,
             'volumes': self.volumes,
             'ports': self.ports,
-            'files': {path: hashlib.sha256(data.encode()).hexdigest()
-                      for path, data in self.files.items()},
+            'files': self.files,
         }, sort_keys=True)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
@@ -558,6 +565,11 @@ class Container:
         return self.extports.get(name, self.ports[name])
 
 
+class Task:
+    def __init__(self, container):
+        self.container = container
+
+
 class Volume:
     def __repr__(self):
         return '{}(dest={dest})'.format(type(self).__name__, **vars(self))
@@ -585,6 +597,12 @@ class DataVolume(Volume):
     def getpath(self, container):
         return self.path or os.path.expanduser(os.path.join(container.ship.datadir,
                                                container.shipment.name, container.name, self.dest[1:]))
+
+
+class LogVolume(DataVolume):
+    def __init__(self, dest: str=None, path: str=None, logs=None):
+        DataVolume.__init__(self, dest, path)
+        self.logs = logs or {}
 
 
 class ConfigVolume(Volume):
@@ -709,15 +727,19 @@ class JsonFile(BaseFile):
 
 
 class Shipment:
-    def __init__(self, name, containers):
+    def __init__(self, name, containers, tasks=None):
         self.name = name
-        self.containers = []
+
+        self.containers = containers
         for container in containers:
             container.shipment = self
-            self.containers.append(container)
 
-        self.ships = sorted(list({container.ship for container in self.containers}), key=lambda s: s.name)
+        self.tasks = tasks or []
+        for task in self.tasks:
+            task.container.shipment = self
 
+        ships = {container.ship for container in self.containers}.union({task.container.ship for task in self.tasks})
+        self.ships = sorted(list(ships), key=lambda ship: ship.name)
         for ship in self.ships:
             ship.shipment = self
 
@@ -735,3 +757,15 @@ class Shipment:
             return 0
         return sorted(list(set(container.image for container in self.containers)),
                       key=functools.cmp_to_key(compare_source_images))
+
+
+class LogFile:
+    def __init__(self, format, length=None):
+        if length is None:
+            length = len(datetime.datetime.strftime(datetime.datetime.now(), format))
+        self.length = length
+        self.format = format
+
+
+class RotatedLogFile(LogFile):
+    pass

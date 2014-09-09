@@ -11,7 +11,7 @@ import mako.template
 from colorama import Fore
 import click
 
-from ..entities import SourceImage
+from ..entities import SourceImage, LogVolume
 from .. import utils
 from ..utils import getlogger
 
@@ -137,7 +137,7 @@ def makedeb(shipment, packagename, distribution, urgency, target):
         yaml.dump(shipment, config)
 
 
-@cli.group()
+@cli.group(chain=True)
 @click.pass_context
 @click.option('-s', '--ship', 'shippattern', default='*', help="pattern to filter ships")
 @click.option('-c', '--container', 'containerpattern', default='*', help="pattern to filter containers")
@@ -237,8 +237,8 @@ def status(containers, showdiff):
         else:
             color = Fore.RED
         click.echo('{c.shipment.name:20.20} {c.ship.name:10.10} {c.name:20.20} '
-                   '{color}{c.id:10.7} {c.status:30.30}{reset}'
-                   .format(c=c, color=color, reset=Fore.RESET))
+                   '{color}{id:10.7} {c.status:30.30}{reset}'
+                   .format(c=c, color=color, id=c.id or '', reset=Fore.RESET))
         if c.running and showdiff:
             print_diff(diff)
 
@@ -286,6 +286,21 @@ def containers_dump(containers):
         click.echo_via_pager(yaml.dump(container))
 
 
+@containers.command()
+@click.pass_obj
+@click.option('-p', '--pattern', default='*', help="pattern to filter logs")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def logs(containers, pattern, regex):
+    if not regex:
+        pattern = fnmatch.translate(pattern)
+    for container in containers:
+        for volume in container.volumes.values():
+            if isinstance(volume, LogVolume):
+                for name, log in volume.logs.items():
+                    if re.match(pattern, name):
+                        container.ship.spawn('less -S {}'.format(os.path.join(volume.getpath(container), name)))
+
+
 @cli.group()
 @click.pass_context
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter images")
@@ -295,9 +310,7 @@ def images(ctx, pattern, regex):
     images = []
     if not regex:
         pattern = fnmatch.translate(pattern)
-    for image in shipment.images:
-        if re.match(pattern, image.repository):
-            images.append(image)
+    images = [image for image in shipment.images if re.match(pattern, image.repository)]
     ctx.obj = images
 
 
@@ -326,6 +339,33 @@ def list_images(images):
     """
     for image in images:
         click.echo(image)
+
+
+@cli.group()
+@click.pass_context
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def ships(ctx, pattern, regex):
+    shipment = ctx.obj
+    ships = []
+    if not regex:
+        pattern = fnmatch.translate(pattern)
+    ships = [ship for ship in shipment.ships if re.match(pattern, ship.name)]
+    ctx.obj = ships
+
+
+@ships.command('list')
+@click.pass_obj
+def list_ships(ships):
+    for ship in ships:
+        click.echo('{:15.15}{}'.format(ship.name, ship.fqdn))
+
+
+@ships.command('restart')
+@click.pass_obj
+def restart_ship(ships):
+    for ship in ships:
+        ship.restart()
 
 
 def getversion():

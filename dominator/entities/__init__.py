@@ -159,6 +159,10 @@ class LocalShip(BaseShip):
         shutil.rmtree(localpath, ignore_errors=True)
         shutil.copytree(remotepath, localpath)
 
+    def spawn(self, command):
+        i = utils.PtyInterceptor()
+        i.spawn(['bash', '-c', command])
+
 
 DEFAULT_NAMESPACE = object()
 DEFAULT_REGISTRY = object()

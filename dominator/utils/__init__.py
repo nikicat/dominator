@@ -254,6 +254,10 @@ def resource_string(name):
     return pkg_resources.resource_string(getcallingmodule(1).__name__, name).decode()
 
 
+def stoppable(cmd):
+    return 'trap exit TERM; {} & wait'.format(cmd)
+
+
 def make_shipment(name):
     """
         Returns decorator that converts function return value from

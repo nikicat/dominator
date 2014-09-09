@@ -279,7 +279,6 @@ class SourceImage(Image):
         self.env = env or {}
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
-        self.getid()
 
     def build(self, dock=None, **kwargs):
         self.logger.info("building source image")
@@ -760,7 +759,7 @@ class Shipment:
 
 
 class LogFile:
-    def __init__(self, format, length=None):
+    def __init__(self, format='', length=None):
         if length is None:
             length = len(datetime.datetime.strftime(datetime.datetime.now(), format))
         self.length = length

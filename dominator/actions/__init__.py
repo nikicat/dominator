@@ -176,7 +176,7 @@ def restart(containers):
         cont.check()
         if cont.running:
             cont.stop()
-        cont.start()
+        cont.run()
 
 
 @containers.command()

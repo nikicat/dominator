@@ -748,14 +748,25 @@ class Shipment:
     @property
     def images(self):
         def compare_source_images(x, y):
-            if isinstance(x, SourceImage) and isinstance(y, SourceImage):
+            if isinstance(x, SourceImage):
                 if x.parent is y:
                     return 1
+            if isinstance(y, SourceImage):
                 if x is y.parent:
                     return -1
             return 0
-        return sorted(list(set(container.image for container in self.containers)),
-                      key=functools.cmp_to_key(compare_source_images))
+
+        def iterate_images():
+            for container in self.containers:
+                image = container.image
+                while True:
+                    yield image
+                    if isinstance(image, SourceImage):
+                        image = image.parent
+                    else:
+                        break
+
+        return sorted(list(set(iterate_images())), key=functools.cmp_to_key(compare_source_images))
 
 
 class LogFile:

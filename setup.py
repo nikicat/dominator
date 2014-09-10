@@ -52,6 +52,7 @@ if __name__ == '__main__':
             'mako',
             'colorama',
             'click',
+            'pyopenssl',
         ],
         tests_require=[
             'pytest',

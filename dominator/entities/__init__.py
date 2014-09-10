@@ -112,6 +112,20 @@ class Ship(BaseShip):
 
 
 class LocalShip(BaseShip):
+    def __init__(self):
+        from OpenSSL import crypto
+        k = crypto.PKey()
+        k.generate_key(crypto.TYPE_RSA, 1024)
+        cert = crypto.X509()
+        cert.set_serial_number(1000)
+        cert.gmtime_adj_notBefore(0)
+        cert.gmtime_adj_notAfter(315360000)
+        cert.set_pubkey(k)
+        cert.sign(k, 'sha1')
+        certpem = crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode()
+        keypem = crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode()
+        self.certificate = certpem + keypem
+
     @property
     def datacenter(self):
         return 'localdc'

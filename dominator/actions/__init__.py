@@ -53,21 +53,36 @@ def cli(ctx, config, loglevel, settings, namespace):
 
 @cli.group(chain=True)
 def shipment():
+    """Shipment management commands."""
     pass
 
 
+def getobedients():
+    return [pkgname for pkgname in pkg_resources.Environment() if pkgname.startswith('obedient.')]
+
+
 @shipment.command()
-@click.argument('distribution', metavar='<distribution>')
-@click.argument('entrypoint', metavar='<entrypoint>')
+@click.pass_context
+@click.argument('distribution', required=False, type=click.Choice(getobedients()), metavar='<distribution>')
+@click.argument('entrypoint', required=False, metavar='<entrypoint>')
 @click.option('--cache/--no-cache', default=True)
 @click.option('--clear-cache', is_flag=True, default=False, help="clear requests_cache before run (requires --cache)")
-def generate(distribution, entrypoint, cache, clear_cache):
-    """Generates yaml config file for shipment obtained as result of invoking
-    <entrypoint> from <distribution>
-    """
-    getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
+def generate(ctx, distribution, entrypoint, cache, clear_cache):
+    """Generates yaml config file for shipment."""
+    if distribution is None:
+        click.echo('\n'.join(getobedients()))
+        ctx.exit()
 
     dist = pkg_resources.get_distribution(distribution)
+
+    if entrypoint is None:
+        # Show all "obedient" entrypoints for package
+        for entrypoint in dist.get_entry_map('obedient').keys():
+            click.echo(entrypoint)
+        ctx.exit()
+
+    getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
+
     assert dist is not None, "Could not load distribution for {}".format(distribution)
 
     if entrypoint is None:
@@ -116,8 +131,7 @@ def generate(distribution, entrypoint, cache, clear_cache):
 @click.argument('urgency', default='low')
 @click.option('-t', '--target', type=click.Path(), default='./', help="target directory to create debian/ inside")
 def makedeb(shipment, packagename, distribution, urgency, target):
-    """Create debian/ directory in target dir ready for building debian package
-    """
+    """Generate debian/ directory to make a .deb."""
 
     def render_dir(name):
         os.makedirs(os.path.join(target, name))
@@ -150,6 +164,7 @@ def makedeb(shipment, packagename, distribution, urgency, target):
 @click.option('-c', '--container', 'containerpattern', default='*', help="pattern to filter containers")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 def containers(ctx, shippattern, containerpattern, regex):
+    """Container management commands."""
     shipment = ctx.obj
     if not regex:
         shippattern, containerpattern = map(fnmatch.translate, (shippattern, containerpattern))
@@ -168,8 +183,7 @@ def containers(ctx, shippattern, containerpattern, regex):
 @containers.command()
 @click.pass_obj
 def start(containers):
-    """Push images, render config volumes and Start containers
-    """
+    """Push images, render config volumes and Start containers."""
     for cont in containers:
         cont.run()
 
@@ -177,8 +191,7 @@ def start(containers):
 @containers.command()
 @click.pass_obj
 def restart(containers):
-    """Restart containers
-    """
+    """Restart containers."""
     for cont in containers:
         cont.check()
         if cont.running:
@@ -190,9 +203,7 @@ def restart(containers):
 @click.pass_obj
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
 def exec(containers, keep):
-    """Start container, attach to process, read stdout/stderr
-    and print it, then (optionally) remove it
-    """
+    """Start, attach and wait a container."""
     for cont in containers:
         try:
             with cont.execute() as logs:
@@ -209,8 +220,7 @@ def exec(containers, keep):
 @containers.command()
 @click.pass_obj
 def stop(containers):
-    """Stop container(s) on ship(s)
-    """
+    """Stop container(s) on ship(s)."""
     for cont in containers:
         cont.check()
         if cont.running:
@@ -220,8 +230,7 @@ def stop(containers):
 @containers.command('list')
 @click.pass_obj
 def list_containers(containers):
-    """Print container names
-    """
+    """Print container names."""
     for container in containers:
         click.echo(container.name)
 
@@ -230,8 +239,7 @@ def list_containers(containers):
 @click.pass_obj
 @click.option('-d', '--showdiff', is_flag=True, default=False, help="show diff with running container")
 def status(containers, showdiff):
-    """Show shipment's status
-    """
+    """Show container status."""
     for c in containers:
         c.check()
         if c.running:
@@ -271,8 +279,7 @@ def print_diff(difflist):
 @click.pass_obj
 @click.option('-f', '--follow', is_flag=True, default=False, help="follow logs")
 def log(containers, follow):
-    """Fetch logs for containers
-    """
+    """View Docker log for container(s)."""
     for cont in containers:
         cont.check()
         cont.logs(follow=follow)
@@ -281,7 +288,7 @@ def log(containers, follow):
 @containers.command('dump')
 @click.pass_obj
 def containers_dump(containers):
-    """Dump container info"""
+    """Dump container info."""
     for container in containers:
         container.ship = None
         container.shipment = None
@@ -298,6 +305,7 @@ def containers_dump(containers):
 @click.option('-p', '--pattern', default='*', help="pattern to filter logs")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 def logs(containers, pattern, regex):
+    """View application log via `less'."""
     if not regex:
         pattern = fnmatch.translate(pattern)
     for container in containers:
@@ -313,6 +321,7 @@ def logs(containers, pattern, regex):
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter images")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 def images(ctx, pattern, regex):
+    """Image management commands."""
     shipment = ctx.obj
     images = []
     if not regex:
@@ -327,8 +336,7 @@ def images(ctx, pattern, regex):
 @click.option('-p', '--push', is_flag=True, default=False, help="push image to registry after the build")
 @click.option('-r', '--rebuild', is_flag=True, default=False, help="rebuild image even if alredy built (hashtag found)")
 def build(images, nocache, push, rebuild):
-    """Build source images
-    """
+    """Build source images."""
     for image in images:
         if not isinstance(image, SourceImage):
             continue
@@ -342,8 +350,7 @@ def build(images, nocache, push, rebuild):
 @images.command('list')
 @click.pass_obj
 def list_images(images):
-    """Print image list in build order
-    """
+    """Print image list in build order."""
     for image in images:
         click.echo(image)
 
@@ -353,6 +360,7 @@ def list_images(images):
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 def ships(ctx, pattern, regex):
+    """Ship management commands."""
     shipment = ctx.obj
     ships = []
     if not regex:
@@ -364,6 +372,7 @@ def ships(ctx, pattern, regex):
 @ships.command('list')
 @click.pass_obj
 def list_ships(ships):
+    """List ships in format "<name>      <fqdn>"."""
     for ship in ships:
         click.echo('{:15.15}{}'.format(ship.name, ship.fqdn))
 
@@ -371,6 +380,7 @@ def list_ships(ships):
 @ships.command('restart')
 @click.pass_obj
 def restart_ship(ships):
+    """Restart ship(s)."""
     for ship in ships:
         ship.restart()
 

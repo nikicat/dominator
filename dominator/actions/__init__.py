@@ -56,18 +56,34 @@ def shipment():
     pass
 
 
+def getobedients():
+    return [pkgname for pkgname in pkg_resources.Environment() if pkgname.startswith('obedient.')]
+
+
 @shipment.command()
-@click.argument('distribution', metavar='<distribution>')
-@click.argument('entrypoint', metavar='<entrypoint>')
+@click.pass_context
+@click.argument('distribution', required=False, type=click.Choice(getobedients()), metavar='<distribution>')
+@click.argument('entrypoint', required=False, metavar='<entrypoint>')
 @click.option('--cache/--no-cache', default=True)
 @click.option('--clear-cache', is_flag=True, default=False, help="clear requests_cache before run (requires --cache)")
-def generate(distribution, entrypoint, cache, clear_cache):
+def generate(ctx, distribution, entrypoint, cache, clear_cache):
     """Generates yaml config file for shipment obtained as result of invoking
-    <entrypoint> from <distribution>
+    <entrypoint> from <distribution>.
     """
-    getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
+    if distribution is None:
+        click.echo('\n'.join(getobedients()))
+        ctx.exit()
 
     dist = pkg_resources.get_distribution(distribution)
+
+    if entrypoint is None:
+        # Show all "obedient" entrypoints for package
+        for entrypoint in dist.get_entry_map('obedient').keys():
+            click.echo(entrypoint)
+        ctx.exit()
+
+    getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
+
     assert dist is not None, "Could not load distribution for {}".format(distribution)
 
     if entrypoint is None:

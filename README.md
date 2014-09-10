@@ -1,5 +1,5 @@
-Dominator
-=========
+Overview
+========
 
 [![Build Status](https://travis-ci.org/yandex-sysmon/dominator.svg)](https://travis-ci.org/yandex-sysmon/dominator)
 [![Coverage Status](https://img.shields.io/coveralls/yandex-sysmon/dominator.svg)](https://coveralls.io/r/yandex-sysmon/dominator)
@@ -12,10 +12,14 @@ It works in two steps:
  - generate YAML representation of shipment (ships, containers, volumes, files, etc.) from python code (usually packaged and named "obedient")
  - build, deploy, start/stop, etc. containers described by this YAML representation
 
+Why not Maestro-NG, Decking, Centurion, Saltstack, Ansible etc.?
+================================================================
 
-Distributed application deployment and orchestration using Docker.
-Describe your cloud services using Pyhton.
-Best suitable for complicated configurations.
+Other orchestration tools over Docker could be handy in many cases, and, mostly, are more simple it staighforward to use than Dominator.
+But, Dominator in turn has some very unique features:
+  - as Obedient is a plain Python code, author creativity is not bounded by means of any static description format (YAML or JSON). You could relativily easy (there are handy helpers) generate description for service of any complexity without any code or symbol duplication.
+  - Dominator interacts not only with Docker, but with ships too (using ssh). Main Dominator design rule - it should be single tool to do anything you may want with your cluster - deploy, obtain current state, view logs, gather metrics and performance counters, check high-level availability, test changes.
+  - Versioning and easy upgrade/downgrade. As a whole cluster is fully described by single YAML file, it's very easy to compare one revision with another (or same Obedient revision but launched in different environments) to see what is changed. Because of it, downgrade is the same operation as upgrade - in any case Dominator ensures that after deploying all and only all described containers will be running.
 
 Installation
 ============

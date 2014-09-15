@@ -202,8 +202,8 @@ class Image:
             id=self.id or '-', registry=self.registry)
 
     def getfullrepository(self):
-        registry = self.registry + '/' if self.registry else ''
-        namespace = self.namespace + '/' if self.namespace else ''
+        registry = (self.registry + '/') if self.registry else ''
+        namespace = (self.namespace + '/') if self.namespace else ''
         return registry + namespace + self.repository
 
     @property

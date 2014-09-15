@@ -281,6 +281,7 @@ class Image:
         return dict(var.split('=', 1) for var in self.inspect()['Env'])
 
     def gethash(self):
+        self.logger.debug("generating hashtag")
         return '{}:{}[{}]'.format(self.getfullrepository(), self.tag, self.getid())
 
 

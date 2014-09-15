@@ -114,6 +114,7 @@ def generate(ctx, distribution, entrypoint, cache, clear_cache):
     import tzlocal
     shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
 
+    getlogger().debug("retrieving image ids")
     for image in shipment.images:
         if not isinstance(image, SourceImage):
             if image.getid() is None:

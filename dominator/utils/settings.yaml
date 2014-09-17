@@ -88,17 +88,24 @@ username: &username !!python/object/apply:os.getenv [OS_USERNAME]
 password: &password !!python/object/apply:os.getenv [OS_PASSWORD]
 
 # Openstack installations endpoints and credentials
-nova:
+openstack:
     haze:
-        client:
+        nova:
             username: *username
             api_key: *password
             project_id: MONITORING
             auth_url: http://identity.haze.yandex-team.ru/v2.0
             region_name: myt5
+            version: 2
+        keystone:
+            username: *username
+            password: *password
+            tenant_name: MONITORING
+            auth_url: http://identity.haze.yandex-team.ru/v3
         domain: haze.yandex.net
+
     fog:
-        client:
+        nova:
             username: *username
             api_key: *password
             project_id: yandex_infra_stat_mon

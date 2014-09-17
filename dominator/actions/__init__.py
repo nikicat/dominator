@@ -470,19 +470,19 @@ def list_volumes(volumes):
 @click.pass_context
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def interfaces(ctx, pattern, regex):
-    """Commands to view interfaces"""
+def doors(ctx, pattern, regex):
+    """Commands to view doors"""
     shipment = ctx.obj
     ctx.obj = list(filterbyname(shipment.containers, pattern, regex))
 
 
-@interfaces.command('list')
+@doors.command('list')
 @click.pass_obj
-def list_interfaces(containers):
-    """List all containers' interfaces with urls"""
+def list_doors(containers):
+    """List all containers' doors with urls"""
     for container in containers:
-        for name, interface in container.interfaces.items():
-            for url in interface.urls:
+        for name, door in container.doors.items():
+            for url in door.urls:
                 click.echo('{:30.30} {:20.20} {}'.format(container.fullname, name, url))
 
 

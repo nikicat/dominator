@@ -154,11 +154,11 @@ def compare_env(expected: dict, actual: dict):
 @aslist
 def compare_ports(cont, actual: dict):
     getlogger().debug('comparing ports')
-    for name, interface in cont.interfaces.items():
-        extport_expected = interface.externalport
+    for name, door in cont.doors.items():
+        extport_expected = door.externalport
 
         matched_actual = [info for name, info in actual.items()
-                          if name == interface.portspec]
+                          if name == door.portspec]
 
         if len(matched_actual) == 0:
             yield ('ports',), (name, '')
@@ -166,8 +166,8 @@ def compare_ports(cont, actual: dict):
             yield from compare_values(('ports', name, 'ext'), extport_expected, int(matched_actual[0][0]['HostPort']))
 
     for portname, portinfo in actual.items():
-        matched_expected = [name for name, interface in cont.interfaces.items()
-                            if portname == interface.portspec]
+        matched_expected = [name for name, door in cont.doors.items()
+                            if portname == door.portspec]
         if len(matched_expected) == 0:
             port, proto = portname.split('/', 1)
             yield ('ports',), ('', port)

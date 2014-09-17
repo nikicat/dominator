@@ -363,7 +363,7 @@ class SourceImage(Image):
 
 class Container:
     def __init__(self, name: str, ship: Ship, image: Image, command: str=None, hostname: str=None,
-                 memory: int=0, volumes: dict=None, env: dict=None, interfaces: dict=None,
+                 memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None,
                  network_mode: str='', user=None):
         self.name = name
         self.ship = ship
@@ -377,7 +377,7 @@ class Container:
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
         self.network_mode = network_mode
         self.user = user
-        self.interfaces = interfaces or {}
+        self.doors = doors or {}
 
     def __repr__(self):
         return 'Container({fullname}[{id!s:7.7}])'.format(**vars(self))
@@ -518,7 +518,7 @@ class Container:
             mem_limit=self.memory,
             environment=self.env,
             name=self.dockername,
-            ports=[(interface.port, interface.protocol) for interface in self.interfaces.values()],
+            ports=[(door.port, door.protocol) for door in self.doors.values()],
             stdin_open=True,
             detach=False,
             user=self.user,
@@ -550,9 +550,9 @@ class Container:
             self.ship.docker.start(
                 self.id,
                 port_bindings={
-                    interface.portspec: ('::', interface.externalport)
-                    for interface in self.interfaces.values()
-                    if interface.exposed
+                    door.portspec: ('::', door.externalport)
+                    for door in self.doors.values()
+                    if door.exposed
                 },
                 binds={v.fullpath: {'bind': v.dest, 'ro': v.ro} for v in self.volumes.values()},
                 network_mode=self.network_mode,
@@ -583,7 +583,8 @@ class Container:
         return self.ship.docker.wait(self.id)
 
     def getport(self, name):
-        return self.interfaces[name].externalport
+        """DEPRECATED"""
+        return self.doors[name].externalport
 
 
 class Task:
@@ -591,8 +592,10 @@ class Task:
         self.container = container
 
 
-class Interface:
-    """Interface class represents an interface to a container"""
+class Door:
+    """Door class represents an interface to a container - like Docker port, but with additional
+    attributes
+    """
     def __init__(self, schema, port=None, protocol='tcp', exposed=True, externalport=None, paths=None):
         """
         schema - something like http, ftp, zookeeper, gopher
@@ -845,7 +848,7 @@ class Shipment:
             make_backrefs(ship, 'containers', 'ship')
 
         for container in self.containers:
-            make_backrefs(container, 'interfaces', 'container')
+            make_backrefs(container, 'doors', 'container')
             make_backrefs(container, 'volumes', 'container')
 
             for volume in container.volumes.values():

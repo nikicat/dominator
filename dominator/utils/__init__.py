@@ -186,10 +186,10 @@ def compare_volumes(cont, cinfo):
             volume = matched_expected[0]
             getlogger(volume=volume).debug('comparing volume')
 
-            if volume.getpath(cont) != path:
-                yield ('volumes', dest, 'path'), (volume.getpath(cont), path)
-            elif hasattr(volume, 'files'):
-                yield from volume.compare_files(cont)
+            if volume.fullpath != path:
+                yield ('volumes', dest, 'path'), (volume.fullpath, path)
+            elif hasattr(volume, 'compare_files'):
+                yield from volume.compare_files()
 
             if volume.ro != ro:
                 yield ('volumes', dest, 'ro'), (volume.ro, ro)
@@ -213,7 +213,7 @@ def compare_container(cont, cinfo):
     imagerepo = ':'.join(imageinfo[:-1])
 
     for key, expected, actual in [
-        ('name', cont.getfullname(), cinfo['Name'][1:]),
+        ('name', cont.dockername, cinfo['Name'][1:]),
         ('image.repo', cont.image.getfullrepository(), imagerepo),
         ('image.id', cont.image.getid(), imageid),
         ('memory', cont.memory, cinfo['Config']['Memory']),

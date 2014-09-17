@@ -11,7 +11,7 @@ import mako.template
 from colorama import Fore
 import click
 
-from ..entities import SourceImage, LogVolume
+from ..entities import SourceImage, BaseShip, BaseFile, Volume, Container, Shipment
 from .. import utils
 from ..utils import getlogger
 
@@ -48,7 +48,9 @@ def cli(ctx, config, loglevel, settings, namespace):
     logging.disable(level=loglevel-1)
 
     if config is not None:
-        ctx.obj = yaml.load(config)
+        shipment = yaml.load(config)
+        shipment.make_backrefs()
+        ctx.obj = shipment
 
 
 @cli.group(chain=True)
@@ -161,24 +163,12 @@ def makedeb(shipment, packagename, distribution, urgency, target):
 
 @cli.group(chain=True)
 @click.pass_context
-@click.option('-s', '--ship', 'shippattern', default='*', help="pattern to filter ships")
-@click.option('-c', '--container', 'containerpattern', default='*', help="pattern to filter containers")
+@click.option('-p', '--pattern', default='*', help="pattern to filter ship:container")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def containers(ctx, shippattern, containerpattern, regex):
+def containers(ctx, pattern, regex):
     """Container management commands."""
     shipment = ctx.obj
-    if not regex:
-        shippattern, containerpattern = map(fnmatch.translate, (shippattern, containerpattern))
-
-    containers = []
-
-    for ship in shipment.ships:
-        if re.match(shippattern, ship.name):
-            for container in ship.containers:
-                if re.match(containerpattern, container.name):
-                    containers.append(container)
-
-    ctx.obj = containers
+    ctx.obj = filterbyname(shipment.containers, pattern, regex)
 
 
 @containers.command()
@@ -233,7 +223,7 @@ def stop(containers):
 def list_containers(containers):
     """Print container names."""
     for container in containers:
-        click.echo(container.name)
+        click.echo(container.fullname)
 
 
 @containers.command()
@@ -252,8 +242,7 @@ def status(containers, showdiff):
                 color = Fore.GREEN
         else:
             color = Fore.RED
-        click.echo('{c.shipment.name:20.20} {c.ship.name:10.10} {c.name:20.20} '
-                   '{color}{id:10.7} {c.status:30.30}{reset}'
+        click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
                    .format(c=c, color=color, id=c.id or '', reset=Fore.RESET))
         if c.running and showdiff:
             print_diff(diff)
@@ -283,7 +272,8 @@ def log(containers, follow):
     """View Docker log for container(s)."""
     for cont in containers:
         cont.check()
-        cont.logs(follow=follow)
+        for line in cont.logs(follow=follow):
+            click.echo(line)
 
 
 @containers.command('dump')
@@ -301,25 +291,34 @@ def containers_dump(containers):
         click.echo_via_pager(yaml.dump(container))
 
 
-@containers.command()
-@click.pass_obj
-@click.option('-p', '--pattern', default='*', help="pattern to filter logs")
+@cli.group()
+@click.option('-p', '--pattern', default='*', help="pattern to filter files (ship:container:volume:file)")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def logs(containers, pattern, regex):
-    """View application log via `less'."""
-    if not regex:
-        pattern = fnmatch.translate(pattern)
-    for container in containers:
-        for volume in container.volumes.values():
-            if isinstance(volume, LogVolume):
-                for name, log in volume.logs.items():
-                    if re.match(pattern, name):
-                        container.ship.spawn('less -S {}'.format(os.path.join(volume.getpath(container), name)))
+@click.pass_context
+def files(ctx, pattern, regex):
+    shipment = ctx.obj
+    ctx.obj = list(filterbyname(shipment.files, pattern, regex))
+
+
+@files.command('list')
+@click.pass_obj
+def list_files(files):
+    """List files"""
+    for file in files:
+        click.echo('{file.fullname:60.60} {file.fullpath}'.format(file=file))
+
+
+@files.command('view')
+@click.pass_obj
+def view_files(files):
+    """View file via `less'."""
+    for file in files:
+        file.volume.container.ship.spawn('less -S {}'.format(file.fullpath))
 
 
 @cli.group()
 @click.pass_context
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter images")
+@click.option('-p', '--pattern', default='*', help="pattern to filter images")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 def images(ctx, pattern, regex):
     """Image management commands."""
@@ -363,11 +362,7 @@ def list_images(images):
 def ships(ctx, pattern, regex):
     """Ship management commands."""
     shipment = ctx.obj
-    ships = []
-    if not regex:
-        pattern = fnmatch.translate(pattern)
-    ships = [ship for ship in shipment.ships if re.match(pattern, ship.name)]
-    ctx.obj = ships
+    ctx.obj = filterbyname(shipment.ships.values(), pattern, regex)
 
 
 @ships.command('list')
@@ -384,6 +379,15 @@ def restart_ship(ships):
     """Restart ship(s)."""
     for ship in ships:
         ship.restart()
+
+
+@utils.makesorted(lambda o: o.fullname)
+def filterbyname(objects, pattern, regex):
+    if not regex:
+        pattern = fnmatch.translate(pattern)
+    for obj in objects:
+        if re.match(pattern, obj.fullname):
+            yield obj
 
 
 def getversion():

@@ -17,6 +17,7 @@ import re
 import shutil
 import datetime
 import socket
+import copy
 
 import yaml
 import pkg_resources
@@ -40,12 +41,12 @@ class BaseShip:
         return '{}(name={})'.format(type(self).__name__, self.name)
 
     @property
-    def containers(self):
-        return [c for c in self.shipment.containers if c.ship == self]
-
-    @property
     def logger(self):
         return utils.getlogger(ship=self, bindto=3)
+
+    @property
+    def fullname(self):
+        return self.name
 
 
 class Ship(BaseShip):
@@ -375,12 +376,11 @@ class Container:
         self.status = 'not found'
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
         self.network_mode = network_mode
-        self.shipment = None
         self.user = user
         self.interfaces = interfaces or {}
 
     def __repr__(self):
-        return 'Container(name={name}, ship={ship}, Image={image}, env={env}, id={id})'.format(**vars(self))
+        return 'Container({fullname}[{id!s:7.7}])'.format(**vars(self))
 
     def __getstate__(self):
         state = vars(self)
@@ -400,8 +400,13 @@ class Container:
     def running(self):
         return 'Up' in self.status
 
-    def getfullname(self):
-        return '{}.{}'.format(self.shipment.name, self.name) if self.shipment else self.name
+    @property
+    def dockername(self):
+        return '{}.{}'.format(self.ship.shipment.name, self.name)
+
+    @property
+    def fullname(self):
+        return '{}:{}'.format(self.ship.name, self.name)
 
     def check(self, cinfo=None):
         """This function tries to find container on the associated ship
@@ -411,7 +416,7 @@ class Container:
         if cinfo is None:
             self.logger.debug('checking container status')
             matched = [cont for cont in self.ship.docker.containers(all=True)
-                       if cont['Names'] and cont['Names'][0][1:] == self.getfullname()]
+                       if cont['Names'] and cont['Names'][0][1:] == self.dockername]
             if len(matched) > 0:
                 cinfo = matched[0]
 
@@ -453,8 +458,7 @@ class Container:
                 lines = utils.docker_lines(self.ship.docker.logs(self.id, stream=True))
             else:
                 lines = self.ship.docker.logs(self.id).decode().split('\n')
-            for line in lines:
-                print(line)
+            yield from lines
         except KeyboardInterrupt:
             self.logger.debug('received keyboard interrupt')
 
@@ -513,7 +517,7 @@ class Container:
             command=self.command,
             mem_limit=self.memory,
             environment=self.env,
-            name=self.getfullname(),
+            name=self.dockername,
             ports=[(interface.port, interface.protocol) for interface in self.interfaces.values()],
             stdin_open=True,
             detach=False,
@@ -627,11 +631,15 @@ class Interface:
 
 class Volume:
     def __repr__(self):
-        return '{}(dest={dest})'.format(type(self).__name__, **vars(self))
+        return '{}(fullname={self.fullname}, dest={self.dest})'.format(type(self).__name__, self=self)
 
     @property
     def logger(self):
         return utils.getlogger(volume=self, bindto=3)
+
+    @property
+    def fullname(self):
+        return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
 
 
 class DataVolume(Volume):
@@ -649,15 +657,16 @@ class DataVolume(Volume):
     def render(self, _):
         pass
 
-    def getpath(self, container):
-        return self.path or os.path.expanduser(os.path.join(container.ship.datadir,
-                                               container.shipment.name, container.name, self.dest[1:]))
+    @property
+    def fullpath(self):
+        return self.path or os.path.expanduser(os.path.join(self.container.ship.datadir,
+                                               self.container.ship.shipment.name, self.container.name, self.dest[1:]))
 
 
 class LogVolume(DataVolume):
-    def __init__(self, dest: str=None, path: str=None, logs=None):
+    def __init__(self, dest: str=None, path: str=None, files=None):
         DataVolume.__init__(self, dest, path)
-        self.logs = logs or {}
+        self.files = files or {}
 
 
 class ConfigVolume(Volume):
@@ -665,13 +674,10 @@ class ConfigVolume(Volume):
         self.dest = dest
         self.files = files or {}
 
-    def getpath(self, container):
-        return os.path.expanduser(os.path.join(container.ship.configdir,
-                                               container.shipment.name, container.name, self.dest[1:]))
-
-    def getfilepath(self, filename):
-        assert filename in self.files, "no such file in config volume"
-        return os.path.join(self.dest, filename)
+    @property
+    def fullpath(self):
+        return os.path.expanduser(os.path.join(self.container.ship.configdir,
+                                               self.container.ship.shipment.name, self.container.name, self.dest[1:]))
 
     @property
     def ro(self):
@@ -681,20 +687,20 @@ class ConfigVolume(Volume):
         self.logger.debug('rendering')
         with tempfile.TemporaryDirectory() as tempdir:
             for name, file in self.files.items():
-                file.dump(container, os.path.join(tempdir, name))
-            container.ship.upload(tempdir, self.getpath(container))
+                file.dump(os.path.join(tempdir, name))
+            container.ship.upload(tempdir, self.fullpath)
 
     @utils.aslist
-    def compare_files(self, container):
+    def compare_files(self):
         self.logger.debug('comparing files')
         with tempfile.TemporaryDirectory() as tempdir:
-            container.ship.download(self.getpath(container), tempdir)
+            self.container.ship.download(self.fullpath, tempdir)
             for name, file in self.files.items():
                 try:
-                    actual = file.load(container, os.path.join(tempdir, name))
+                    actual = file.load(os.path.join(tempdir, name))
                 except FileNotFoundError:
                     actual = ''
-                expected = file.data(container)
+                expected = file.data
                 if actual != expected:
                     diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
                     yield ('volumes', self.dest, 'files', name), [line for line in diff if line[:2] != '  ']
@@ -702,20 +708,30 @@ class ConfigVolume(Volume):
 
 class BaseFile:
     def __str__(self):
-        return '{}({!s:.20})'.format(type(self).__name__, self.content)
+        return '{}({:40.40})'.format(type(self).__name__, self.fullname)
+
+    @property
+    def fullname(self):
+        return '{}:{}'.format(self.volume.fullname, self.name)
+
+    @property
+    def fullpath(self):
+        return os.path.join(self.volume.fullpath, self.name)
+
+    @property
+    def fulldest(self):
+        return os.path.join(self.volume.dest, self.name)
 
     @property
     def logger(self):
         return utils.getlogger(file=self, bindto=3)
 
-    def dump(self, container: Container, path: str, data: str=None):
-        if data is None:
-            data = self.data(container)
+    def dump(self, path: str):
         self.logger.debug("writing file", path=path)
         with open(path, 'w+', encoding='utf8') as f:
-            f.write(data)
+            f.write(self.data)
 
-    def load(self, container: Container, path: str):
+    def load(self, path: str):
         self.logger.debug("loading text file contents", path=path)
         with open(path) as f:
             return f.read()
@@ -734,42 +750,34 @@ class TextFile(BaseFile):
         else:
             self.content = pkg_resources.resource_string(utils.getcallingmodule(1).__name__, filename).decode()
 
-    def data(self, _container):
+    @property
+    def data(self):
         return self.content
 
 
-class TemplateFile:
-    def __init__(self, file: BaseFile, **kwargs):
-        self.file = file
-        self.context = kwargs
+class TemplateFile(BaseFile):
+    def __init__(self, template: str, **context):
+        self.template = template
+        self.context = context
 
     def __str__(self):
-        return 'TemplateFile(file={file}, context={context})'.format(vars(self))
+        return 'TemplateFile(fullname={self.fullname}, context={self.context!s:60.60})'.format(self=self)
 
     @property
-    def logger(self):
-        return utils.getlogger(file=self, bindto=3)
-
-    def dump(self, container: Container, path: str):
-        self.logger.debug("rendering file")
-        self.file.dump(container, path, self.data(container))
-
-    def data(self, container):
-        template = mako.template.Template(self.file.data(container))
-        context = {'this': container}
+    def data(self):
+        template = mako.template.Template(self.template)
+        context = {'this': self.volume.container}
         context.update(self.context)
         self.logger.debug('rendering template file', context=context)
         return template.render(**context)
-
-    def load(self, container: Container, path: str):
-        return self.file.load(container, path)
 
 
 class YamlFile(BaseFile):
     def __init__(self, data: dict):
         self.content = data
 
-    def data(self, _container):
+    @property
+    def data(self):
         return yaml.dump(self.content)
 
 
@@ -777,29 +785,72 @@ class JsonFile(BaseFile):
     def __init__(self, data: dict):
         self.content = data
 
-    def data(self, _container):
+    @property
+    def data(self):
         return json.dumps(self.content, sort_keys=True, indent='  ')
 
 
 class Shipment:
     def __init__(self, name, containers, tasks=None):
         self.name = name
-
-        self.containers = containers
-        for container in containers:
-            container.shipment = self
-
         self.tasks = tasks or []
-        for task in self.tasks:
-            task.container.shipment = self
+        ships = {container.ship for container in containers}.union({task.container.ship for task in self.tasks})
+        for ship in ships:
+            ship.containers = {container.name: container for container in containers if container.ship == ship}
+        self.ships = {ship.name: ship for ship in ships}
 
-        ships = {container.ship for container in self.containers}.union({task.container.ship for task in self.tasks})
-        self.ships = sorted(list(ships), key=lambda ship: ship.name)
-        for ship in self.ships:
-            ship.shipment = self
+    @property
+    def containers(self):
+        for ship in self.ships.values():
+            yield from ship.containers.values()
 
-        # HACK: add "_ships" field to place it before "ships" field in yaml
-        self._ships = self.ships
+    @property
+    def volumes(self):
+        for container in self.containers:
+            yield from container.volumes.values()
+
+    @property
+    def files(self):
+        for volume in self.volumes:
+            yield from getattr(volume, 'files', {}).values()
+
+    def make_backrefs(self):
+        def make_backrefs(obj, refname, backrefname):
+            ref = getattr(obj, refname)
+            for name, child in ref.copy().items():
+                backref = getattr(child,  backrefname, None)
+                if backref is obj:
+                    continue
+                if backref is not None:
+                    # If single child object is shared between parents, then
+                    # we should create copy of it to not override backref attr
+                    # in the shared child object
+                    ref[name] = child = copy.copy(child)
+                    # Additionally, copy all list/dict/set attributes to ensure
+                    # that they will not be shared between objects.
+                    # We do not use copy.deepcopy here because it's too slow
+                    # for even medium-sized (hundreds of objects) graphs if there are
+                    # cyclic references (as in this case).
+                    for attrname in vars(child):
+                        attr = getattr(child, attrname)
+                        if isinstance(attr, (list, dict, set)):
+                            setattr(child, attrname, copy.copy(attr))
+                setattr(child, backrefname, obj)
+                if getattr(child, 'name', None) is None:
+                    setattr(child, 'name', name)
+
+        make_backrefs(self, 'ships', 'shipment')
+
+        for ship in self.ships.values():
+            make_backrefs(ship, 'containers', 'ship')
+
+        for container in self.containers:
+            make_backrefs(container, 'interfaces', 'container')
+            make_backrefs(container, 'volumes', 'container')
+
+            for volume in container.volumes.values():
+                if hasattr(volume, 'files'):
+                    make_backrefs(volume, 'files', 'volume')
 
     @property
     def images(self):
@@ -825,7 +876,7 @@ class Shipment:
         return sorted(list(set(iterate_images())), key=functools.cmp_to_key(compare_source_images))
 
 
-class LogFile:
+class LogFile(BaseFile):
     def __init__(self, format='', length=None):
         if length is None:
             length = len(datetime.datetime.strftime(datetime.datetime.now(), format))

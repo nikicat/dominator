@@ -817,6 +817,11 @@ class Shipment:
         for volume in self.volumes:
             yield from getattr(volume, 'files', {}).values()
 
+    @property
+    def doors(self):
+        for container in self.containers:
+            yield from container.doors.values()
+
     def make_backrefs(self):
         def make_backrefs(obj, refname, backrefname):
             ref = getattr(obj, refname)

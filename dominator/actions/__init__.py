@@ -398,6 +398,56 @@ def restart_ship(ships):
         ship.restart()
 
 
+@ships.group('containers')
+@click.pass_context
+@click.option('-p', '--pattern', default='*', help="filter containers using pattern")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def ship_containers(ctx, pattern, regex):
+    ships = ctx.obj
+    if not regex:
+        pattern = fnmatch.translate(pattern)
+    cinfos = []
+    for ship in ships:
+        for cinfo in ship.docker.containers():
+            if re.match(pattern, cinfo['Names'][0][1:]):
+                cinfos.append(cinfo)
+                # Add Ship object ref to cinfo to use it in subcommands
+                cinfo['ship'] = ship
+    ctx.obj = cinfos
+
+
+@ship_containers.command('list')
+@click.pass_obj
+def list_ship_containers(cinfos):
+    """Outputs list of all containers running on ships"""
+    for cinfo in cinfos:
+        click.echo('{ship.name} {Names[0]:40.40} {Status:15.15} {ports}'.format(
+            ports=[port.get('PublicPort') for port in cinfo['Ports']], **cinfo
+        ))
+
+
+@ship_containers.command('inspect')
+@click.pass_obj
+def inspect_ship_containers(cinfos):
+    """Outputs detailed info about any running container(s) on a ship"""
+    for cinfo in cinfos:
+        cinfoext = cinfo['ship'].docker.inspect_container(cinfo)
+        cinfoext['!ship'] = cinfo['ship'].name
+        click.echo(yaml.dump(cinfoext))
+
+
+@ship_containers.command('log')
+@click.pass_obj
+@click.option('-f', '--follow', is_flag=True, default=False, help="follow logs")
+def view_ship_container_log(cinfos, follow):
+    """Outputs container logs for arbitary container on a ship"""
+    for cinfo in cinfos:
+        cont = Container(cinfo['Names'][0][1:], cinfo['ship'], None)
+        cont.check(cinfo)
+        for line in cont.logs(follow):
+            click.echo(line)
+
+
 @cli.group()
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter volumes (ship:container:volume)")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")

@@ -99,9 +99,9 @@ def generate(ctx, distribution, entrypoint, cache, clear_cache):
 
     if cache:
         import requests_cache
-        if clear_cache:
-            requests_cache.clear()
         with requests_cache.enabled():
+            if clear_cache:
+                requests_cache.clear()
             shipment = func()
     else:
         getlogger().info('loading containers without cache')

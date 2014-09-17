@@ -16,6 +16,7 @@ import functools
 import re
 import shutil
 import datetime
+import socket
 
 import yaml
 import pkg_resources
@@ -361,24 +362,22 @@ class SourceImage(Image):
 
 class Container:
     def __init__(self, name: str, ship: Ship, image: Image, command: str=None, hostname: str=None,
-                 ports: dict=None, memory: int=0, volumes: dict=None, env: dict=None, extports: dict=None,
-                 portproto: dict=None, network_mode: str='', user=None):
+                 memory: int=0, volumes: dict=None, env: dict=None, interfaces: dict=None,
+                 network_mode: str='', user=None):
         self.name = name
         self.ship = ship
         self.image = image
         self.command = command
         self.volumes = volumes or {}
-        self.ports = ports or {}
         self.memory = memory
         self.env = env or {}
-        self.extports = extports or {}
-        self.portproto = portproto or {}
         self.id = None
         self.status = 'not found'
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
         self.network_mode = network_mode
         self.shipment = None
         self.user = user
+        self.interfaces = interfaces or {}
 
     def __repr__(self):
         return 'Container(name={name}, ship={ship}, Image={image}, env={env}, id={id})'.format(**vars(self))
@@ -515,7 +514,7 @@ class Container:
             mem_limit=self.memory,
             environment=self.env,
             name=self.getfullname(),
-            ports=list(self.ports.values()),
+            ports=[(interface.port, interface.protocol) for interface in self.interfaces.values()],
             stdin_open=True,
             detach=False,
             user=self.user,
@@ -547,10 +546,11 @@ class Container:
             self.ship.docker.start(
                 self.id,
                 port_bindings={
-                    '{}/{}'.format(port, self.portproto.get(name, 'tcp')): ('::', self.extports.get(name, port))
-                    for name, port in self.ports.items()
+                    interface.portspec: ('::', interface.externalport)
+                    for interface in self.interfaces.values()
+                    if interface.exposed
                 },
-                binds={v.getpath(self): {'bind': v.dest, 'ro': v.ro} for v in self.volumes.values()},
+                binds={v.fullpath: {'bind': v.dest, 'ro': v.ro} for v in self.volumes.values()},
                 network_mode=self.network_mode,
             )
         try:
@@ -579,12 +579,50 @@ class Container:
         return self.ship.docker.wait(self.id)
 
     def getport(self, name):
-        return self.extports.get(name, self.ports[name])
+        return self.interfaces[name].externalport
 
 
 class Task:
     def __init__(self, container):
         self.container = container
+
+
+class Interface:
+    """Interface class represents an interface to a container"""
+    def __init__(self, schema, port=None, protocol='tcp', exposed=True, externalport=None, paths=None):
+        """
+        schema - something like http, ftp, zookeeper, gopher
+        port - port number, by default it's deducted from schema (80 for http, 2121 for zookeper)
+        protocol - tcp or udp, by default tcp
+        exposed - expose or not interface for external access
+        externalport - if exposed==True, then map internal port to it
+        paths - paths to append to url (by default only '/')
+        """
+        self.schema = schema
+        self.protocol = protocol
+        self.port = port if port else socket.getservbyname(schema, protocol)
+        self.exposed = exposed
+        self.externalport = externalport if externalport else self.port
+        self.paths = paths if paths is not None else ['/']
+
+    @property
+    @utils.aslist
+    def urls(self):
+        for path in self.paths:
+            yield '{schema}://{fqdn}:{extport}{path}'.format(
+                schema=self.schema,
+                fqdn=self.container.ship.fqdn,
+                extport=self.externalport,
+                path=path,
+            )
+
+    @property
+    def portspec(self):
+        return '{port}/{protocol}'.format(port=self.port, protocol=self.protocol)
+
+    @property
+    def fullname(self):
+        return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
 
 
 class Volume:

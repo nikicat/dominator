@@ -416,6 +416,26 @@ def list_volumes(volumes):
         click.echo('{volume.fullname:30.30} {volume.dest:30.30} {volume.fullpath}'.format(volume=volume))
 
 
+@cli.group()
+@click.pass_context
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def interfaces(ctx, pattern, regex):
+    """Commands to view interfaces"""
+    shipment = ctx.obj
+    ctx.obj = list(filterbyname(shipment.containers, pattern, regex))
+
+
+@interfaces.command('list')
+@click.pass_obj
+def list_interfaces(containers):
+    """List all containers' interfaces with urls"""
+    for container in containers:
+        for name, interface in container.interfaces.items():
+            for url in interface.urls:
+                click.echo('{:30.30} {:20.20} {}'.format(container.fullname, name, url))
+
+
 @utils.makesorted(lambda o: o.fullname)
 def filterbyname(objects, pattern, regex):
     if not regex:

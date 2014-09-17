@@ -59,7 +59,8 @@ if __name__ == '__main__':
             'vcrpy',
         ],
         extras_require={
-            'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'requests_cache', 'tzlocal', 'pkginfo', 'openssh_wrapper'],
+            'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'requests_cache', 'tzlocal', 'pkginfo', 'openssh_wrapper',
+                     'objgraph'],
             'tiny': ['PyYAML']
         },
         cmdclass={'test': PyTest},

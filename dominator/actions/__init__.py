@@ -161,6 +161,23 @@ def makedeb(shipment, packagename, distribution, urgency, target):
         yaml.dump(shipment, config)
 
 
+@shipment.command()
+@click.pass_obj
+@click.argument('filename', required=False, type=click.Path())
+def objgraph(shipment, filename):
+    """Dump object graph using objgraph"""
+    import objgraph
+
+    def filter_entities(obj):
+        return isinstance(obj, (BaseShip, BaseFile, Volume, Container, Shipment, dict, list))
+
+    def highlight(obj):
+        return not isinstance(obj, (dict, list))
+    # Max depth is 14 because so many nodes are from Shipment (top) to File object (bottom) object
+    # This value should be changed if graph depth changes
+    objgraph.show_refs(shipment, filename=filename, max_depth=14, filter=filter_entities, highlight=highlight)
+
+
 @cli.group(chain=True)
 @click.pass_context
 @click.option('-p', '--pattern', default='*', help="pattern to filter ship:container")

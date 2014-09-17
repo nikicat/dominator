@@ -384,16 +384,15 @@ class Container:
         return 'Container(name={name}, ship={ship}, Image={image}, env={env}, id={id})'.format(**vars(self))
 
     def __getstate__(self):
-        return {k: v for k, v in vars(self).items() if k not in ['id', 'status']}
+        state = vars(self)
+        # id and status are temporary fields and should not be saved
+        state['id'] = None
+        state['status'] = None
+        return state
 
     @property
     def logger(self):
         return utils.getlogger(container=self, bindto=3)
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self.id = None
-        self.status = 'not found'
 
     def getvolume(self, volumename):
         return self.volumes[volumename]

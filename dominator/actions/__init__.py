@@ -165,7 +165,7 @@ def makedeb(shipment, packagename, distribution, urgency, target):
 @click.pass_obj
 @click.argument('filename', required=False, type=click.Path())
 def objgraph(shipment, filename):
-    """Dump object graph using objgraph"""
+    """Dump object graph using objgraph."""
     import objgraph
 
     def filter_entities(obj):
@@ -320,7 +320,7 @@ def files(ctx, pattern, regex):
 @files.command('list')
 @click.pass_obj
 def list_files(files):
-    """List files"""
+    """List files."""
     for file in files:
         click.echo('{file.fullname:60.60} {file.fullpath}'.format(file=file))
 
@@ -403,6 +403,7 @@ def restart_ship(ships):
 @click.option('-p', '--pattern', default='*', help="filter containers using pattern")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 def ship_containers(ctx, pattern, regex):
+    """Command to manage arbitary ships' containers."""
     ships = ctx.obj
     if not regex:
         pattern = fnmatch.translate(pattern)
@@ -429,7 +430,7 @@ def list_ship_containers(cinfos):
 @ship_containers.command('inspect')
 @click.pass_obj
 def inspect_ship_containers(cinfos):
-    """Outputs detailed info about any running container(s) on a ship"""
+    """Outputs detailed info about any running container(s) on a ship."""
     for cinfo in cinfos:
         cinfoext = cinfo['ship'].docker.inspect_container(cinfo)
         cinfoext['!ship'] = cinfo['ship'].name
@@ -440,7 +441,7 @@ def inspect_ship_containers(cinfos):
 @click.pass_obj
 @click.option('-f', '--follow', is_flag=True, default=False, help="follow logs")
 def view_ship_container_log(cinfos, follow):
-    """Outputs container logs for arbitary container on a ship"""
+    """Outputs container logs for arbitary container on a ship."""
     for cinfo in cinfos:
         cont = Container(cinfo['Names'][0][1:], cinfo['ship'], None)
         cont.check(cinfo)
@@ -453,7 +454,7 @@ def view_ship_container_log(cinfos, follow):
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 @click.pass_context
 def volumes(ctx, pattern, regex):
-    """Commands to manage volumes"""
+    """Commands to manage volumes."""
     shipment = ctx.obj
     ctx.obj = list(filterbyname(shipment.volumes, pattern, regex))
 
@@ -461,7 +462,7 @@ def volumes(ctx, pattern, regex):
 @volumes.command('list')
 @click.pass_obj
 def list_volumes(volumes):
-    """List volumes"""
+    """List volumes."""
     for volume in volumes:
         click.echo('{volume.fullname:30.30} {volume.dest:30.30} {volume.fullpath}'.format(volume=volume))
 
@@ -471,7 +472,7 @@ def list_volumes(volumes):
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 def doors(ctx, pattern, regex):
-    """Commands to view doors"""
+    """Commands to view doors."""
     shipment = ctx.obj
     ctx.obj = list(filterbyname(shipment.containers, pattern, regex))
 

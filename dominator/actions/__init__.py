@@ -453,13 +453,13 @@ def view_ship_container_log(cinfos, follow):
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter volumes (ship:container:volume)")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 @click.pass_context
-def volumes(ctx, pattern, regex):
+def volume(ctx, pattern, regex):
     """Commands to manage volumes."""
     shipment = ctx.obj
     ctx.obj = list(filterbyname(shipment.volumes, pattern, regex))
 
 
-@volumes.command('list')
+@volume.command('list')
 @click.pass_obj
 def list_volumes(volumes):
     """List volumes."""

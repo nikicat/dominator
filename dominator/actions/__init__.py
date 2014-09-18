@@ -333,11 +333,11 @@ def view_files(files):
         file.volume.container.ship.spawn('less -S {}'.format(file.fullpath))
 
 
-@cli.group()
+@cli.group(chain=True)
 @click.pass_context
 @click.option('-p', '--pattern', default='*', help="pattern to filter images")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def images(ctx, pattern, regex):
+def image(ctx, pattern, regex):
     """Image management commands."""
     shipment = ctx.obj
     images = []
@@ -347,7 +347,7 @@ def images(ctx, pattern, regex):
     ctx.obj = images
 
 
-@images.command()
+@image.command()
 @click.pass_obj
 @click.option('-n', '--nocache', is_flag=True, default=False, help="disable Docker cache")
 @click.option('-p', '--push', is_flag=True, default=False, help="push image to registry after the build")
@@ -364,7 +364,7 @@ def build(images, nocache, push, rebuild):
             image.push()
 
 
-@images.command('list')
+@image.command('list')
 @click.pass_obj
 def list_images(images):
     """Print image list in build order."""

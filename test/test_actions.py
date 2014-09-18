@@ -82,10 +82,10 @@ def docker():
 @vcr.use_cassette('localstart.yaml')
 def test_start(capsys, shipment):
     runner = CliRunner()
-    result = runner.invoke(actions.containers, ['start'], obj=shipment)
+    result = runner.invoke(actions.container, ['start'], obj=shipment)
     assert result.exit_code == 0
 
-    result = runner.invoke(actions.containers, ['status', '-d'], obj=shipment)
+    result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')
     assert len(lines) == 2
@@ -93,24 +93,24 @@ def test_start(capsys, shipment):
     assert re.match(r'localship:testcont[ \t]+[a-f0-9]{7}[ \t]+Up Less than a second[ \t]+',
                     lines[-2])
 
-    result = runner.invoke(actions.containers, ['restart'], obj=shipment)
+    result = runner.invoke(actions.container, ['restart'], obj=shipment)
     assert result.exit_code == 0
 
     next(shipment.containers).volumes['testconf'].files['testfile'].content = 'some other content'
-    result = runner.invoke(actions.containers, ['status', '-d'], obj=shipment)
+    result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')
     assert len(lines) == 6
     assert '++++++' in lines[-3]
 
-    result = runner.invoke(actions.containers, ['start'], obj=shipment)
+    result = runner.invoke(actions.container, ['start'], obj=shipment)
     assert result.exit_code == 0
-    result = runner.invoke(actions.containers, ['status', '-d'], obj=shipment)
+    result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')
     assert len(lines) == 2
 
-    result = runner.invoke(actions.containers, ['stop'], obj=shipment)
+    result = runner.invoke(actions.container, ['stop'], obj=shipment)
     assert result.exit_code == 0
 
 

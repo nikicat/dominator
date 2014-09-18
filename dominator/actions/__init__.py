@@ -182,13 +182,13 @@ def objgraph(shipment, filename):
 @click.pass_context
 @click.option('-p', '--pattern', default='*', help="pattern to filter ship:container")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def containers(ctx, pattern, regex):
+def container(ctx, pattern, regex):
     """Container management commands."""
     shipment = ctx.obj
     ctx.obj = filterbyname(shipment.containers, pattern, regex)
 
 
-@containers.command()
+@container.command()
 @click.pass_obj
 def start(containers):
     """Push images, render config volumes and Start containers."""
@@ -196,7 +196,7 @@ def start(containers):
         cont.run()
 
 
-@containers.command()
+@container.command()
 @click.pass_obj
 def restart(containers):
     """Restart containers."""
@@ -207,7 +207,7 @@ def restart(containers):
         cont.run()
 
 
-@containers.command()
+@container.command()
 @click.pass_obj
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
 def exec(containers, keep):
@@ -225,7 +225,7 @@ def exec(containers, keep):
                 getlogger().exception("failed to remove container")
 
 
-@containers.command()
+@container.command()
 @click.pass_obj
 def stop(containers):
     """Stop container(s) on ship(s)."""
@@ -235,7 +235,7 @@ def stop(containers):
             cont.stop()
 
 
-@containers.command('list')
+@container.command('list')
 @click.pass_obj
 def list_containers(containers):
     """Print container names."""
@@ -243,7 +243,7 @@ def list_containers(containers):
         click.echo(container.fullname)
 
 
-@containers.command()
+@container.command()
 @click.pass_obj
 @click.option('-d', '--showdiff', is_flag=True, default=False, help="show diff with running container")
 def status(containers, showdiff):
@@ -282,7 +282,7 @@ def print_diff(difflist):
             assert False, "invalid diff format for {key}: {diff}".format(**locals())
 
 
-@containers.command()
+@container.command()
 @click.pass_obj
 @click.option('-f', '--follow', is_flag=True, default=False, help="follow logs")
 def log(containers, follow):
@@ -293,9 +293,9 @@ def log(containers, follow):
             click.echo(line)
 
 
-@containers.command('dump')
+@container.command('dump')
 @click.pass_obj
-def containers_dump(containers):
+def dump_containers(containers):
     """Dump container info."""
     for container in containers:
         container.ship = None

@@ -471,13 +471,13 @@ def list_volumes(volumes):
 @click.pass_context
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def doors(ctx, pattern, regex):
+def door(ctx, pattern, regex):
     """Commands to view doors."""
     shipment = ctx.obj
     ctx.obj = list(filterbyname(shipment.containers, pattern, regex))
 
 
-@doors.command('list')
+@door.command('list')
 @click.pass_obj
 def list_doors(containers):
     """List all containers' doors with urls"""

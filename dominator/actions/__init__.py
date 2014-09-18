@@ -376,13 +376,13 @@ def list_images(images):
 @click.pass_context
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def ships(ctx, pattern, regex):
+def ship(ctx, pattern, regex):
     """Ship management commands."""
     shipment = ctx.obj
     ctx.obj = filterbyname(shipment.ships.values(), pattern, regex)
 
 
-@ships.command('list')
+@ship.command('list')
 @click.pass_obj
 def list_ships(ships):
     """List ships in format "<name>      <fqdn>"."""
@@ -390,7 +390,7 @@ def list_ships(ships):
         click.echo('{:15.15}{}'.format(ship.name, ship.fqdn))
 
 
-@ships.command('restart')
+@ship.command('restart')
 @click.pass_obj
 def restart_ship(ships):
     """Restart ship(s)."""
@@ -398,11 +398,11 @@ def restart_ship(ships):
         ship.restart()
 
 
-@ships.group('containers')
+@ship.group('container')
 @click.pass_context
 @click.option('-p', '--pattern', default='*', help="filter containers using pattern")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def ship_containers(ctx, pattern, regex):
+def ship_container(ctx, pattern, regex):
     """Command to manage arbitary ships' containers."""
     ships = ctx.obj
     if not regex:
@@ -417,7 +417,7 @@ def ship_containers(ctx, pattern, regex):
     ctx.obj = cinfos
 
 
-@ship_containers.command('list')
+@ship_container.command('list')
 @click.pass_obj
 def list_ship_containers(cinfos):
     """Outputs list of all containers running on ships"""
@@ -427,7 +427,7 @@ def list_ship_containers(cinfos):
         ))
 
 
-@ship_containers.command('inspect')
+@ship_container.command('inspect')
 @click.pass_obj
 def inspect_ship_containers(cinfos):
     """Outputs detailed info about any running container(s) on a ship."""
@@ -437,7 +437,7 @@ def inspect_ship_containers(cinfos):
         click.echo(yaml.dump(cinfoext))
 
 
-@ship_containers.command('log')
+@ship_container.command('log')
 @click.pass_obj
 @click.option('-f', '--follow', is_flag=True, default=False, help="follow logs")
 def view_ship_container_log(cinfos, follow):

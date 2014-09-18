@@ -312,12 +312,12 @@ def dump_containers(containers):
 @click.option('-p', '--pattern', default='*', help="pattern to filter files (ship:container:volume:file)")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 @click.pass_context
-def files(ctx, pattern, regex):
+def file(ctx, pattern, regex):
     shipment = ctx.obj
     ctx.obj = list(filterbyname(shipment.files, pattern, regex))
 
 
-@files.command('list')
+@file.command('list')
 @click.pass_obj
 def list_files(files):
     """List files."""
@@ -325,7 +325,7 @@ def list_files(files):
         click.echo('{file.fullname:60.60} {file.fullpath}'.format(file=file))
 
 
-@files.command('view')
+@file.command('view')
 @click.pass_obj
 def view_files(files):
     """View file via `less'."""

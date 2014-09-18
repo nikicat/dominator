@@ -350,9 +350,8 @@ def image(ctx, pattern, regex):
 @image.command()
 @click.pass_obj
 @click.option('-n', '--nocache', is_flag=True, default=False, help="disable Docker cache")
-@click.option('-p', '--push', is_flag=True, default=False, help="push image to registry after the build")
 @click.option('-r', '--rebuild', is_flag=True, default=False, help="rebuild image even if alredy built (hashtag found)")
-def build(images, nocache, push, rebuild):
+def build(images, nocache, rebuild):
     """Build source images."""
     for image in images:
         if not isinstance(image, SourceImage):
@@ -360,8 +359,16 @@ def build(images, nocache, push, rebuild):
         # image.getid() == None means that image with given tag doesn't exist
         if rebuild or image.getid() is None:
             image.build(nocache=nocache)
-        if push:
-            image.push()
+
+
+@image.command()
+@click.pass_obj
+def push(images):
+    """Push images to Docker registry."""
+    for image in images:
+        if not isinstance(image, SourceImage):
+            continue
+        image.push()
 
 
 @image.command('list')

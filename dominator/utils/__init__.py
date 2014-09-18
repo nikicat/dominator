@@ -154,12 +154,11 @@ def compare_env(expected: dict, actual: dict):
 @aslist
 def compare_ports(cont, actual: dict):
     getlogger().debug('comparing ports')
-    for name, port_expected in cont.ports.items():
-        extport_expected = cont.extports.get(name, port_expected)
-        proto_expected = cont.portproto.get(name, 'tcp')
+    for name, door in cont.doors.items():
+        extport_expected = door.externalport
 
         matched_actual = [info for name, info in actual.items()
-                          if name == '{}/{}'.format(port_expected, proto_expected)]
+                          if name == door.portspec]
 
         if len(matched_actual) == 0:
             yield ('ports',), (name, '')
@@ -167,10 +166,10 @@ def compare_ports(cont, actual: dict):
             yield from compare_values(('ports', name, 'ext'), extport_expected, int(matched_actual[0][0]['HostPort']))
 
     for portname, portinfo in actual.items():
-        matched_expected = [name for name, port in cont.ports.items()
-                            if portname == '{}/{}'.format(port, cont.portproto.get(name, 'tcp'))]
+        matched_expected = [name for name, door in cont.doors.items()
+                            if portname == door.portspec]
         if len(matched_expected) == 0:
-            port, proto = portname.split('/')
+            port, proto = portname.split('/', 1)
             yield ('ports',), ('', port)
 
 
@@ -187,10 +186,10 @@ def compare_volumes(cont, cinfo):
             volume = matched_expected[0]
             getlogger(volume=volume).debug('comparing volume')
 
-            if volume.getpath(cont) != path:
-                yield ('volumes', dest, 'path'), (volume.getpath(cont), path)
-            elif hasattr(volume, 'files'):
-                yield from volume.compare_files(cont)
+            if volume.fullpath != path:
+                yield ('volumes', dest, 'path'), (volume.fullpath, path)
+            elif hasattr(volume, 'compare_files'):
+                yield from volume.compare_files()
 
             if volume.ro != ro:
                 yield ('volumes', dest, 'ro'), (volume.ro, ro)
@@ -214,7 +213,7 @@ def compare_container(cont, cinfo):
     imagerepo = ':'.join(imageinfo[:-1])
 
     for key, expected, actual in [
-        ('name', cont.getfullname(), cinfo['Name'][1:]),
+        ('name', cont.dockername, cinfo['Name'][1:]),
         ('image.repo', cont.image.getfullrepository(), imagerepo),
         ('image.id', cont.image.getid(), imageid),
         ('memory', cont.memory, cinfo['Config']['Memory']),

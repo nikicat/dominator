@@ -69,6 +69,7 @@ def shipment():
     shipment.author_email = 'nobody@nonexistent.com'
     shipment.home_page = 'https://nonexistent.com/~nobody'
     shipment.timestamp = datetime.datetime(2000, 1, 1)
+    shipment.make_backrefs()
     return shipment
 
 
@@ -81,35 +82,35 @@ def docker():
 @vcr.use_cassette('localstart.yaml')
 def test_start(capsys, shipment):
     runner = CliRunner()
-    result = runner.invoke(actions.containers, ['start'], obj=shipment)
+    result = runner.invoke(actions.container, ['start'], obj=shipment)
     assert result.exit_code == 0
 
-    result = runner.invoke(actions.containers, ['status', '-d'], obj=shipment)
+    result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')
     assert len(lines) == 2
     print(lines[-2])
-    assert re.match(r'testshipment[ \t]+localship[ \t]+testcont[ \t]+[a-f0-9]{7}[ \t]+Up Less than a second[ \t]+',
+    assert re.match(r'localship:testcont[ \t]+[a-f0-9]{7}[ \t]+Up Less than a second[ \t]+',
                     lines[-2])
 
-    result = runner.invoke(actions.containers, ['restart'], obj=shipment)
+    result = runner.invoke(actions.container, ['restart'], obj=shipment)
     assert result.exit_code == 0
 
-    shipment.containers[0].volumes['testconf'].files['testfile'].content = 'some other content'
-    result = runner.invoke(actions.containers, ['status', '-d'], obj=shipment)
+    next(shipment.containers).volumes['testconf'].files['testfile'].content = 'some other content'
+    result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')
     assert len(lines) == 6
     assert '++++++' in lines[-3]
 
-    result = runner.invoke(actions.containers, ['start'], obj=shipment)
+    result = runner.invoke(actions.container, ['start'], obj=shipment)
     assert result.exit_code == 0
-    result = runner.invoke(actions.containers, ['status', '-d'], obj=shipment)
+    result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')
     assert len(lines) == 2
 
-    result = runner.invoke(actions.containers, ['stop'], obj=shipment)
+    result = runner.invoke(actions.container, ['stop'], obj=shipment)
     assert result.exit_code == 0
 
 

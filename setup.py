@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
-        version='8.1.0',
+        version='9.1.0',
         url='https://github.com/yandex-sysmon/dominator',
         license='LGPLv3',
         author='Nikolay Bryskin',
@@ -52,15 +52,15 @@ if __name__ == '__main__':
             'mako',
             'colorama',
             'click',
-            'pyopenssl',
         ],
         tests_require=[
             'pytest',
             'vcrpy',
         ],
         extras_require={
-            'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'requests_cache', 'tzlocal', 'pkginfo', 'openssh_wrapper'],
-            'tiny': ['PyYAML']
+            'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'requests_cache', 'tzlocal', 'pkginfo', 'openssh_wrapper',
+                     'objgraph', 'pyopenssl', 'psutil'],
+            'tiny': ['PyYAML'],
         },
         cmdclass={'test': PyTest},
     )

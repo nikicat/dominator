@@ -362,9 +362,9 @@ class SourceImage(Image):
 
 
 class Container:
-    def __init__(self, name: str, ship: Ship, image: Image, command: str=None, hostname: str=None,
+    def __init__(self, name: str, image: Image, ship: Ship=None, command: str=None, hostname: str=None,
                  memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None,
-                 network_mode: str='', user=None):
+                 network_mode: str='', user: str='', privileged: bool=False):
         self.name = name
         self.ship = ship
         self.image = image
@@ -557,6 +557,7 @@ class Container:
                 },
                 binds={v.fullpath: {'bind': v.dest, 'ro': v.ro} for v in self.volumes.values()},
                 network_mode=self.network_mode,
+                privileged=self.privileged,
             )
         try:
             _start()

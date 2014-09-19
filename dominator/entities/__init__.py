@@ -732,6 +732,7 @@ class BaseFile:
 
     def dump(self, path: str):
         self.logger.debug("writing file", path=path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w+', encoding='utf8') as f:
             f.write(self.data)
 

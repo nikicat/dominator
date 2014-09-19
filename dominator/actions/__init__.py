@@ -207,11 +207,15 @@ def restart(containers):
         cont.run()
 
 
-@container.command()
+@container.command('exec')
 @click.pass_obj
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
-def exec(containers, keep):
+def container_exec(containers, keep):
     """Start, attach and wait a container."""
+    common_exec(containers, keep)
+
+
+def common_exec(containers, keep):
     for cont in containers:
         try:
             with cont.execute() as logs:
@@ -246,7 +250,7 @@ def remove(containers):
 
 @container.command('list')
 @click.pass_obj
-def list_containers(containers):
+def container_list(containers):
     """Print container names."""
     for container in containers:
         click.echo(container.fullname)
@@ -315,6 +319,36 @@ def dump_containers(containers):
                     if hasattr(file, 'context'):
                         file.context = 'skipped'
         click.echo_via_pager(yaml.dump(container))
+
+
+@cli.group(chain=True)
+@click.pass_context
+@click.option('-p', '--pattern', default='*', help="pattern to filter ship:task")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def task(ctx, pattern, regex):
+    """Container management commands."""
+    shipment = ctx.obj
+    ctx.obj = filterbyname(shipment.tasks, pattern, regex)
+
+
+@task.command('exec')
+@click.pass_obj
+@click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
+@click.argument('command', required=False)
+def task_exec(tasks, keep, command):
+    """Execute task"""
+    if command is not None:
+        for task in tasks:
+            task.command = command
+    common_exec(tasks, keep)
+
+
+@task.command('list')
+@click.pass_obj
+def task_list(tasks):
+    """Print task names."""
+    for task in tasks:
+        click.echo(task.fullname)
 
 
 @cli.group()

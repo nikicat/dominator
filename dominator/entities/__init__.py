@@ -18,6 +18,7 @@ import shutil
 import datetime
 import socket
 import copy
+import itertools
 
 import yaml
 import pkg_resources
@@ -589,9 +590,8 @@ class Container:
         return self.doors[name].externalport
 
 
-class Task:
-    def __init__(self, container):
-        self.container = container
+class Task(Container):
+    pass
 
 
 class Door:
@@ -800,7 +800,7 @@ class Shipment:
     def __init__(self, name, containers, tasks=None):
         self.name = name
         self.tasks = tasks or []
-        ships = {container.ship for container in containers}.union({task.container.ship for task in self.tasks})
+        ships = {container.ship for container in containers}.union({task.ship for task in self.tasks})
         for ship in ships:
             ship.containers = {container.name: container for container in containers if container.ship == ship}
         self.ships = {ship.name: ship for ship in ships}
@@ -855,7 +855,7 @@ class Shipment:
         for ship in self.ships.values():
             make_backrefs(ship, 'containers', 'ship')
 
-        for container in self.containers:
+        for container in itertools.chain(self.containers, self.tasks):
             make_backrefs(container, 'doors', 'container')
             make_backrefs(container, 'volumes', 'container')
 
@@ -875,7 +875,7 @@ class Shipment:
             return 0
 
         def iterate_images():
-            for container in self.containers:
+            for container in itertools.chain(self.containers, self.tasks):
                 image = container.image
                 while True:
                     yield image

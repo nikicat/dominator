@@ -702,12 +702,12 @@ class ConfigVolume(Volume):
             for name, file in self.files.items():
                 try:
                     actual = file.load(os.path.join(tempdir, name))
+                    expected = file.data
+                    if actual != expected:
+                        diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
+                        yield ('volumes', self.dest, 'files', name), [line for line in diff if line[:2] != '  ']
                 except FileNotFoundError:
-                    actual = ''
-                expected = file.data
-                if actual != expected:
-                    diff = difflib.Differ().compare(actual.split('\n'), expected.split('\n'))
-                    yield ('volumes', self.dest, 'files', name), [line for line in diff if line[:2] != '  ']
+                    yield ('volumes', self.dest, 'files'), (name, '<not found>')
 
 
 class BaseFile:

@@ -744,7 +744,7 @@ class BaseFile:
 
 
 class TextFile(BaseFile):
-    def __init__(self, filename: str=None, text: str=None):
+    def __init__(self, text: str=None, filename: str=None):
         """
         Constructs TextFile. If text provided, populate
         file contents from it. If not - try to load resource

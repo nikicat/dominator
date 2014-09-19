@@ -377,10 +377,11 @@ class Container:
         self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
         self.network_mode = network_mode
         self.user = user
+        self.privileged = privileged
         self.doors = doors or {}
 
     def __repr__(self):
-        return 'Container({fullname}[{id!s:7.7}])'.format(**vars(self))
+        return 'Container({c.fullname}[{c.id!s:7.7}])'.format(c=self)
 
     def __getstate__(self):
         state = vars(self)

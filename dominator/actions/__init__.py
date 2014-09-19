@@ -235,6 +235,15 @@ def stop(containers):
             cont.stop()
 
 
+@container.command()
+@click.pass_obj
+def remove(containers):
+    """Remove container(s) on ship(s)."""
+    for cont in containers:
+        cont.check()
+        cont.remove()
+
+
 @container.command('list')
 @click.pass_obj
 def list_containers(containers):

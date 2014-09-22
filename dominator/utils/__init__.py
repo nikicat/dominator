@@ -218,7 +218,7 @@ def compare_container(cont, cinfo):
         ('image.id', cont.image.getid(), imageid),
         ('memory', cont.memory, cinfo['Config']['Memory']),
         ('network_mode', cont.network_mode, cinfo['HostConfig']['NetworkMode']),
-        ('user', cont.user, cinfo['Config']['User']),
+        ('user', cont.user or getattr(cont.image, 'user', ''), cinfo['Config']['User']),
         ('privileged', cont.privileged, cinfo['HostConfig']['Privileged']),
     ]:
         yield from compare_values((key,), expected, actual)

@@ -290,7 +290,7 @@ class Image:
 
 class SourceImage(Image):
     def __init__(self, name: str, parent: Image, scripts: list=None, command: str=None, workdir: str=None,
-                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None):
+                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None, user: str=''):
         self.parent = parent
         self.scripts = scripts or []
         self.command = command
@@ -299,6 +299,7 @@ class SourceImage(Image):
         self.ports = ports or {}
         self.files = files or {}
         self.env = env or {}
+        self.user = user
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
 
@@ -323,6 +324,7 @@ class SourceImage(Image):
             'volumes': self.volumes,
             'ports': self.ports,
             'files': self.files,
+            'user': self.user,
         }, sort_keys=True)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
@@ -342,6 +344,8 @@ class SourceImage(Image):
                 dockerfile.write('VOLUME {}\n'.format(volume).encode())
             for port in self.ports.values():
                 dockerfile.write('EXPOSE {}\n'.format(port).encode())
+            if self.user:
+                dockerfile.write('USER {}\n'.format(self.user).encode())
             if self.command:
                 dockerfile.write('CMD {}\n'.format(self.command).encode())
             for path, data in self.files.items():

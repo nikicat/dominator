@@ -18,6 +18,9 @@ docker:
 # Put here local registry address to speed up pull
 #        url: <host:port>
 #
+# Replace with true if your registry doesn't support https
+#        insecure: false
+#
 # Default namespace to use for SourceImages
 #        namespace: yandex
 

@@ -236,12 +236,14 @@ class Image:
     def push(self, dock=None):
         self.logger.info("pushing repo")
         dock = dock or utils.getdocker()
-        self._streamoperation(dock.push, repository=self.getfullrepository(), tag=self.tag)
+        self._streamoperation(dock.push, repository=self.getfullrepository(), tag=self.tag,
+                              insecure_registry=utils.settings.get('docker.registry.insecure', False))
 
     def pull(self, dock=None, tag=None):
         self.logger.info("pulling repo")
         dock = dock or utils.getdocker()
-        self._streamoperation(dock.pull, repository=self.getfullrepository(), tag=tag)
+        self._streamoperation(dock.pull, repository=self.getfullrepository(), tag=tag,
+                              insecure_registry=utils.settings.get('docker.registry.insecure', False))
         Image.gettags.cache_clear()
         self.getid()
 

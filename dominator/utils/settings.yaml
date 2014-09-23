@@ -10,18 +10,23 @@ configvolumedir: ~/.config/dominator/config
 # Directory to place data
 datavolumedir: ~/.config/dominator/data
 
-# Uncomment to connect using tcp socket instead of unix-socket
-#dockerurl: http://localhost:2375
+docker:
+# URL for default Docker instance (could be any Docker server as well),
+# it is used for building images and retrieving image ids
+#    url: null
+#
+# Uncomment this if you want to customize your Docker registry
+#    registry:
+#
+# Put here local registry address to speed up pull
+#        url: <host:port>
+#
+# Default namespace to use for SourceImages
+#        namespace: yandex
 
 # FQDN for LocalShip's - used for developing. Put here some local ip
 # different from 127.0.0.1/::1 that local containers could reach
 #localship-fqdn: localhost
-
-# Put here local registry address to speed up pull
-#docker-registry: <host:port>
-
-# URL for local Docker instance (used for building from SourceImage)
-#dockerurl: null
 
 # Logging config (https://docs.python.org/3.4/library/logging.config.html#dictionary-schema-details)
 logging:

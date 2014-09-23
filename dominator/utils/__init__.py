@@ -132,7 +132,7 @@ aslist = _as(list)
 
 @cached
 def getdocker(url=None):
-    url = url or settings.get('dockerurl')
+    url = url or settings.get('docker.url')
     getlogger(url=url).debug('creating docker client')
     return docker.Client(url)
 
@@ -291,5 +291,27 @@ class Settings(dict):
         else:
             data = file.read()
         self.update(yaml.load(data))
+
+    def get(self, path, default=None):
+        parts = path.split('.')
+        try:
+            value = self
+            for part in parts:
+                value = value[part]
+            return value
+        except:
+            getlogger().debug("key is not found in config, using default value", key=path)
+            return default
+
+    def set(self, path, value):
+        getlogger().debug("overriding value for key", key=path, value=value)
+        parts = path.split('.')
+        section = self
+        for part in parts[:-1]:
+            if part not in section:
+                section[part] = {}
+            section = section[part]
+        section[parts[-1]] = value
+
 
 settings = Settings()

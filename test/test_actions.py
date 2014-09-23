@@ -22,8 +22,7 @@ vcr = VCR(cassette_library_dir='test/fixtures/vcr_cassettes')
 def settings():
     _settings['configvolumedir'] = '/tmp/dominator-test-config'
     # FIXME: use https endpoint because vcrpy doesn't handle UnixHTTPConnection
-    _settings['dockerurl'] = 'http://localhost:4243'
-    _settings['deploy-image'] = 'nikicat/dominator'
+    _settings.set('docker.url', 'http://localhost:4243')
 
     try:
         os.mkdir(_settings['configvolumedir'])

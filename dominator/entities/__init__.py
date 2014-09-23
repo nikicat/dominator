@@ -154,7 +154,7 @@ class LocalShip(BaseShip):
     @property
     @utils.cached
     def docker(self):
-        return docker.Client(utils.settings.get('dockerurl'))
+        return docker.Client(utils.settings.get('docker.url'))
 
     @property
     def datadir(self):
@@ -196,8 +196,8 @@ class Image:
     def _init(self, namespace, repository, registry, id=None):
         self.id = id
         self.repository = repository
-        self.namespace = namespace if namespace is not DEFAULT_NAMESPACE else utils.settings.get('docker-namespace')
-        self.registry = registry if registry is not DEFAULT_REGISTRY else utils.settings.get('docker-registry')
+        self.namespace = namespace if namespace is not DEFAULT_NAMESPACE else utils.settings.get('docker.namespace')
+        self.registry = registry if registry is not DEFAULT_REGISTRY else utils.settings.get('docker.registry.url')
 
     def __repr__(self):
         return '{classname}({namespace}/{repository}:{tag} [{id:.7}] registry={registry})'.format(
@@ -236,12 +236,14 @@ class Image:
     def push(self, dock=None):
         self.logger.info("pushing repo")
         dock = dock or utils.getdocker()
-        self._streamoperation(dock.push, repository=self.getfullrepository(), tag=self.tag)
+        self._streamoperation(dock.push, repository=self.getfullrepository(), tag=self.tag,
+                              insecure_registry=utils.settings.get('docker.registry.insecure', False))
 
     def pull(self, dock=None, tag=None):
         self.logger.info("pulling repo")
         dock = dock or utils.getdocker()
-        self._streamoperation(dock.pull, repository=self.getfullrepository(), tag=tag)
+        self._streamoperation(dock.pull, repository=self.getfullrepository(), tag=tag,
+                              insecure_registry=utils.settings.get('docker.registry.insecure', False))
         Image.gettags.cache_clear()
         self.getid()
 
@@ -290,7 +292,7 @@ class Image:
 
 class SourceImage(Image):
     def __init__(self, name: str, parent: Image, scripts: list=None, command: str=None, workdir: str=None,
-                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None):
+                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None, user: str=''):
         self.parent = parent
         self.scripts = scripts or []
         self.command = command
@@ -299,6 +301,7 @@ class SourceImage(Image):
         self.ports = ports or {}
         self.files = files or {}
         self.env = env or {}
+        self.user = user
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
 
@@ -312,6 +315,9 @@ class SourceImage(Image):
         """Used to calculate unique identifying tag for image
            If tag is not found in registry, than image must be rebuilt
         """
+        def serialize_bytes(data):
+            return base64.b64encode(data, altchars=b'+-').decode()
+
         dump = json.dumps({
             'repository': self.repository,
             'namespace': self.namespace,
@@ -323,7 +329,8 @@ class SourceImage(Image):
             'volumes': self.volumes,
             'ports': self.ports,
             'files': self.files,
-        }, sort_keys=True)
+            'user': self.user,
+        }, sort_keys=True, default=serialize_bytes)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
 
@@ -342,14 +349,20 @@ class SourceImage(Image):
                 dockerfile.write('VOLUME {}\n'.format(volume).encode())
             for port in self.ports.values():
                 dockerfile.write('EXPOSE {}\n'.format(port).encode())
+            if self.user:
+                dockerfile.write('USER {}\n'.format(self.user).encode())
             if self.command:
                 dockerfile.write('CMD {}\n'.format(self.command).encode())
             for path, data in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
                 tinfo = tarfile.TarInfo(path)
-                tinfo.size = len(data)
-                fileobj = io.BytesIO(data.encode())
-                tfile.addfile(tinfo, fileobj)
+                if isinstance(data, str):
+                    data = data.encode()
+                if isinstance(data, bytes):
+                    data = io.BytesIO(data)
+                tinfo.size = len(data.getvalue())
+                data.seek(0)
+                tfile.addfile(tinfo, data)
             dfinfo = tarfile.TarInfo('Dockerfile')
             dfinfo.size = len(dockerfile.getvalue())
             dockerfile.seek(0)

@@ -43,7 +43,7 @@ def cli(ctx, config, loglevel, settings, namespace):
     logging.basicConfig(level=loglevel)
     utils.settings.load(settings)
     if namespace:
-        utils.settings['docker-namespace'] = namespace
+        utils.settings.set('docker.namespace', namespace)
     logging.config.dictConfig(utils.settings.get('logging', {}))
     logging.disable(level=loglevel-1)
 

@@ -48,7 +48,7 @@ if __name__ == '__main__':
             'Topic :: System :: Distributed Computing',
         ],
         install_requires=[
-            'docker-py >= 0.3.2',
+            'docker-py >= 0.5.0',
             'mako',
             'colorama',
             'click',

@@ -1,9 +1,6 @@
 # Global settings for Dominator
 # Copy this file to ~/.config/dominator/settings.yaml and edit
 
-# Image for deploying config files to remote ships
-deploy-image: nikicat/dominator
-
 # Directory to place config files
 configvolumedir: ~/.config/dominator/config
 

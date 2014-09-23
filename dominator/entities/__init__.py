@@ -313,6 +313,9 @@ class SourceImage(Image):
         """Used to calculate unique identifying tag for image
            If tag is not found in registry, than image must be rebuilt
         """
+        def serialize_bytes(data):
+            return base64.b64encode(data, altchars=b'+-').decode()
+
         dump = json.dumps({
             'repository': self.repository,
             'namespace': self.namespace,
@@ -325,7 +328,7 @@ class SourceImage(Image):
             'ports': self.ports,
             'files': self.files,
             'user': self.user,
-        }, sort_keys=True)
+        }, sort_keys=True, default=serialize_bytes)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
 
@@ -351,9 +354,13 @@ class SourceImage(Image):
             for path, data in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
                 tinfo = tarfile.TarInfo(path)
-                tinfo.size = len(data)
-                fileobj = io.BytesIO(data.encode())
-                tfile.addfile(tinfo, fileobj)
+                if isinstance(data, str):
+                    data = data.encode()
+                if isinstance(data, bytes):
+                    data = io.BytesIO(data)
+                tinfo.size = len(data.getvalue())
+                data.seek(0)
+                tfile.addfile(tinfo, data)
             dfinfo = tarfile.TarInfo('Dockerfile')
             dfinfo.size = len(dockerfile.getvalue())
             dockerfile.seek(0)

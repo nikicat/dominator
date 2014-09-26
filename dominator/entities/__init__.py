@@ -197,7 +197,8 @@ class Image:
         self.id = id
         self.repository = repository
         self.namespace = namespace if namespace is not DEFAULT_NAMESPACE else utils.settings.get('docker.namespace')
-        self.registry = registry if registry is not DEFAULT_REGISTRY else utils.settings.get('docker.registry.url')
+        self.registry = registry if registry is not DEFAULT_REGISTRY else utils.settings.get('docker.registry.url',
+                                                                                             default=None)
 
     def __repr__(self):
         return '{classname}({namespace}/{repository}:{tag} [{id:.7}] registry={registry})'.format(

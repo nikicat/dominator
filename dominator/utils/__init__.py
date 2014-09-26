@@ -282,12 +282,13 @@ NONEXISTENT_KEY = object()
 class Settings:
     def __init__(self):
         self._dict = mergedict.ConfigDict()
+        self.dirpath = os.path.expanduser('~/.config/dominator')
 
     def load(self, file):
         if file is None:
             for filename in itertools.chain(
-                    glob.glob('/etc/dominator/*.yaml'),
-                    glob.glob(os.path.expanduser('~/.config/dominator/*.yaml')),
+                glob.glob('/etc/dominator/*.yaml'),
+                glob.glob(os.path.join(self.dirpath, '*.yaml')),
             ):
                 getlogger().debug("checking existense of %s", filename)
                 if os.path.exists(filename):
@@ -300,12 +301,14 @@ class Settings:
 
     def get(self, path, default=NONEXISTENT_KEY, type_=None, help=None):
         logger = getlogger(key=path)
-        if type_ is None and default is not NONEXISTENT_KEY:
+        if type_ is None and default is not NONEXISTENT_KEY and default is not None:
             type_ = type(default)
         parts = path.split('.')
         try:
             value = self._dict
             for part in parts:
+                if part == '':
+                    continue
                 value = value[part]
             if type_ is not None:
                 try:

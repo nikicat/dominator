@@ -52,6 +52,7 @@ if __name__ == '__main__':
             'mako',
             'colorama',
             'click',
+            'mergedict',
         ],
         tests_require=[
             'pytest',

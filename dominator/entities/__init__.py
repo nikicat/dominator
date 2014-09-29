@@ -470,7 +470,7 @@ class Container:
                 self.logger.debug('could not stop container, ignoring')
 
     def logs(self, follow):
-        self.logger.bind(follow=follow).debug('getting logs from container')
+        self.logger.debug('getting logs from container', follow=follow)
         try:
             if follow:
                 lines = utils.docker_lines(self.ship.docker.logs(self.id, stream=True))

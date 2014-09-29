@@ -60,7 +60,7 @@ if __name__ == '__main__':
         ],
         extras_require={
             'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'requests_cache', 'tzlocal', 'pkginfo', 'openssh_wrapper',
-                     'objgraph', 'pyopenssl', 'psutil'],
+                     'objgraph', 'pyopenssl', 'psutil', 'contextlog'],
             'tiny': ['PyYAML'],
         },
         cmdclass={'test': PyTest},

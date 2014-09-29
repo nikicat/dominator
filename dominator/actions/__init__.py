@@ -537,6 +537,32 @@ def list_doors(containers):
                 click.echo('{:30.30} {:20.20} {}'.format(container.fullname, name, url))
 
 
+@cli.group('config')
+def config():
+    """Commands to manage local config files."""
+    pass
+
+
+@config.command('dump')
+def dump_config():
+    """Dump loaded configuration in YAML format."""
+    click.echo(yaml.dump(utils.settings.get('', default={})))
+
+
+@config.command('create')
+def create_config():
+    """(Re)create config files with default values."""
+    for filename in ['settings.yaml', 'logging.yaml']:
+        src = pkg_resources.resource_stream('dominator.utils', filename)
+        dstpath = os.path.join(utils.settings.dirpath, filename)
+        if os.path.exists(dstpath):
+            if not click.confirm("File {} exists. Are you sure you want to overwrite it?".format(dstpath)):
+                continue
+        getlogger().debug("writing config to {}".format(dstpath))
+        with open(dstpath, 'w+') as dst:
+            dst.write(src.read())
+
+
 @utils.makesorted(lambda o: o.fullname)
 def filterbyname(objects, pattern, regex):
     if not regex:

@@ -36,8 +36,8 @@ if __name__ == '__main__':
         namespace_packages=['dominator'],
         entry_points={'console_scripts': ['dominator = dominator.actions:cli']},
         package_data={
-            'dominator.utils': ['settings.yaml'],
-            'dominator.actions': ['debian/*', 'debian/source/*', 'settings.docker.yaml']
+            'dominator.utils': ['*.yaml'],
+            'dominator.actions': ['debian/*', 'debian/source/*']
         },
         exclude_package_data={'dominator.actions': ['debian/source']},
         classifiers=[
@@ -52,6 +52,7 @@ if __name__ == '__main__':
             'mako',
             'colorama',
             'click',
+            'mergedict',
         ],
         tests_require=[
             'pytest',

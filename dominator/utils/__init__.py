@@ -5,10 +5,12 @@ import string
 import pprint
 import logging
 import os.path
-import pkg_resources
+import glob
 
+import pkg_resources
 import yaml
 import docker
+import mergedict
 
 try:
     import colorlog
@@ -132,7 +134,7 @@ aslist = _as(list)
 
 @cached
 def getdocker(url=None):
-    url = url or settings.get('docker.url')
+    url = url or settings.get('docker.url', default=None)
     getlogger(url=url).debug('creating docker client')
     return docker.Client(url)
 
@@ -274,44 +276,70 @@ def make_shipment(name):
     return decorator
 
 
-class Settings(dict):
+NONEXISTENT_KEY = object()
+
+
+class Settings:
+    def __init__(self):
+        self._dict = mergedict.ConfigDict()
+        self.dirpath = os.path.expanduser('~/.config/dominator')
+
     def load(self, file):
         if file is None:
-            for filename in ['settings.yaml',
-                             os.path.expanduser('~/.config/dominator/settings.yaml'),
-                             '/etc/dominator/settings.yaml']:
+            for filename in itertools.chain(
+                glob.glob('/etc/dominator/*.yaml'),
+                glob.glob(os.path.join(self.dirpath, '*.yaml')),
+            ):
                 getlogger().debug("checking existense of %s", filename)
                 if os.path.exists(filename):
                     getlogger().info("loading settings from %s", filename)
-                    data = open(filename).read()
-                    break
-            else:
-                getlogger().warning("could not find any settings file, using default")
-                data = resource_string('settings.yaml')
+                    data = yaml.load(open(filename))
+                    self._dict.merge(data)
         else:
-            data = file.read()
-        self.update(yaml.load(data))
+            data = yaml.load(file)
+            self._dict.merge(data)
 
-    def get(self, path, default=None):
+    def get(self, path, default=NONEXISTENT_KEY, type_=None, help=None):
+        logger = getlogger(key=path)
+        if type_ is None and default is not NONEXISTENT_KEY and default is not None:
+            type_ = type(default)
         parts = path.split('.')
         try:
-            value = self
+            value = self._dict
             for part in parts:
+                if part == '':
+                    continue
                 value = value[part]
+            if type_ is not None:
+                try:
+                    value = type_(value)
+                except:
+                    logger.warning("could not convert config value to required type", value=value, type=type_)
+                    raise
             return value
-        except:
-            getlogger().debug("key is not found in config, using default value", key=path)
-            return default
+        except KeyError:
+            if default is NONEXISTENT_KEY:
+                logger.error("key is not found in config and no default value provided")
+                raise
+            else:
+                logger.debug("key is not found in config, using default value", default=default)
+                return default
+
+    def __getitem__(self, path):
+        return self.get(path)
 
     def set(self, path, value):
         getlogger().debug("overriding value for key", key=path, value=value)
         parts = path.split('.')
-        section = self
+        section = self._dict
         for part in parts[:-1]:
             if part not in section:
                 section[part] = {}
             section = section[part]
         section[parts[-1]] = value
+
+    def __setitem__(self, path, value):
+        return self.set(path, value)
 
 
 settings = Settings()

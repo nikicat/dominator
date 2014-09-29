@@ -22,7 +22,8 @@ vcr = VCR(cassette_library_dir='test/fixtures/vcr_cassettes')
 def settings():
     _settings['configvolumedir'] = '/tmp/dominator-test-config'
     # FIXME: use https endpoint because vcrpy doesn't handle UnixHTTPConnection
-    _settings.set('docker.url', 'http://localhost:4243')
+    _settings['docker.url'] = 'http://localhost:4243'
+    _settings['docker.namespace'] = 'yandex'
 
     try:
         os.mkdir(_settings['configvolumedir'])
@@ -50,7 +51,7 @@ def shipment():
             entities.Container(
                 name='testcont',
                 ship=ship,
-                image=entities.Image('busybox'),
+                image=entities.Image('busybox', namespace=None),
                 command='sleep 10',
                 volumes={
                     'testconf': entities.ConfigVolume(
@@ -88,7 +89,6 @@ def test_start(capsys, shipment):
     assert result.exit_code == 0
     lines = result.output.split('\n')
     assert len(lines) == 2
-    print(lines[-2])
     assert re.match(r'localship:testcont[ \t]+[a-f0-9]{7}[ \t]+Up Less than a second[ \t]+',
                     lines[-2])
 

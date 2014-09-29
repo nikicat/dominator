@@ -1,0 +1,59 @@
+# Logging config (https://docs.python.org/3.4/library/logging.config.html#dictionary-schema-details)
+logging:
+    version: 1
+    disable_existing_loggers: false
+    loggers:
+        requests.packages.urllib3.connectionpool:
+            level: WARN
+        urllib3.connectionpool:
+            level: WARN
+        dominator:
+            level: DEBUG
+            handlers: [dominator]
+            propagate: false
+        dominator.docker.pull:
+            level: DEBUG
+            handlers: [dominator.docker.pull]
+            propagate: false
+        dominator.docker.logs:
+            level: DEBUG
+            handlers: [dominator.docker.logs]
+            propagate: false
+    formatters:
+        default:
+            (): colorlog.ColoredFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20}{reset}  {message}"
+        dominator:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {cyan}{ship.name:10.10} {blue}{container.name:15.15} {green}{volume.name:10.10}{white} {file.name:15.15}{reset}  {message} {red}{_extra}"
+        dominator.docker.pull:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {cyan}{ship.name:10.10} {blue}{image.repository:25.25}{reset}  {response[status]} {response[id]}: {response[progress]}"
+        dominator.docker.logs:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{yellow}{asctime}         {cyan}{ship.name:10.10} {blue}{container.name:15.15}{reset} {message}"
+    handlers:
+        default:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: default
+        dominator:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator
+        dominator.docker.pull:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator.docker.pull
+        dominator.docker.logs:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator.docker.logs
+    root:
+        level: DEBUG
+        handlers: [default]
+

@@ -19,6 +19,7 @@ import datetime
 import socket
 import copy
 import itertools
+import logging
 
 import yaml
 import pkg_resources
@@ -43,7 +44,7 @@ class BaseShip:
 
     @property
     def logger(self):
-        return utils.getlogger(ship=self, bindto=3)
+        return utils.getlogger()
 
     @property
     def fullname(self):
@@ -201,7 +202,7 @@ class Image:
                                                                                              default=None)
 
     def __repr__(self):
-        return '{classname}({namespace}/{repository}:{tag} [{id:.7}] registry={registry})'.format(
+        return '{classname}({namespace}/{repository}:{tag:.7} [{id:.7}] registry={registry})'.format(
             classname=type(self).__name__, namespace=self.namespace, repository=self.repository, tag=self.tag,
             id=self.id or '-', registry=self.registry)
 
@@ -212,7 +213,7 @@ class Image:
 
     @property
     def logger(self):
-        return utils.getlogger(image=self, bindto=3)
+        return utils.getlogger()
 
     def getid(self, dock=None):
         self.logger.debug('retrieving id')
@@ -221,18 +222,19 @@ class Image:
         return self.id
 
     def _streamoperation(self, func, **kwargs):
-        logger = utils.getlogger('dominator.docker.{}'.format(func.__name__), image=self, docker=func.__self__)
-        for line in func(stream=True, **kwargs):
-            if line != '':
-                resp = json.loads(line)
-                if 'error' in resp:
-                    raise docker.errors.DockerException('could not complete {} operation on {} ({})'.format(
-                        func.__name__, self, resp['error']))
-                else:
-                    message = resp.get('stream', resp.get('status', ''))
-                    for line in message.split('\n'):
-                        if line:
-                            logger.debug(line, response=resp)
+        with utils.addcontext(image=self, docker=func.__self__, operation=func.__name__):
+            logger = logging.getLogger('dominator.docker.'+func.__name__)
+            for line in func(stream=True, **kwargs):
+                if line != '':
+                    resp = json.loads(line)
+                    if 'error' in resp:
+                        raise docker.errors.DockerException('could not complete {} operation on {} ({})'.format(
+                            func.__name__, self, resp['error']))
+                    else:
+                        message = resp.get('stream', resp.get('status', ''))
+                        for line in message.split('\n'):
+                            if line:
+                                logger.debug(line, response=resp)
 
     def push(self, dock=None):
         self.logger.info("pushing repo")
@@ -407,7 +409,7 @@ class Container:
 
     @property
     def logger(self):
-        return utils.getlogger(container=self, bindto=3)
+        return utils.getlogger()
 
     def getvolume(self, volumename):
         return self.volumes[volumename]
@@ -654,7 +656,7 @@ class Volume:
 
     @property
     def logger(self):
-        return utils.getlogger(volume=self, bindto=3)
+        return utils.getlogger()
 
     @property
     def fullname(self):
@@ -743,7 +745,7 @@ class BaseFile:
 
     @property
     def logger(self):
-        return utils.getlogger(file=self, bindto=3)
+        return utils.getlogger()
 
     def dump(self, path: str):
         self.logger.debug("writing file", path=path)

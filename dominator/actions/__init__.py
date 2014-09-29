@@ -5,6 +5,7 @@ import pkg_resources
 import datetime
 import fnmatch
 import re
+import functools
 
 import yaml
 import mako.template
@@ -13,7 +14,10 @@ import click
 
 from ..entities import SourceImage, BaseShip, BaseFile, Volume, Container, Shipment
 from .. import utils
-from ..utils import getlogger
+
+
+def getlogger():
+    return utils.getcontext('logger')
 
 
 def literal_str_representer(dumper, data):
@@ -56,7 +60,7 @@ def cli(ctx, config, loglevel, settings, namespace):
 @cli.group(chain=True)
 def shipment():
     """Shipment management commands."""
-    pass
+    utils.setcontext(logger=logging.getLogger('dominator.shipment'))
 
 
 def getobedients():
@@ -119,10 +123,11 @@ def generate(ctx, distribution, entrypoint, cache, clear_cache):
     getlogger().debug("retrieving image ids")
     for image in shipment.images:
         if not isinstance(image, SourceImage):
-            if image.getid() is None:
-                image.pull()
+            with utils.addcontext(logger=logging.getLogger('dominator.image'), image=image):
                 if image.getid() is None:
-                    raise RuntimeError("Could not find id for image {}".format(image))
+                    image.pull()
+                    if image.getid() is None:
+                        raise RuntimeError("Could not find id for image {}".format(image))
 
     click.echo_via_pager(yaml.dump(shipment))
 
@@ -188,94 +193,105 @@ def container(ctx, pattern, regex):
     ctx.obj = filterbyname(shipment.containers, pattern, regex)
 
 
+def foreach(varname):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(objects, *args, **kwargs):
+            with utils.addcontext(logger=logging.getLogger('dominator.'+varname)):
+                for obj in objects:
+                    with utils.addcontext(**{varname: obj}):
+                        func(obj, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
 @container.command()
 @click.pass_obj
-def start(containers):
+@foreach('container')
+def start(cont):
     """Push images, render config volumes and Start containers."""
-    for cont in containers:
-        cont.run()
+    cont.run()
 
 
 @container.command()
 @click.pass_obj
-def restart(containers):
+@foreach('container')
+def restart(cont):
     """Restart containers."""
-    for cont in containers:
-        cont.check()
-        if cont.running:
-            cont.stop()
-        cont.run()
+    cont.check()
+    if cont.running:
+        cont.stop()
+    cont.run()
 
 
 @container.command('exec')
 @click.pass_obj
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
-def container_exec(containers, keep):
+@foreach('container')
+def container_exec(container, keep):
     """Start, attach and wait a container."""
-    common_exec(containers, keep)
+    common_exec(container, keep)
 
 
-def common_exec(containers, keep):
-    for cont in containers:
+def common_exec(cont, keep):
+    try:
+        with cont.execute() as logs:
+            for line in logs:
+                click.echo(line)
+    finally:
         try:
-            with cont.execute() as logs:
-                for line in logs:
-                    click.echo(line)
-        finally:
-            try:
-                if not keep:
-                    cont.remove(force=True)
-            except:
-                getlogger().exception("failed to remove container")
+            if not keep:
+                cont.remove(force=True)
+        except:
+            getlogger().exception("failed to remove container")
 
 
 @container.command()
 @click.pass_obj
-def stop(containers):
+@foreach('container')
+def stop(cont):
     """Stop container(s) on ship(s)."""
-    for cont in containers:
-        cont.check()
-        if cont.running:
-            cont.stop()
+    cont.check()
+    if cont.running:
+        cont.stop()
 
 
 @container.command()
 @click.pass_obj
-def remove(containers):
+@foreach('container')
+def remove(cont):
     """Remove container(s) on ship(s)."""
-    for cont in containers:
-        cont.check()
-        cont.remove()
+    cont.check()
+    cont.remove()
 
 
 @container.command('list')
 @click.pass_obj
-def container_list(containers):
+@foreach('container')
+def container_list(container):
     """Print container names."""
-    for container in containers:
-        click.echo(container.fullname)
+    click.echo(container.fullname)
 
 
 @container.command()
 @click.pass_obj
 @click.option('-d', '--showdiff', is_flag=True, default=False, help="show diff with running container")
-def status(containers, showdiff):
+@foreach('container')
+def status(c, showdiff):
     """Show container status."""
-    for c in containers:
-        c.check()
-        if c.running:
-            diff = list(utils.compare_container(c, c.inspect()))
-            getlogger().debug('compare result', diff=diff)
-            if len(diff) > 0:
-                color = Fore.YELLOW
-            else:
-                color = Fore.GREEN
+    c.check()
+    if c.running:
+        diff = list(utils.compare_container(c, c.inspect()))
+        if len(diff) > 0:
+            color = Fore.YELLOW
         else:
-            color = Fore.RED
-        click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
-                   .format(c=c, color=color, id=c.id or '', reset=Fore.RESET))
-        if c.running and showdiff:
-            print_diff(diff)
+            color = Fore.GREEN
+    else:
+        color = Fore.RED
+    click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
+               .format(c=c, color=color, id=c.id or '', reset=Fore.RESET))
+    if c.running and showdiff:
+        print_diff(diff)
 
 
 def print_diff(difflist):
@@ -298,27 +314,27 @@ def print_diff(difflist):
 @container.command()
 @click.pass_obj
 @click.option('-f', '--follow', is_flag=True, default=False, help="follow logs")
-def log(containers, follow):
+@foreach('container')
+def log(cont, follow):
     """View Docker log for container(s)."""
-    for cont in containers:
-        cont.check()
-        for line in cont.logs(follow=follow):
-            click.echo(line)
+    cont.check()
+    for line in cont.logs(follow=follow):
+        click.echo(line)
 
 
 @container.command('dump')
 @click.pass_obj
-def dump_containers(containers):
+@foreach('container')
+def dump_container(container):
     """Dump container info."""
-    for container in containers:
-        container.ship = None
-        container.shipment = None
-        for volume in container.volumes.values():
-            if hasattr(volume, 'files'):
-                for file in volume.files.values():
-                    if hasattr(file, 'context'):
-                        file.context = 'skipped'
-        click.echo_via_pager(yaml.dump(container))
+    container.ship = None
+    container.shipment = None
+    for volume in container.volumes.values():
+        if hasattr(volume, 'files'):
+            for file in volume.files.values():
+                if hasattr(file, 'context'):
+                    file.context = 'skipped'
+    click.echo_via_pager(yaml.dump(container))
 
 
 @cli.group(chain=True)
@@ -335,20 +351,20 @@ def task(ctx, pattern, regex):
 @click.pass_obj
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
 @click.argument('command', required=False)
+@foreach('task')
 def task_exec(tasks, keep, command):
     """Execute task"""
     if command is not None:
-        for task in tasks:
-            task.command = command
-    common_exec(tasks, keep)
+        task.command = command
+    common_exec(task, keep)
 
 
 @task.command('list')
 @click.pass_obj
-def task_list(tasks):
+@foreach('task')
+def task_list(task):
     """Print task names."""
-    for task in tasks:
-        click.echo(task.fullname)
+    click.echo(task.fullname)
 
 
 @cli.group()
@@ -356,24 +372,25 @@ def task_list(tasks):
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 @click.pass_context
 def file(ctx, pattern, regex):
+    """File management commands."""
     shipment = ctx.obj
     ctx.obj = list(filterbyname(shipment.files, pattern, regex))
 
 
 @file.command('list')
 @click.pass_obj
-def list_files(files):
+@foreach('file')
+def list_files(file):
     """List files."""
-    for file in files:
-        click.echo('{file.fullname:60.60} {file.fullpath}'.format(file=file))
+    click.echo('{file.fullname:60.60} {file.fullpath}'.format(file=file))
 
 
 @file.command('view')
 @click.pass_obj
-def view_files(files):
+@foreach('file')
+def view_files(file):
     """View file via `less'."""
-    for file in files:
-        file.volume.container.ship.spawn('less -S {}'.format(file.fullpath))
+    file.volume.container.ship.spawn('less -S {}'.format(file.fullpath))
 
 
 @cli.group(chain=True)
@@ -386,7 +403,8 @@ def image(ctx, pattern, regex):
     images = []
     if not regex:
         pattern = fnmatch.translate(pattern)
-    images = [image for image in shipment.images if re.match(pattern, image.repository)]
+    images = [image for image in shipment.images
+              if isinstance(image, SourceImage) and re.match(pattern, image.repository)]
     ctx.obj = images
 
 
@@ -394,32 +412,28 @@ def image(ctx, pattern, regex):
 @click.pass_obj
 @click.option('-n', '--nocache', is_flag=True, default=False, help="disable Docker cache")
 @click.option('-r', '--rebuild', is_flag=True, default=False, help="rebuild image even if alredy built (hashtag found)")
-def build(images, nocache, rebuild):
+@foreach('image')
+def build(image, nocache, rebuild):
     """Build source images."""
-    for image in images:
-        if not isinstance(image, SourceImage):
-            continue
-        # image.getid() == None means that image with given tag doesn't exist
-        if rebuild or image.getid() is None:
-            image.build(nocache=nocache)
+    # image.getid() == None means that image with given tag doesn't exist
+    if rebuild or image.getid() is None:
+        image.build(nocache=nocache)
 
 
 @image.command()
 @click.pass_obj
-def push(images):
+@foreach('image')
+def push(image):
     """Push images to Docker registry."""
-    for image in images:
-        if not isinstance(image, SourceImage):
-            continue
-        image.push()
+    image.push()
 
 
 @image.command('list')
 @click.pass_obj
-def list_images(images):
+@foreach('image')
+def list_images(image):
     """Print image list in build order."""
-    for image in images:
-        click.echo(image)
+    click.echo(image.repository)
 
 
 @cli.group()
@@ -434,18 +448,18 @@ def ship(ctx, pattern, regex):
 
 @ship.command('list')
 @click.pass_obj
-def list_ships(ships):
+@foreach('ship')
+def list_ships(ship):
     """List ships in format "<name>      <fqdn>"."""
-    for ship in ships:
-        click.echo('{:15.15}{}'.format(ship.name, ship.fqdn))
+    click.echo('{:15.15}{}'.format(ship.name, ship.fqdn))
 
 
 @ship.command('restart')
 @click.pass_obj
-def restart_ship(ships):
+@foreach('ship')
+def restart_ship(ship):
     """Restart ship(s)."""
-    for ship in ships:
-        ship.restart()
+    ship.restart()
 
 
 @ship.group('container')
@@ -511,10 +525,10 @@ def volume(ctx, pattern, regex):
 
 @volume.command('list')
 @click.pass_obj
-def list_volumes(volumes):
+@foreach('volume')
+def list_volumes(volume):
     """List volumes."""
-    for volume in volumes:
-        click.echo('{volume.fullname:30.30} {volume.dest:30.30} {volume.fullpath}'.format(volume=volume))
+    click.echo('{volume.fullname:30.30} {volume.dest:30.30} {volume.fullpath}'.format(volume=volume))
 
 
 @cli.group()
@@ -540,7 +554,7 @@ def list_doors(containers):
 @cli.group('config')
 def config():
     """Commands to manage local config files."""
-    pass
+    utils.setcontext(logger=logging.getLogger('dominator.config'))
 
 
 @config.command('dump')

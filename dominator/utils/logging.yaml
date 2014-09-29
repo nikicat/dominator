@@ -36,47 +36,35 @@ logging:
             propagate: false
     formatters:
         default:
-            (): colorlog.ColoredFormatter
+            (): dominator.utils.MixedFormatter
             style: "{"
             format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20}{reset}  {message}"
         dominator.container:
-            (): contextlog.MixedFormatter
-            formatters:
-                - contextlog.PartialFormatter
-                - contextlog.ExceptionLocalsFormatter
-                - colorlog.ColoredFormatter
+            (): dominator.utils.MixedFormatter
             style: "{"
             format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20} {blue}{container.fullname:20.20}{reset}  {message} {cyan}{_extra}"
         dominator.image:
-            (): contextlog.MixedFormatter
-            formatters:
-                - contextlog.PartialFormatter
-                - contextlog.ExceptionLocalsFormatter
-                - colorlog.ColoredFormatter
+            (): dominator.utils.MixedFormatter
             style: "{"
             format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20} {blue}{image.repository:20.20}{reset}  {message} {cyan}{_extra}"
         dominator:
-            (): contextlog.MixedFormatter
-            formatters:
-                - contextlog.PartialFormatter
-                - contextlog.ExceptionLocalsFormatter
-                - colorlog.ColoredFormatter
+            (): dominator.utils.MixedFormatter
             style: "{"
             format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20}{reset}  {message}   {_extra}"
         dominator.docker.pull:
-            (): dominator.utils.PartialLoggingFormatter
+            (): dominator.utils.MixedFormatter
             style: "{"
             format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}pulling{reset}  {blue}{image.repository:25.25}{reset} {cyan}{ship.name:10.10} {response[status]} {response[id]}: {response[progress]}"
         dominator.docker.push:
-            (): dominator.utils.PartialLoggingFormatter
+            (): dominator.utils.MixedFormatter
             style: "{"
             format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}pushing{reset}  {blue}{image.repository:25.25}{reset}  {response[status]} {response[id]}: {response[progress]}"
         dominator.docker.build:
-            (): dominator.utils.PartialLoggingFormatter
+            (): dominator.utils.MixedFormatter
             style: "{"
             format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}building{reset} {blue}{image.repository:25.25}{reset}  {message}{response[progress]}"
         dominator.docker.logs:
-            (): dominator.utils.PartialLoggingFormatter
+            (): dominator.utils.MixedFormatter
             style: "{"
             format: "{yellow}{asctime}         {cyan}{ship.name:10.10} {blue}{container.name:15.15}{reset} {message}"
     filters:

@@ -7,6 +7,7 @@ import os.path
 import glob
 import threading
 import contextlib
+import pprint
 
 import pkg_resources
 import yaml
@@ -86,10 +87,7 @@ class ExtraInjector(logging.Filter):
         return True
 
 
-class PartialFormatter(string.Formatter):
-    def __init__(self):
-        self._retrieved = []
-
+class PartialStringFormatter(string.Formatter):
     def get_field(self, field_name, args, kwargs):
         try:
             val = super().get_field(field_name, args, kwargs)
@@ -98,9 +96,44 @@ class PartialFormatter(string.Formatter):
         return val
 
 
-class PartialLoggingFormatter(BaseFormatter):
+class PartialFormatter(BaseFormatter):
     def formatMessage(self, record):
-        return PartialFormatter().format(self._style._fmt, **vars(record))
+        return PartialStringFormatter().format(self._style._fmt, **vars(record))
+
+
+class ExceptionLocalsFormatter(BaseFormatter):
+    def __init__(self, max_vars_lines=100, max_line_len=100, **kwargs):
+        self._max_vars_lines = max_vars_lines
+        self._max_line_len = max_line_len
+        super().__init__(**kwargs)
+
+    def formatException(self, exc_info):
+        vars_lines = pprint.pformat(self._get_locals(exc_info)).split("\n")
+
+        if len(vars_lines) > self._max_vars_lines:
+            vars_lines = vars_lines[:self._max_vars_lines]
+            vars_lines.append("...")
+
+        for count in range(len(vars_lines)):
+            line = vars_lines[count]
+            if len(line) > self._max_line_len:
+                vars_lines[count] = line[:self._max_line_len - 3] + "..."
+
+        output = "\n".join([
+            super().formatException(exc_info),
+            "\nLocals at innermost frame:\n",
+        ] + vars_lines)
+        return output
+
+    def _get_locals(self, exc_info):
+        tb = exc_info[2]  # This is the outermost frame of the traceback
+        while tb.tb_next is not None:
+            tb = tb.tb_next  # Zoom to the innermost frame
+        return tb.tb_frame.f_locals
+
+
+class MixedFormatter(ExceptionLocalsFormatter, PartialFormatter):
+    pass
 
 
 class PrettyDictInjector(logging.Filter):

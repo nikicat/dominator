@@ -1,19 +1,34 @@
-# Logging config (https://docs.python.org/3.4/library/logging.config.html#dictionary-schema-details)
 logging:
     version: 1
     disable_existing_loggers: false
     loggers:
         requests.packages.urllib3.connectionpool:
-            level: WARN
+            level: DEBUG
         urllib3.connectionpool:
-            level: WARN
+            level: DEBUG
         dominator:
             level: DEBUG
             handlers: [dominator]
             propagate: false
+        dominator.container:
+            level: DEBUG
+            handlers: [dominator.container]
+            propagate: false
+        dominator.image:
+            level: DEBUG
+            handlers: [dominator.image]
+            propagate: false
         dominator.docker.pull:
             level: DEBUG
             handlers: [dominator.docker.pull]
+            propagate: false
+        dominator.docker.push:
+            level: DEBUG
+            handlers: [dominator.docker.push]
+            propagate: false
+        dominator.docker:
+            level: DEBUG
+            handlers: [dominator.docker.build]
             propagate: false
         dominator.docker.logs:
             level: DEBUG
@@ -24,18 +39,57 @@ logging:
             (): colorlog.ColoredFormatter
             style: "{"
             format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20}{reset}  {message}"
-        dominator:
-            (): dominator.utils.PartialLoggingFormatter
+        dominator.container:
+            (): contextlog.MixedFormatter
+            formatters:
+                - contextlog.PartialFormatter
+                - contextlog.ExceptionLocalsFormatter
+                - colorlog.ColoredFormatter
             style: "{"
-            format: "{yellow}{asctime} {log_color}{levelname:>7} {cyan}{ship.name:10.10} {blue}{container.name:15.15} {green}{volume.name:10.10}{white} {file.name:15.15}{reset}  {message} {red}{_extra}"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20} {blue}{container.fullname:20.20}{reset}  {message} {cyan}{_extra}"
+        dominator.image:
+            (): contextlog.MixedFormatter
+            formatters:
+                - contextlog.PartialFormatter
+                - contextlog.ExceptionLocalsFormatter
+                - colorlog.ColoredFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20} {blue}{image.repository:20.20}{reset}  {message} {cyan}{_extra}"
+        dominator:
+            (): contextlog.MixedFormatter
+            formatters:
+                - contextlog.PartialFormatter
+                - contextlog.ExceptionLocalsFormatter
+                - colorlog.ColoredFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}{name:20.20}{reset}  {message}   {_extra}"
         dominator.docker.pull:
             (): dominator.utils.PartialLoggingFormatter
             style: "{"
-            format: "{yellow}{asctime} {log_color}{levelname:>7} {cyan}{ship.name:10.10} {blue}{image.repository:25.25}{reset}  {response[status]} {response[id]}: {response[progress]}"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}pulling{reset}  {blue}{image.repository:25.25}{reset} {cyan}{ship.name:10.10} {response[status]} {response[id]}: {response[progress]}"
+        dominator.docker.push:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}pushing{reset}  {blue}{image.repository:25.25}{reset}  {response[status]} {response[id]}: {response[progress]}"
+        dominator.docker.build:
+            (): dominator.utils.PartialLoggingFormatter
+            style: "{"
+            format: "{yellow}{asctime} {log_color}{levelname:>7} {purple}building{reset} {blue}{image.repository:25.25}{reset}  {message}{response[progress]}"
         dominator.docker.logs:
             (): dominator.utils.PartialLoggingFormatter
             style: "{"
             format: "{yellow}{asctime}         {cyan}{ship.name:10.10} {blue}{container.name:15.15}{reset} {message}"
+    filters:
+        threadlocal:
+            (): dominator.utils.ThreadLocalInjector
+        extra:
+            (): dominator.utils.ExtraInjector
+            blacklist:
+                - logger
+        prettydict:
+            (): dominator.utils.PrettyDictInjector
+            attrname: _extra
+            format: "{yellow}{key}{reset}={white}{value}{reset}"
     handlers:
         default:
             level: DEBUG
@@ -45,10 +99,46 @@ logging:
             level: DEBUG
             class: logging.StreamHandler
             formatter: dominator
+            filters:
+                - threadlocal
+                - extra
+                - prettydict
+        dominator.container:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator.container
+            filters:
+                - threadlocal
+                - extra
+                - prettydict
+        dominator.image:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator.image
+            filters:
+                - threadlocal
+                - extra
+                - prettydict
         dominator.docker.pull:
             level: DEBUG
             class: logging.StreamHandler
             formatter: dominator.docker.pull
+            filters:
+                - threadlocal
+        dominator.docker.push:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator.docker.push
+            filters:
+                - threadlocal
+        dominator.docker.build:
+            level: DEBUG
+            class: logging.StreamHandler
+            formatter: dominator.docker.build
+            filters:
+                - threadlocal
+                - extra
+                - prettydict
         dominator.docker.logs:
             level: DEBUG
             class: logging.StreamHandler
@@ -56,4 +146,5 @@ logging:
     root:
         level: DEBUG
         handlers: [default]
+
 

@@ -100,7 +100,7 @@ class Ship(BaseShip):
         self.logger.debug("downloading from %s to %s", remotepath, localpath)
         ssh = self.getssh()
         tar = ssh.run('tar -cC {} .'.format(remotepath)).stdout
-        subprocess.check_output('tar -x --one-top-level={}'.format(localpath), input=tar, shell=True)
+        subprocess.check_output('tar -x -C {}'.format(localpath), input=tar, shell=True)
 
     def spawn(self, command):
         ssh = self.getssh()

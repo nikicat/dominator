@@ -312,7 +312,10 @@ class Settings:
                 if os.path.exists(filename):
                     getlogger().info("loading settings from %s", filename)
                     data = yaml.load(open(filename))
-                    self._dict.merge(data)
+                    if isinstance(data, dict):
+                        self._dict.merge(data)
+                    else:
+                        getlogger().warning("wrong format of %s", filename)
         else:
             data = yaml.load(file)
             self._dict.merge(data)

@@ -48,7 +48,7 @@ def cli(ctx, config, loglevel, settings, namespace):
     utils.settings.load(settings)
     if namespace:
         utils.settings.set('docker.namespace', namespace)
-    logging.config.dictConfig(utils.settings.get('logging', {}))
+    logging.config.dictConfig(utils.settings.get('logging', {'version': 1}))
     logging.disable(level=loglevel-1)
 
     if config is not None:
@@ -573,7 +573,7 @@ def create_config():
             if not click.confirm("File {} exists. Are you sure you want to overwrite it?".format(dstpath)):
                 continue
         getlogger().debug("writing config to {}".format(dstpath))
-        with open(dstpath, 'w+') as dst:
+        with open(dstpath, 'wb+') as dst:
             dst.write(src.read())
 
 

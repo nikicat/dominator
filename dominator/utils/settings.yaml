@@ -22,46 +22,8 @@ docker:
 #        insecure: false
 #
 # Default namespace to use for SourceImages
-#        namespace: yandex
+#    namespace: yandex
 
 # FQDN for LocalShip's - used for developing. Put here some local ip
 # different from 127.0.0.1/::1 that local containers could reach
 #localship-fqdn: localhost
-
-
-# FIXME: next options should be moved to separate sub-package
-
-username: &username !!python/object/apply:os.getenv [OS_USERNAME]
-password: &password !!python/object/apply:os.getenv [OS_PASSWORD]
-
-# Openstack installations endpoints and credentials
-openstack:
-    haze:
-        nova:
-            username: *username
-            api_key: *password
-            project_id: MONITORING
-            auth_url: http://identity.haze.yandex-team.ru/v2.0
-            region_name: myt5
-            version: 2
-        keystone:
-            username: *username
-            password: *password
-            tenant_name: MONITORING
-            auth_url: http://identity.haze.yandex-team.ru/v3
-        domain: haze.yandex.net
-
-    fog:
-        nova:
-            username: *username
-            api_key: *password
-            project_id: yandex_infra_stat_mon
-            auth_url: http://sas-openstack001.search.yandex.net:5000/v2.0
-            insecure: true
-        domain: i.fog.yandex.net
-
-# Racktables endpoint and credentials
-racktables:
-    url: https://racktables.yandex.net/
-    user: *username
-    password: *password

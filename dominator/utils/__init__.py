@@ -62,7 +62,8 @@ def addcontext(**kwargs):
         yield
     finally:
         for key, value in kwargs.items():
-            delattr(tl, key)
+            with contextlib.suppress(AttributeError):
+                delattr(tl, key)
         for key, value in prevcontext.items():
             setattr(tl, key, value)
 

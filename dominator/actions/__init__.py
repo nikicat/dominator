@@ -101,15 +101,19 @@ def generate(ctx, distribution, entrypoint, cache, clear_cache):
     import pkginfo
     meta = pkginfo.get_metadata(distribution)
 
-    if cache:
-        import requests_cache
-        with requests_cache.enabled():
-            if clear_cache:
-                requests_cache.clear()
+    try:
+        if cache:
+            import requests_cache
+            with requests_cache.enabled():
+                if clear_cache:
+                    requests_cache.clear()
+                shipment = func()
+        else:
+            getlogger().info('loading containers without cache')
             shipment = func()
-    else:
-        getlogger().info('loading containers without cache')
-        shipment = func()
+    except:
+        getlogger().exception('failed to generate obedient')
+        ctx.exit()
 
     shipment.version = meta.version
     shipment.author = meta.author

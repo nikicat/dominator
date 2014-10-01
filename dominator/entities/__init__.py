@@ -827,6 +827,9 @@ class YamlFile(BaseFile):
     def __init__(self, data: dict):
         self.content = data
 
+    def __getstate__(self):
+        return {'content': self.content() if callable(self.content) else self.content}
+
     @property
     def data(self):
         return yaml.dump(self.content, default_flow_style=False)

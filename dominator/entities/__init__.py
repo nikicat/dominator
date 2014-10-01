@@ -298,7 +298,8 @@ class Image:
 
 class SourceImage(Image):
     def __init__(self, name: str, parent: Image, scripts: list=None, command: str=None, workdir: str=None,
-                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None, user: str=''):
+                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None, user: str='',
+                 entrypoint=None):
         self.parent = parent
         self.scripts = scripts or []
         self.command = command
@@ -308,6 +309,7 @@ class SourceImage(Image):
         self.files = files or {}
         self.env = env or {}
         self.user = user
+        self.entrypoint = entrypoint
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
 
@@ -336,6 +338,7 @@ class SourceImage(Image):
             'ports': self.ports,
             'files': self.files,
             'user': self.user,
+            'entryporint': self.entrypoint,
         }, sort_keys=True, default=serialize_bytes)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
@@ -359,6 +362,8 @@ class SourceImage(Image):
                 dockerfile.write('USER {}\n'.format(self.user).encode())
             if self.command:
                 dockerfile.write('CMD {}\n'.format(self.command).encode())
+            if self.entrypoint:
+                dockerfile.write('ENTRYPOINT {}\n'.format(self.entrypoint).encode())
             for path, data in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
                 tinfo = tarfile.TarInfo(path)

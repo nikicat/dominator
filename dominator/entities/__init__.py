@@ -695,7 +695,7 @@ class Url:
 
 class Volume:
     def __repr__(self):
-        return '{}(fullname={self.fullname}, dest={self.dest})'.format(type(self).__name__, self=self)
+        return '{}(dest={self.dest})'.format(type(self).__name__, self=self)
 
     def make_backrefs(self):
         if hasattr(self, 'files'):

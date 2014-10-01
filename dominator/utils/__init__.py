@@ -313,21 +313,6 @@ def stoppable(cmd):
     return 'trap exit TERM; {} & wait'.format(cmd)
 
 
-def make_shipment(name):
-    """
-        Returns decorator that converts function return value from
-        Container iterable to Shipment with provided name
-    """
-    from ..entities import Shipment
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper():
-            return Shipment(name=name, containers=func())
-        return wrapper
-    return decorator
-
-
 NONEXISTENT_KEY = object()
 
 

@@ -462,6 +462,14 @@ def restart_ship(ship):
     ship.restart()
 
 
+@ship.command('info')
+@click.pass_obj
+@foreach('ship')
+def ship_info(ship):
+    """Show Docker info."""
+    click.echo(yaml.dump(ship.info(), default_flow_style=False))
+
+
 @ship.group('container')
 @click.pass_context
 @click.option('-p', '--pattern', default='*', help="filter containers using pattern")

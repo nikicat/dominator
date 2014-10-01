@@ -50,6 +50,9 @@ class BaseShip:
     def fullname(self):
         return self.name
 
+    def info(self):
+        return self.docker.info()
+
 
 class Ship(BaseShip):
     """

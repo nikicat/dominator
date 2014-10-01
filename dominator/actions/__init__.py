@@ -101,15 +101,19 @@ def generate(ctx, distribution, entrypoint, cache, clear_cache):
     import pkginfo
     meta = pkginfo.get_metadata(distribution)
 
-    if cache:
-        import requests_cache
-        with requests_cache.enabled():
-            if clear_cache:
-                requests_cache.clear()
+    try:
+        if cache:
+            import requests_cache
+            with requests_cache.enabled():
+                if clear_cache:
+                    requests_cache.clear()
+                shipment = func()
+        else:
+            getlogger().info('loading containers without cache')
             shipment = func()
-    else:
-        getlogger().info('loading containers without cache')
-        shipment = func()
+    except:
+        getlogger().exception('failed to generate obedient')
+        ctx.exit()
 
     shipment.version = meta.version
     shipment.author = meta.author
@@ -352,7 +356,7 @@ def task(ctx, pattern, regex):
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
 @click.argument('command', required=False)
 @foreach('task')
-def task_exec(tasks, keep, command):
+def task_exec(task, keep, command):
     """Execute task"""
     if command is not None:
         task.command = command
@@ -365,6 +369,37 @@ def task_exec(tasks, keep, command):
 def task_list(task):
     """Print task names."""
     click.echo(task.fullname)
+
+
+@cli.group()
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter volumes (ship:container:volume)")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+@click.pass_context
+def volume(ctx, pattern, regex):
+    """Commands to manage volumes."""
+    shipment = ctx.obj
+    ctx.obj = list(filterbyname(shipment.volumes, pattern, regex))
+
+
+@volume.command('list')
+@click.pass_obj
+@foreach('volume')
+def list_volumes(volume):
+    """List volumes."""
+    click.echo('{volume.fullname:30.30} {volume.dest:30.30} {volume.fullpath}'.format(volume=volume))
+
+
+@volume.command('erase')
+@click.option('-y', '--yes', is_flag=True, default=False, help="skip confirmation")
+@click.pass_obj
+@foreach('volume')
+def erase_volume(volume, yes):
+    """Eraes all volume data (dangerous!)."""
+    if not yes:
+        if not click.confirm("Delete all the data from {volume.fullpath} "
+                             "on {volume.container.ship.name}?".format(volume=volume)):
+            return
+    volume.erase()
 
 
 @cli.group()
@@ -462,6 +497,14 @@ def restart_ship(ship):
     ship.restart()
 
 
+@ship.command('info')
+@click.pass_obj
+@foreach('ship')
+def ship_info(ship):
+    """Show Docker info."""
+    click.echo(yaml.dump(ship.info(), default_flow_style=False))
+
+
 @ship.group('container')
 @click.pass_context
 @click.option('-p', '--pattern', default='*', help="filter containers using pattern")
@@ -514,24 +557,6 @@ def view_ship_container_log(cinfos, follow):
 
 
 @cli.group()
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter volumes (ship:container:volume)")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-@click.pass_context
-def volume(ctx, pattern, regex):
-    """Commands to manage volumes."""
-    shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.volumes, pattern, regex))
-
-
-@volume.command('list')
-@click.pass_obj
-@foreach('volume')
-def list_volumes(volume):
-    """List volumes."""
-    click.echo('{volume.fullname:30.30} {volume.dest:30.30} {volume.fullpath}'.format(volume=volume))
-
-
-@cli.group()
 @click.pass_context
 @click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
@@ -546,9 +571,10 @@ def door(ctx, pattern, regex):
 def list_doors(containers):
     """List all containers' doors with urls"""
     for container in containers:
-        for name, door in container.doors.items():
-            for url in door.urls:
-                click.echo('{:30.30} {:20.20} {}'.format(container.fullname, name, url))
+        for doorname, door in container.doors.items():
+            for urlname, url in door.urls.items():
+                click.echo('{:30.30} {:20.20} {:10.10} {}'.format(
+                    container.fullname, doorname, urlname, url))
 
 
 @cli.group('config')

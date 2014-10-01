@@ -42,6 +42,9 @@ class BaseShip:
     def __repr__(self):
         return '{}(name={})'.format(type(self).__name__, self.name)
 
+    def make_backrefs(self):
+        make_backrefs(self, 'containers', 'ship')
+
     @property
     def logger(self):
         return utils.getlogger()
@@ -49,6 +52,9 @@ class BaseShip:
     @property
     def fullname(self):
         return self.name
+
+    def info(self):
+        return self.docker.info()
 
 
 class Ship(BaseShip):
@@ -155,7 +161,7 @@ class LocalShip(BaseShip):
     @property
     @utils.cached
     def docker(self):
-        return docker.Client(utils.settings.get('docker.url'))
+        return docker.Client(utils.settings.get('docker.url', None))
 
     @property
     def datadir(self):
@@ -295,7 +301,8 @@ class Image:
 
 class SourceImage(Image):
     def __init__(self, name: str, parent: Image, scripts: list=None, command: str=None, workdir: str=None,
-                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None, user: str=''):
+                 env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None, user: str='',
+                 entrypoint=None):
         self.parent = parent
         self.scripts = scripts or []
         self.command = command
@@ -305,6 +312,7 @@ class SourceImage(Image):
         self.files = files or {}
         self.env = env or {}
         self.user = user
+        self.entrypoint = entrypoint
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
 
@@ -333,6 +341,7 @@ class SourceImage(Image):
             'ports': self.ports,
             'files': self.files,
             'user': self.user,
+            'entryporint': self.entrypoint,
         }, sort_keys=True, default=serialize_bytes)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
@@ -356,6 +365,8 @@ class SourceImage(Image):
                 dockerfile.write('USER {}\n'.format(self.user).encode())
             if self.command:
                 dockerfile.write('CMD {}\n'.format(self.command).encode())
+            if self.entrypoint:
+                dockerfile.write('ENTRYPOINT {}\n'.format(self.entrypoint).encode())
             for path, data in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
                 tinfo = tarfile.TarInfo(path)
@@ -379,8 +390,8 @@ class SourceImage(Image):
 
 
 class Container:
-    def __init__(self, name: str, image: Image, ship: Ship=None, command: str=None, hostname: str=None,
-                 memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None,
+    def __init__(self, name: str, image: Image, ship: Ship, command: str=None, hostname: str=None,
+                 memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None, links: dict=None,
                  network_mode: str='', user: str='', privileged: bool=False):
         self.name = name
         self.ship = ship
@@ -396,6 +407,8 @@ class Container:
         self.user = user
         self.privileged = privileged
         self.doors = doors or {}
+        self.links = links or {}
+        self.make_backrefs()
 
     def __repr__(self):
         return 'Container({c.fullname}[{c.id!s:7.7}])'.format(c=self)
@@ -406,6 +419,15 @@ class Container:
         state['id'] = None
         state['status'] = None
         return state
+
+    def make_backrefs(self):
+        make_backrefs(self, 'doors', 'container')
+        for door in self.doors.values():
+            door.make_backrefs()
+
+        make_backrefs(self, 'volumes', 'container')
+        for volume in self.volumes.values():
+            volume.make_backrefs()
 
     @property
     def logger(self):
@@ -490,9 +512,11 @@ class Container:
         try:
             self.ship.docker.remove_container(self.id, force=force)
         except docker.errors.APIError as e:
-            if b'Driver devicemapper failed to remove root filesystem' in e.explanation:
-                self.logger.warning("Docker bug 'Driver devicemapper failed to remove root filesystem'"
-                                    " detected, just trying again")
+            if any(re.search(pattern, e.explanation) for pattern in [
+                b'Driver devicemapper failed to remove root filesystem',
+                b'Unable to remove filesystem for .* directory not empty'
+            ]):
+                self.logger.warning("Docker bug ({}) detected, just trying again".format(e.explanation.decode()))
                 self.check()
                 if self.id:
                     self.ship.docker.remove_container(self.id, force=force)
@@ -607,39 +631,41 @@ class Container:
 
 
 class Task(Container):
-    pass
+    def __init__(self, ship=None, *args, **kwargs):
+        ship = ship or LocalShip()
+        super().__init__(ship=ship, *args, **kwargs)
 
 
 class Door:
     """Door class represents an interface to a container - like Docker port, but with additional
     attributes
     """
-    def __init__(self, schema, port=None, protocol='tcp', exposed=True, externalport=None, paths=None):
+    def __init__(self, schema, port=None, protocol='tcp', exposed=True, externalport=None, urls=None):
         """
         schema - something like http, ftp, zookeeper, gopher
         port - port number, by default it's deducted from schema (80 for http, 2121 for zookeper)
         protocol - tcp or udp, by default tcp
         exposed - expose or not interface for external access
         externalport - if exposed==True, then map internal port to it
-        paths - paths to append to url (by default only '/')
+        urls - urls that are accessible via door
         """
         self.schema = schema
         self.protocol = protocol
         self.port = port if port else socket.getservbyname(schema, protocol)
         self.exposed = exposed
         self.externalport = externalport if externalport else self.port
-        self.paths = paths if paths is not None else ['/']
+        self.urls = {'default': Url('')}
+        self.urls.update(urls or {})
 
-    @property
-    @utils.aslist
-    def urls(self):
-        for path in self.paths:
-            yield '{schema}://{fqdn}:{extport}{path}'.format(
-                schema=self.schema,
-                fqdn=self.container.ship.fqdn,
-                extport=self.externalport,
-                path=path,
-            )
+    def __format__(self, formatspec):
+        if hasattr(self, formatspec):
+            return str(getattr(self, formatspec))
+        if formatspec == 'host':
+            return self.container.ship.fqdn
+        raise RuntimeError('invalid format spec {}'.format(formatspec))
+
+    def make_backrefs(self):
+        make_backrefs(self, 'urls', 'door')
 
     @property
     def portspec(self):
@@ -650,9 +676,30 @@ class Door:
         return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
 
 
+class Url:
+    def __init__(self, path):
+        self.path = path
+
+    def __str__(self):
+        return '{schema}://{fqdn}:{port}/{path}'.format(
+            schema=self.door.schema,
+            fqdn=self.door.container.ship.fqdn,
+            port=self.door.externalport,
+            path=self.path
+        )
+
+    @property
+    def hostport(self):
+        return '{host}:{port}'.format(host=self.door.container.ship.fqdn, port=self.door.externalport)
+
+
 class Volume:
     def __repr__(self):
-        return '{}(fullname={self.fullname}, dest={self.dest})'.format(type(self).__name__, self=self)
+        return '{}(dest={self.dest})'.format(type(self).__name__, self=self)
+
+    def make_backrefs(self):
+        if hasattr(self, 'files'):
+            make_backrefs(self, 'files', 'volume')
 
     @property
     def logger(self):
@@ -661,6 +708,9 @@ class Volume:
     @property
     def fullname(self):
         return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
+
+    def erase(self):
+        self.container.ship.spawn('rm -rf {}'.format(self.fullpath))
 
 
 class DataVolume(Volume):
@@ -798,9 +848,12 @@ class YamlFile(BaseFile):
     def __init__(self, data: dict):
         self.content = data
 
+    def __getstate__(self):
+        return {'content': self.content() if callable(self.content) else self.content}
+
     @property
     def data(self):
-        return yaml.dump(self.content)
+        return yaml.dump(self.content, default_flow_style=False)
 
 
 class JsonFile(BaseFile):
@@ -812,6 +865,31 @@ class JsonFile(BaseFile):
         return json.dumps(self.content, sort_keys=True, indent='  ')
 
 
+def make_backrefs(obj, refname, backrefname):
+    ref = getattr(obj, refname)
+    for name, child in ref.copy().items():
+        backref = getattr(child,  backrefname, None)
+        if backref is obj:
+            continue
+        if backref is not None:
+            # If single child object is shared between parents, then
+            # we should create copy of it to not override backref attr
+            # in the shared child object
+            ref[name] = child = copy.copy(child)
+            # Additionally, copy all list/dict/set attributes to ensure
+            # that they will not be shared between objects.
+            # We do not use copy.deepcopy here because it's too slow
+            # for even medium-sized (hundreds of objects) graphs if there are
+            # cyclic references (as in this case).
+            for attrname in vars(child):
+                attr = getattr(child, attrname)
+                if isinstance(attr, (list, dict, set)):
+                    setattr(child, attrname, copy.copy(attr))
+        setattr(child, backrefname, obj)
+        if getattr(child, 'name', None) is None:
+            setattr(child, 'name', name)
+
+
 class Shipment:
     def __init__(self, name, containers, tasks=None):
         self.name = name
@@ -820,6 +898,7 @@ class Shipment:
         for ship in ships:
             ship.containers = {container.name: container for container in containers if container.ship == ship}
         self.ships = {ship.name: ship for ship in ships}
+        self.make_backrefs()
 
     @property
     def containers(self):
@@ -842,42 +921,13 @@ class Shipment:
             yield from container.doors.values()
 
     def make_backrefs(self):
-        def make_backrefs(obj, refname, backrefname):
-            ref = getattr(obj, refname)
-            for name, child in ref.copy().items():
-                backref = getattr(child,  backrefname, None)
-                if backref is obj:
-                    continue
-                if backref is not None:
-                    # If single child object is shared between parents, then
-                    # we should create copy of it to not override backref attr
-                    # in the shared child object
-                    ref[name] = child = copy.copy(child)
-                    # Additionally, copy all list/dict/set attributes to ensure
-                    # that they will not be shared between objects.
-                    # We do not use copy.deepcopy here because it's too slow
-                    # for even medium-sized (hundreds of objects) graphs if there are
-                    # cyclic references (as in this case).
-                    for attrname in vars(child):
-                        attr = getattr(child, attrname)
-                        if isinstance(attr, (list, dict, set)):
-                            setattr(child, attrname, copy.copy(attr))
-                setattr(child, backrefname, obj)
-                if getattr(child, 'name', None) is None:
-                    setattr(child, 'name', name)
-
         make_backrefs(self, 'ships', 'shipment')
 
         for ship in self.ships.values():
-            make_backrefs(ship, 'containers', 'ship')
+            ship.make_backrefs()
 
         for container in itertools.chain(self.containers, self.tasks):
-            make_backrefs(container, 'doors', 'container')
-            make_backrefs(container, 'volumes', 'container')
-
-            for volume in container.volumes.values():
-                if hasattr(volume, 'files'):
-                    make_backrefs(volume, 'files', 'volume')
+            container.make_backrefs()
 
     @property
     def images(self):

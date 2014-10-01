@@ -158,7 +158,7 @@ class LocalShip(BaseShip):
     @property
     @utils.cached
     def docker(self):
-        return docker.Client(utils.settings.get('docker.url'))
+        return docker.Client(utils.settings.get('docker.url', None))
 
     @property
     def datadir(self):

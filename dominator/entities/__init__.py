@@ -617,7 +617,9 @@ class Container:
 
 
 class Task(Container):
-    pass
+    def __init__(self, ship=None, *args, **kwargs):
+        ship = ship or LocalShip()
+        super().__init__(ship=ship, *args, **kwargs)
 
 
 class Door:

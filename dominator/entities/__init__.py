@@ -493,9 +493,11 @@ class Container:
         try:
             self.ship.docker.remove_container(self.id, force=force)
         except docker.errors.APIError as e:
-            if b'Driver devicemapper failed to remove root filesystem' in e.explanation:
-                self.logger.warning("Docker bug 'Driver devicemapper failed to remove root filesystem'"
-                                    " detected, just trying again")
+            if any(re.search(pattern, e.explanation) for pattern in [
+                b'Driver devicemapper failed to remove root filesystem',
+                b'Unable to remove filesystem for .* directory not empty'
+            ]):
+                self.logger.warning("Docker bug ({}) detected, just trying again".format(e.explanation.decode()))
                 self.check()
                 if self.id:
                     self.ship.docker.remove_container(self.id, force=force)

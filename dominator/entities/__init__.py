@@ -390,8 +390,8 @@ class SourceImage(Image):
 
 
 class Container:
-    def __init__(self, name: str, image: Image, ship: Ship=None, command: str=None, hostname: str=None,
-                 memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None,
+    def __init__(self, name: str, image: Image, ship: Ship, command: str=None, hostname: str=None,
+                 memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None, links: dict=None,
                  network_mode: str='', user: str='', privileged: bool=False):
         self.name = name
         self.ship = ship
@@ -407,6 +407,7 @@ class Container:
         self.user = user
         self.privileged = privileged
         self.doors = doors or {}
+        self.links = links or {}
         self.make_backrefs()
 
     def __repr__(self):

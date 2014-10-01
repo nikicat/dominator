@@ -813,7 +813,7 @@ class YamlFile(BaseFile):
 
     @property
     def data(self):
-        return yaml.dump(self.content)
+        return yaml.dump(self.content, default_flow_style=False)
 
 
 class JsonFile(BaseFile):

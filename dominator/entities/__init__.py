@@ -626,32 +626,29 @@ class Door:
     """Door class represents an interface to a container - like Docker port, but with additional
     attributes
     """
-    def __init__(self, schema, port=None, protocol='tcp', exposed=True, externalport=None, paths=None):
+    def __init__(self, schema, port=None, protocol='tcp', exposed=True, externalport=None, urls=None):
         """
         schema - something like http, ftp, zookeeper, gopher
         port - port number, by default it's deducted from schema (80 for http, 2121 for zookeper)
         protocol - tcp or udp, by default tcp
         exposed - expose or not interface for external access
         externalport - if exposed==True, then map internal port to it
-        paths - paths to append to url (by default only '/')
+        urls - urls that are accessible via door
         """
         self.schema = schema
         self.protocol = protocol
         self.port = port if port else socket.getservbyname(schema, protocol)
         self.exposed = exposed
         self.externalport = externalport if externalport else self.port
-        self.paths = paths if paths is not None else ['/']
+        self.urls = {'default': Url('')}
+        self.urls.update(urls or {})
 
-    @property
-    @utils.aslist
-    def urls(self):
-        for path in self.paths:
-            yield '{schema}://{fqdn}:{extport}{path}'.format(
-                schema=self.schema,
-                fqdn=self.container.ship.fqdn,
-                extport=self.externalport,
-                path=path,
-            )
+    def __format__(self, formatspec):
+        if hasattr(self, formatspec):
+            return str(getattr(self, formatspec))
+        if formatspec == 'host':
+            return self.container.ship.fqdn
+        raise RuntimeError('invalid format spec {}'.format(formatspec))
 
     @property
     def portspec(self):
@@ -660,6 +657,23 @@ class Door:
     @property
     def fullname(self):
         return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
+
+
+class Url:
+    def __init__(self, path):
+        self.path = path
+
+    def __str__(self):
+        return '{schema}://{fqdn}:{port}/{path}'.format(
+            schema=self.door.schema,
+            fqdn=self.door.container.ship.fqdn,
+            port=self.door.externalport,
+            path=self.path
+        )
+
+    @property
+    def hostport(self):
+        return '{host}:{port}'.format(host=self.door.container.ship.fqdn, port=self.door.externalport)
 
 
 class Volume:

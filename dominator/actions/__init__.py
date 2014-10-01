@@ -571,9 +571,10 @@ def door(ctx, pattern, regex):
 def list_doors(containers):
     """List all containers' doors with urls"""
     for container in containers:
-        for name, door in container.doors.items():
-            for url in door.urls:
-                click.echo('{:30.30} {:20.20} {}'.format(container.fullname, name, url))
+        for doorname, door in container.doors.items():
+            for urlname, url in door.urls.items():
+                click.echo('{:30.30} {:20.20} {:10.10} {}'.format(
+                    container.fullname, doorname, urlname, url))
 
 
 @cli.group('config')

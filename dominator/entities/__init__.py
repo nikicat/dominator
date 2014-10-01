@@ -42,6 +42,9 @@ class BaseShip:
     def __repr__(self):
         return '{}(name={})'.format(type(self).__name__, self.name)
 
+    def make_backrefs(self):
+        make_backrefs(self, 'containers', 'ship')
+
     @property
     def logger(self):
         return utils.getlogger()
@@ -404,6 +407,7 @@ class Container:
         self.user = user
         self.privileged = privileged
         self.doors = doors or {}
+        self.make_backrefs()
 
     def __repr__(self):
         return 'Container({c.fullname}[{c.id!s:7.7}])'.format(c=self)
@@ -414,6 +418,15 @@ class Container:
         state['id'] = None
         state['status'] = None
         return state
+
+    def make_backrefs(self):
+        make_backrefs(self, 'doors', 'container')
+        for door in self.doors.values():
+            door.make_backrefs()
+
+        make_backrefs(self, 'volumes', 'container')
+        for volume in self.volumes.values():
+            volume.make_backrefs()
 
     @property
     def logger(self):
@@ -650,6 +663,9 @@ class Door:
             return self.container.ship.fqdn
         raise RuntimeError('invalid format spec {}'.format(formatspec))
 
+    def make_backrefs(self):
+        make_backrefs(self, 'urls', 'door')
+
     @property
     def portspec(self):
         return '{port}/{protocol}'.format(port=self.port, protocol=self.protocol)
@@ -679,6 +695,10 @@ class Url:
 class Volume:
     def __repr__(self):
         return '{}(fullname={self.fullname}, dest={self.dest})'.format(type(self).__name__, self=self)
+
+    def make_backrefs(self):
+        if hasattr(self, 'files'):
+            make_backrefs(self, 'files', 'volume')
 
     @property
     def logger(self):
@@ -844,6 +864,31 @@ class JsonFile(BaseFile):
         return json.dumps(self.content, sort_keys=True, indent='  ')
 
 
+def make_backrefs(obj, refname, backrefname):
+    ref = getattr(obj, refname)
+    for name, child in ref.copy().items():
+        backref = getattr(child,  backrefname, None)
+        if backref is obj:
+            continue
+        if backref is not None:
+            # If single child object is shared between parents, then
+            # we should create copy of it to not override backref attr
+            # in the shared child object
+            ref[name] = child = copy.copy(child)
+            # Additionally, copy all list/dict/set attributes to ensure
+            # that they will not be shared between objects.
+            # We do not use copy.deepcopy here because it's too slow
+            # for even medium-sized (hundreds of objects) graphs if there are
+            # cyclic references (as in this case).
+            for attrname in vars(child):
+                attr = getattr(child, attrname)
+                if isinstance(attr, (list, dict, set)):
+                    setattr(child, attrname, copy.copy(attr))
+        setattr(child, backrefname, obj)
+        if getattr(child, 'name', None) is None:
+            setattr(child, 'name', name)
+
+
 class Shipment:
     def __init__(self, name, containers, tasks=None):
         self.name = name
@@ -852,6 +897,7 @@ class Shipment:
         for ship in ships:
             ship.containers = {container.name: container for container in containers if container.ship == ship}
         self.ships = {ship.name: ship for ship in ships}
+        self.make_backrefs()
 
     @property
     def containers(self):
@@ -874,42 +920,13 @@ class Shipment:
             yield from container.doors.values()
 
     def make_backrefs(self):
-        def make_backrefs(obj, refname, backrefname):
-            ref = getattr(obj, refname)
-            for name, child in ref.copy().items():
-                backref = getattr(child,  backrefname, None)
-                if backref is obj:
-                    continue
-                if backref is not None:
-                    # If single child object is shared between parents, then
-                    # we should create copy of it to not override backref attr
-                    # in the shared child object
-                    ref[name] = child = copy.copy(child)
-                    # Additionally, copy all list/dict/set attributes to ensure
-                    # that they will not be shared between objects.
-                    # We do not use copy.deepcopy here because it's too slow
-                    # for even medium-sized (hundreds of objects) graphs if there are
-                    # cyclic references (as in this case).
-                    for attrname in vars(child):
-                        attr = getattr(child, attrname)
-                        if isinstance(attr, (list, dict, set)):
-                            setattr(child, attrname, copy.copy(attr))
-                setattr(child, backrefname, obj)
-                if getattr(child, 'name', None) is None:
-                    setattr(child, 'name', name)
-
         make_backrefs(self, 'ships', 'shipment')
 
         for ship in self.ships.values():
-            make_backrefs(ship, 'containers', 'ship')
+            ship.make_backrefs()
 
         for container in itertools.chain(self.containers, self.tasks):
-            make_backrefs(container, 'doors', 'container')
-            make_backrefs(container, 'volumes', 'container')
-
-            for volume in container.volumes.values():
-                if hasattr(volume, 'files'):
-                    make_backrefs(volume, 'files', 'volume')
+            container.make_backrefs()
 
     @property
     def images(self):

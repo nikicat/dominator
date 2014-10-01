@@ -356,7 +356,7 @@ def task(ctx, pattern, regex):
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
 @click.argument('command', required=False)
 @foreach('task')
-def task_exec(tasks, keep, command):
+def task_exec(task, keep, command):
     """Execute task"""
     if command is not None:
         task.command = command

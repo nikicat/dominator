@@ -667,6 +667,9 @@ class Volume:
     def fullname(self):
         return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
 
+    def erase(self):
+        self.container.ship.spawn('rm -rf {}'.format(self.fullpath))
+
 
 class DataVolume(Volume):
     """DataVolume that just mounts volume inside container.

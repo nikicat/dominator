@@ -372,6 +372,37 @@ def task_list(task):
 
 
 @cli.group()
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter volumes (ship:container:volume)")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+@click.pass_context
+def volume(ctx, pattern, regex):
+    """Commands to manage volumes."""
+    shipment = ctx.obj
+    ctx.obj = list(filterbyname(shipment.volumes, pattern, regex))
+
+
+@volume.command('list')
+@click.pass_obj
+@foreach('volume')
+def list_volumes(volume):
+    """List volumes."""
+    click.echo('{volume.fullname:30.30} {volume.dest:30.30} {volume.fullpath}'.format(volume=volume))
+
+
+@volume.command('erase')
+@click.option('-y', '--yes', is_flag=True, default=False, help="skip confirmation")
+@click.pass_obj
+@foreach('volume')
+def erase_volume(volume, yes):
+    """Eraes all volume data (dangerous!)."""
+    if not yes:
+        if not click.confirm("Delete all the data from {volume.fullpath} "
+                             "on {volume.container.ship.name}?".format(volume=volume)):
+            return
+    volume.erase()
+
+
+@cli.group()
 @click.option('-p', '--pattern', default='*', help="pattern to filter files (ship:container:volume:file)")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 @click.pass_context
@@ -523,24 +554,6 @@ def view_ship_container_log(cinfos, follow):
         cont.check(cinfo)
         for line in cont.logs(follow):
             click.echo(line)
-
-
-@cli.group()
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter volumes (ship:container:volume)")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-@click.pass_context
-def volume(ctx, pattern, regex):
-    """Commands to manage volumes."""
-    shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.volumes, pattern, regex))
-
-
-@volume.command('list')
-@click.pass_obj
-@foreach('volume')
-def list_volumes(volume):
-    """List volumes."""
-    click.echo('{volume.fullname:30.30} {volume.dest:30.30} {volume.fullpath}'.format(volume=volume))
 
 
 @cli.group()

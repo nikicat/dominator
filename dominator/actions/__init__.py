@@ -153,7 +153,12 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
                     if image.getid() is None:
                         raise RuntimeError("Could not find id for image {}".format(image))
 
-    click.echo_via_pager(yaml.dump(shipment))
+    try:
+        output = yaml.dump(shipment, default_flow_style=False)
+    except:
+        getlogger().exception("failed to serialize shipment")
+        ctx.exit()
+    click.echo_via_pager(output)
 
 
 @shipment.command()

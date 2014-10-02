@@ -6,6 +6,7 @@ import datetime
 import fnmatch
 import re
 import functools
+import json
 
 import yaml
 import mako.template
@@ -71,9 +72,10 @@ def getobedients():
 @click.pass_context
 @click.argument('distribution', required=False, type=click.Choice(getobedients()), metavar='<distribution>')
 @click.argument('entrypoint', required=False, metavar='<entrypoint>')
+@click.argument('arguments', nargs=-1, metavar='<arguments>')
 @click.option('--cache/--no-cache', default=True)
 @click.option('--clear-cache', is_flag=True, default=False, help="clear requests_cache before run (requires --cache)")
-def generate(ctx, distribution, entrypoint, cache, clear_cache):
+def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
     """Generates yaml config file for shipment."""
     if distribution is None:
         click.echo('\n'.join(getobedients()))
@@ -104,13 +106,28 @@ def generate(ctx, distribution, entrypoint, cache, clear_cache):
     try:
         if cache:
             import requests_cache
-            with requests_cache.enabled():
-                if clear_cache:
-                    requests_cache.clear()
-                shipment = func()
+            requests_cache.install_cache()
+            if clear_cache:
+                requests_cache.clear()
         else:
             getlogger().info('loading containers without cache')
-            shipment = func()
+
+        def parse_value(value):
+            if value.isdigit():
+                return int(value)
+            if value[0] == '{':
+                return json.loads(value)
+
+        args = []
+        kwargs = {}
+        for arg in arguments:
+            if '=' in arg:
+                name, value = arg.split('=')
+                kwargs[name] = parse_value(value)
+            else:
+                args.append(parse_value(arg))
+        shipment = func(*args, **kwargs)
+        assert shipment is not None, "shipment should not be empty"
     except:
         getlogger().exception('failed to generate obedient')
         ctx.exit()
@@ -120,6 +137,9 @@ def generate(ctx, distribution, entrypoint, cache, clear_cache):
     shipment.author_email = meta.author_email
     shipment.home_page = meta.home_page
     shipment.dominator_version = getversion()
+    shipment.distribution = distribution
+    shipment.entrypoint = entrypoint
+    shipment.arguments = arguments
 
     import tzlocal
     shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())

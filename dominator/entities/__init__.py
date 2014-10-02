@@ -600,9 +600,9 @@ class Container:
             self.ship.docker.start(
                 self.id,
                 port_bindings={
-                    door.portspec: ('::', door.externalport)
+                    door.portspec: ('::', door.port)
                     for door in self.doors.values()
-                    if door.exposed
+                    if door.port is not None
                 },
                 binds={v.fullpath: {'bind': v.dest, 'ro': v.ro} for v in self.volumes.values()},
                 network_mode=self.network_mode,
@@ -633,9 +633,10 @@ class Container:
     def wait(self):
         return self.ship.docker.wait(self.id)
 
-    def getport(self, name):
-        """DEPRECATED"""
-        return self.doors[name].externalport
+    def expose_all(self, offset=0):
+        """Expose all container doors' ports with offset."""
+        for door in self.doors.values():
+            door.expose(door.internalport + offset)
 
     def enter(self, command):
         """nsenter to container."""
@@ -656,20 +657,19 @@ class Door:
     """Door class represents an interface to a container - like Docker port, but with additional
     attributes
     """
-    def __init__(self, schema, port=None, protocol='tcp', exposed=True, externalport=None, urls=None):
+    def __init__(self, schema, port=None, protocol='tcp', urls=None, sameports=False):
         """
         schema - something like http, ftp, zookeeper, gopher
         port - port number, by default it's deducted from schema (80 for http, 2121 for zookeper)
         protocol - tcp or udp, by default tcp
-        exposed - expose or not interface for external access
-        externalport - if exposed==True, then map internal port to it
         urls - urls that are accessible via door
+        sameports - if door doesn't support port mapping (like JMX etc.) then set it to true
         """
         self.schema = schema
         self.protocol = protocol
-        self.port = port if port else socket.getservbyname(schema, protocol)
-        self.exposed = exposed
-        self.externalport = externalport if externalport else self.port
+        self.internalport = port if port else socket.getservbyname(schema, protocol)
+        self.exposedport = None
+        self.sameports = sameports
         self.urls = {'default': Url('')}
         self.urls.update(urls or {})
 
@@ -690,11 +690,40 @@ class Door:
 
     @property
     def portspec(self):
-        return '{port}/{protocol}'.format(port=self.port, protocol=self.protocol)
+        return '{port}/{protocol}'.format(port=self.internalport, protocol=self.protocol)
 
     @property
     def fullname(self):
         return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
+
+    @property
+    def host(self):
+        return self.container.ship.fqdn
+
+    @property
+    def port(self):
+        assert self.exposed, "door is not exposed"
+        return self.exposedport
+
+    @property
+    def exposed(self):
+        return self.exposedport is not None
+
+    @property
+    def hostport(self):
+        return '{host}:{port}'.format(host=self.host, port=self.exposedport)
+
+    def expose(self, port):
+        """Make door export (e.g. map port outside the container)."""
+        assert port < 65536, "Port should be less than 65536"
+        for container in self.container.ship.containers.values():
+            for door in container.doors.values():
+                assert door.exposedport != port, "Port {} is already exposed on {}".format(port, door)
+        self.exposedport = port
+        if self.sameports:
+            for door in self.container.doors.values():
+                assert door.internalport != port, "Port {} is already bound to {}".format(port, door)
+            self.internalport = port
 
 
 class Url:
@@ -705,13 +734,9 @@ class Url:
         return '{schema}://{fqdn}:{port}/{path}'.format(
             schema=self.door.schema,
             fqdn=self.door.container.ship.fqdn,
-            port=self.door.externalport,
+            port=self.door.exposedport,
             path=self.path
         )
-
-    @property
-    def hostport(self):
-        return '{host}:{port}'.format(host=self.door.container.ship.fqdn, port=self.door.externalport)
 
 
 class Volume:

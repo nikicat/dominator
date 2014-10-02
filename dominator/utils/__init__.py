@@ -207,7 +207,7 @@ def compare_env(expected: dict, actual: dict):
 def compare_ports(cont, actual: dict):
     getlogger().debug('comparing ports')
     for name, door in cont.doors.items():
-        extport_expected = door.externalport
+        extport_expected = door.port
 
         matched_actual = [info for name, info in actual.items()
                           if name == door.portspec]

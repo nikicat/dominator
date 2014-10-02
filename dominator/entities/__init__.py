@@ -878,6 +878,15 @@ class JsonFile(BaseFile):
         return json.dumps(self.content, sort_keys=True, indent='  ')
 
 
+class IniFile(BaseFile):
+    def __init__(self, data: dict):
+        self.content = data
+
+    @property
+    def data(self):
+        return '\n'.join(sorted(['{}={}'.format(key, value) for key, value in self.content.items()]))
+
+
 def make_backrefs(obj, refname, backrefname):
     ref = getattr(obj, refname)
     for name, child in ref.copy().items():

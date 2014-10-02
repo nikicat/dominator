@@ -747,6 +747,14 @@ class ConfigVolume(Volume):
         self.dest = dest
         self.files = files or {}
 
+    def __getstate__(self):
+        """Replace all "closure-files" with invokation result."""
+        for name, file in self.files.items():
+            if callable(file):
+                self.files[name] = file()
+        self.make_backrefs()
+        return vars(self)
+
     @property
     def fullpath(self):
         return os.path.expanduser(os.path.join(self.container.ship.configdir,
@@ -849,9 +857,6 @@ class TemplateFile(BaseFile):
 class YamlFile(BaseFile):
     def __init__(self, data: dict):
         self.content = data
-
-    def __getstate__(self):
-        return {'content': self.content() if callable(self.content) else self.content}
 
     @property
     def data(self):

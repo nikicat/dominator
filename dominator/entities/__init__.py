@@ -454,7 +454,7 @@ class Container:
 
     @property
     def fullname(self):
-        return '{}:{}'.format(self.ship.name, self.name)
+        return '{}:{}'.format(self.ship.name if self.ship else '', self.name)
 
     def check(self, cinfo=None):
         """This function tries to find container on the associated ship

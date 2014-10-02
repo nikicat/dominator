@@ -20,6 +20,7 @@ import socket
 import copy
 import itertools
 import logging
+import shlex
 
 import yaml
 import pkg_resources
@@ -358,10 +359,16 @@ class SourceImage(Image):
                 dockerfile.write('EXPOSE {}\n'.format(port).encode())
             if self.user:
                 dockerfile.write('USER {}\n'.format(self.user).encode())
-            if self.command:
-                dockerfile.write('CMD {}\n'.format(self.command).encode())
-            if self.entrypoint:
-                dockerfile.write('ENTRYPOINT {}\n'.format(self.entrypoint).encode())
+
+            def convert_command(command):
+                command = shlex.split(command) if isinstance(command, str) else command
+                command = ','.join(['"{}"'.format(param) for param in command])
+                return '[{}]\n'.format(command)
+
+            if self.command is not None:
+                dockerfile.write('CMD {}\n'.format(convert_command(self.command)).encode())
+            if self.entrypoint is not None:
+                dockerfile.write('ENTRYPOINT {}\n'.format(convert_command(self.entrypoint)).encode())
             for path, data in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
                 tinfo = tarfile.TarInfo(path)

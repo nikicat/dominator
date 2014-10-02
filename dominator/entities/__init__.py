@@ -191,6 +191,9 @@ class LocalShip(BaseShip):
             command = command.split(' ')
         i.spawn(sudocmd + command)
 
+    def restart(self):
+        pass
+
 
 DEFAULT_NAMESPACE = object()
 DEFAULT_REGISTRY = object()

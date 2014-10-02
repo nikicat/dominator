@@ -56,14 +56,13 @@ class ThreadLocalInjector(logging.Filter):
 @contextlib.contextmanager
 def addcontext(**kwargs):
     try:
-        prevcontext = vars(tl)
+        prevcontext = vars(tl).copy()
         for key, value in kwargs.items():
             setattr(tl, key, value)
         yield
     finally:
         for key, value in kwargs.items():
-            with contextlib.suppress(AttributeError):
-                delattr(tl, key)
+            delattr(tl, key)
         for key, value in prevcontext.items():
             setattr(tl, key, value)
 

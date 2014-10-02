@@ -404,7 +404,7 @@ class Container:
         self.env = env or {}
         self.id = None
         self.status = 'not found'
-        self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
+        self.hostname = hostname
         self.network_mode = network_mode
         self.user = user
         self.privileged = privileged
@@ -557,7 +557,7 @@ class Container:
         self.logger.debug('creating container', image=self.image)
         return self.ship.docker.create_container(
             image='{}:{}'.format(self.image.getfullrepository(), self.image.getid()),
-            hostname=self.hostname,
+            hostname=self.hostname or '{}-{}'.format(self.name, self.ship.name),
             command=self.command,
             mem_limit=self.memory,
             environment=self.env,

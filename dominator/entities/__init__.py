@@ -888,6 +888,9 @@ class IniFile(BaseFile):
 
 
 def make_backrefs(obj, refname, backrefname):
+    """Make links from each "refname" child back to obj,
+    then repeat for each child
+    """
     ref = getattr(obj, refname)
     for name, child in ref.copy().items():
         backref = getattr(child,  backrefname, None)

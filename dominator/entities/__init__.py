@@ -417,10 +417,9 @@ class Container:
         self.privileged = privileged
         self.doors = doors or {}
         self.links = links or {}
-        self.make_backrefs()
 
     def __repr__(self):
-        return 'Container({c.fullname}[{c.id!s:7.7}])'.format(c=self)
+        return '<Container {c.fullname} [{c.id!s:7.7}]>'.format(c=self)
 
     def __getstate__(self):
         state = vars(self)
@@ -665,6 +664,9 @@ class Door:
         self.externalport = externalport if externalport else self.port
         self.urls = {'default': Url('')}
         self.urls.update(urls or {})
+
+    def __repr__(self):
+        return '<Door {}>'.format(self.fullname)
 
     def __format__(self, formatspec):
         if hasattr(self, formatspec):

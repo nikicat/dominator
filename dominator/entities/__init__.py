@@ -723,7 +723,7 @@ class Volume:
         return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
 
     def erase(self):
-        self.container.ship.spawn('rm -rf {}'.format(self.fullpath))
+        self.container.ship.spawn('rm -rf {}'.format(self.fullpath), sudo=True)
 
 
 class DataVolume(Volume):

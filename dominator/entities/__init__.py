@@ -673,6 +673,8 @@ class Door:
             return str(getattr(self, formatspec))
         if formatspec == 'host':
             return self.container.ship.fqdn
+        if formatspec == '':
+            return str(self)
         raise RuntimeError('invalid format spec {}'.format(formatspec))
 
     def make_backrefs(self):

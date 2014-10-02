@@ -96,7 +96,7 @@ class Ship(BaseShip):
         self.logger.debug("uploading from %s to %s", localpath, remotepath)
         ssh = self.getssh()
         ret = ssh.run('rm -rf {0} && mkdir -p {0}'.format(remotepath))
-        assert ret.returncode != 0, "command execution failed: {}".format(ret.stderr)
+        assert ret.returncode == 0, "command execution failed (retcode={}): {}".format(ret.returncode, ret.stderr)
         ssh.scp([os.path.join(localpath, entry) for entry in os.listdir(localpath)], remotepath)
 
     def download(self, remotepath, localpath):

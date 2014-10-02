@@ -430,12 +430,7 @@ class Container:
 
     def make_backrefs(self):
         make_backrefs(self, 'doors', 'container')
-        for door in self.doors.values():
-            door.make_backrefs()
-
         make_backrefs(self, 'volumes', 'container')
-        for volume in self.volumes.values():
-            volume.make_backrefs()
 
     @property
     def logger(self):
@@ -939,6 +934,9 @@ def make_backrefs(obj, refname, backrefname):
         if getattr(child, 'name', None) is None:
             setattr(child, 'name', name)
 
+        if hasattr(child, 'make_backrefs'):
+            child.make_backrefs()
+
 
 class Shipment:
     def __init__(self, name, containers, tasks=None):
@@ -972,12 +970,6 @@ class Shipment:
 
     def make_backrefs(self):
         make_backrefs(self, 'ships', 'shipment')
-
-        for ship in self.ships.values():
-            ship.make_backrefs()
-
-        for container in itertools.chain(self.containers, self.tasks):
-            container.make_backrefs()
 
     @property
     def images(self):

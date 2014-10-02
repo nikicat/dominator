@@ -96,8 +96,7 @@ class Ship(BaseShip):
         self.logger.debug("uploading from %s to %s", localpath, remotepath)
         ssh = self.getssh()
         ret = ssh.run('rm -rf {0} && mkdir -p {0}'.format(remotepath))
-        if ret.returncode != 0:
-            raise RuntimeError(ret.stderr)
+        assert ret.returncode != 0, "command execution failed: {}".format(ret.stderr)
         ssh.scp([os.path.join(localpath, entry) for entry in os.listdir(localpath)], remotepath)
 
     def download(self, remotepath, localpath):
@@ -277,12 +276,8 @@ class Image:
     def inspect(self):
         result = utils.getdocker().inspect_image(self.getid())
         # Workaround: Docker sometimes returns "config" key in different casing
-        if 'config' in result:
-            return result['config']
-        elif 'Config' in result:
-            return result['Config']
-        else:
-            raise RuntimeError("unexpected response from Docker: {}".format(result))
+        assert 'config' in result or 'Config' in result, "unexpected response from Docker"
+        return result['config'] if 'config' in result else result['Config']
 
     @utils.cached
     def getports(self):

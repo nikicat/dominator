@@ -637,6 +637,14 @@ class Container:
         """DEPRECATED"""
         return self.doors[name].externalport
 
+    def enter(self, command):
+        """nsenter to container."""
+        assert self.running, "Container should run to enter"
+        pid = self.inspect()['State']['Pid']
+        self.ship.spawn('nsenter --target {pid} --mount --uts --ipc --net --pid'
+                        ' -- env --ignore-environment -- {command}'.format(pid=pid, command=command),
+                        sudo=True)
+
 
 class Task(Container):
     def __init__(self, ship=None, *args, **kwargs):

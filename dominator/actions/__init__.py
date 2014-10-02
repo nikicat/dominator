@@ -341,6 +341,16 @@ def dump_container(container):
     click.echo_via_pager(yaml.dump(container))
 
 
+@container.command()
+@click.pass_obj
+@click.argument('command', default='bash -i')
+@foreach('container')
+def enter(cont, command):
+    """nsenter to container."""
+    cont.check()
+    cont.enter(command)
+
+
 @cli.group(chain=True)
 @click.pass_context
 @click.option('-p', '--pattern', default='*', help="pattern to filter ship:task")

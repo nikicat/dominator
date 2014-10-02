@@ -85,7 +85,7 @@ class Ship(BaseShip):
 
     @utils.cached
     def getssh(self):
-        self.logger.debug("ssh'ing to ship", fqdn=self.fqdn)
+        self.logger.debug("ssh'ing to ship", fqdn=self.fqdn, login=self.username)
         import openssh_wrapper
         conn = openssh_wrapper.SSHConnection(self.fqdn, login=self.username)
         return conn
@@ -112,6 +112,7 @@ class Ship(BaseShip):
         sudocmd = 'sudo ' if sudo else ''
         sshcommand = ssh.ssh_command(sudocmd + command, forward_ssh_agent=False)
         sshcommand.insert(1, b'-t')
+        self.logger.debug("executing ssh command", command=sshcommand)
         i = utils.PtyInterceptor()
         i.spawn(sshcommand)
 

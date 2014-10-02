@@ -107,9 +107,10 @@ class Ship(BaseShip):
         tar = ssh.run('tar -cC {} .'.format(remotepath)).stdout
         subprocess.check_output('tar -x -C {}'.format(localpath), input=tar, shell=True)
 
-    def spawn(self, command):
+    def spawn(self, command, sudo=False):
         ssh = self.getssh()
-        sshcommand = ssh.ssh_command(command, forward_ssh_agent=False)
+        sudocmd = 'sudo ' if sudo else ''
+        sshcommand = ssh.ssh_command(sudocmd + command, forward_ssh_agent=False)
         sshcommand.insert(1, b'-t')
         i = utils.PtyInterceptor()
         i.spawn(sshcommand)
@@ -182,9 +183,12 @@ class LocalShip(BaseShip):
         shutil.rmtree(localpath, ignore_errors=True)
         shutil.copytree(remotepath, localpath)
 
-    def spawn(self, command):
+    def spawn(self, command, sudo=False):
         i = utils.PtyInterceptor()
-        i.spawn(['bash', '-c', command])
+        sudocmd = ['sudo'] if sudo else []
+        if isinstance(command, str):
+            command = command.split(' ')
+        i.spawn(sudocmd + command)
 
 
 DEFAULT_NAMESPACE = object()

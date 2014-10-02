@@ -34,8 +34,11 @@ from .. import utils
 
 class BaseShip:
     """
-    Base mixin class for Ships.
+    Base class for Ships.
     """
+    def __init__(self):
+        self.containers = {}
+
     def __lt__(self, other):
         return self.fqdn < other.fqdn
 
@@ -56,6 +59,12 @@ class BaseShip:
     def info(self):
         return self.docker.info()
 
+    def place(self, container):
+        """Place the container on the ship."""
+        assert container.name not in self.containers, "container {} already loaded on the ship".format(container.name)
+        self.containers[container.name] = container
+        self.make_backrefs()
+
     def expose_all(self, port_range):
         assert port_range.stop < 65536, "Port range end exceeds 65535"
         ports = list(port_range)
@@ -72,6 +81,7 @@ class Ship(BaseShip):
     """
     def __init__(self, name, fqdn, username='root', datadir='/var/lib/dominator/data',
                  configdir='/var/lib/dominator/config', port=2375, **kwargs):
+        super().__init__()
         self.name = name
         self.fqdn = fqdn
         self.port = port
@@ -133,6 +143,7 @@ class Ship(BaseShip):
 
 class LocalShip(BaseShip):
     def __init__(self):
+        super().__init__()
         from OpenSSL import crypto
         k = crypto.PKey()
         k.generate_key(crypto.TYPE_RSA, 1024)
@@ -408,7 +419,7 @@ class SourceImage(Image):
 
 
 class Container:
-    def __init__(self, name: str, image: Image, ship: Ship, command: str=None, hostname: str=None,
+    def __init__(self, name: str, image: Image, ship: Ship=None, command: str=None, hostname: str=None,
                  memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None, links: dict=None,
                  network_mode: str='', user: str='', privileged: bool=False):
         self.name = name
@@ -952,8 +963,6 @@ class Shipment:
         self.name = name
         self.tasks = tasks or []
         ships = {container.ship for container in containers}.union({task.ship for task in self.tasks})
-        for ship in ships:
-            ship.containers = {container.name: container for container in containers if container.ship == ship}
         self.ships = {ship.name: ship for ship in ships}
         self.make_backrefs()
 

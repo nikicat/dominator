@@ -23,7 +23,6 @@ import logging
 import shlex
 
 import yaml
-import pkg_resources
 import docker
 import docker.errors
 import mako.template
@@ -820,21 +819,8 @@ class BaseFile:
 
 
 class TextFile(BaseFile):
-    def __init__(self, text: str=None, filename: str=None):
-        """
-        Constructs TextFile. If text provided, populate
-        file contents from it. If not - try to load resource
-        from calling module using filename.
-        """
-        assert(filename is not None or text is not None)
-        if text is not None:
-            self.content = text
-        else:
-            self.content = pkg_resources.resource_string(utils.getcallingmodule(1).__name__, filename).decode()
-
-    @property
-    def data(self):
-        return self.content
+    def __init__(self, text: str):
+        self.data = text
 
 
 class TemplateFile(BaseFile):

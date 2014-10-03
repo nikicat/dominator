@@ -437,6 +437,7 @@ class Container:
         self.privileged = privileged
         self.doors = doors or {}
         self.links = links or {}
+        self.make_backrefs()
 
     def __repr__(self):
         return '<Container {c.fullname} [{c.id!s:7.7}]>'.format(c=self)
@@ -805,6 +806,7 @@ class ConfigVolume(Volume):
     def __init__(self, dest: str, files: dict=None):
         self.dest = dest
         self.files = files or {}
+        self.make_backrefs()
 
     def __getstate__(self):
         """Replace all "closure-files" with invokation result."""
@@ -933,6 +935,8 @@ def make_backrefs(obj, refname, backrefname):
     """
     ref = getattr(obj, refname)
     for name, child in ref.copy().items():
+        if callable(child) or child is None:
+            continue
         backref = getattr(child,  backrefname, None)
         if backref is obj:
             continue

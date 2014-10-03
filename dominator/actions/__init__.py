@@ -41,10 +41,11 @@ def validate_loglevel(ctx, param, value):
 @click.option('-c', '--config', type=click.File('r'), help="file path to load config from")
 @click.option('-s', '--settings', type=click.File('r'), help="file path to load settings from")
 @click.option('-l', '--loglevel', callback=validate_loglevel, default='warn')
+@click.option('--vcr', type=click.Path(), help="mock all http requests with vcrpy and save cassete")
 @click.option('-o', '--override', multiple=True, help="overide setting from config")
 @click.version_option()
 @click.pass_context
-def cli(ctx, config, loglevel, settings, override):
+def cli(ctx, config, loglevel, settings, vcr, override):
     logging.basicConfig(level=loglevel)
     utils.settings.load(settings)
     for option in override:
@@ -58,6 +59,12 @@ def cli(ctx, config, loglevel, settings, override):
         shipment = yaml.load(config)
         shipment.make_backrefs()
         ctx.obj = shipment
+
+    if vcr:
+        import vcr as vcrpy
+        cassete = vcrpy.use_cassette(vcr)
+        cassete.__enter__()
+        ctx.call_on_close(lambda: cassete.__exit__(None, None, None))
 
 
 @cli.group(chain=True)

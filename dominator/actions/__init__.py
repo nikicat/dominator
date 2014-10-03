@@ -117,6 +117,7 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
                 return int(value)
             if value[0] == '{':
                 return json.loads(value)
+            return value
 
         args = []
         kwargs = {}

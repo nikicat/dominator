@@ -92,7 +92,7 @@ def test_start(capsys, shipment):
 
     next(shipment.containers).volumes['testconf'].files['testfile'].data = 'some other content'
     result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     lines = result.output.split('\n')
     assert len(lines) == 6
     assert '++++++' in lines[-3]

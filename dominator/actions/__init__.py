@@ -7,6 +7,7 @@ import fnmatch
 import re
 import functools
 import json
+import sys
 
 import yaml
 import mako.template
@@ -317,11 +318,11 @@ def container_list(container):
 @click.pass_obj
 @click.option('-d', '--showdiff', is_flag=True, default=False, help="show diff with running container")
 @foreach('container')
-def status(c, showdiff):
+def status(container, showdiff):
     """Show container status."""
-    c.check()
-    if c.running:
-        diff = list(utils.compare_container(c, c.inspect()))
+    container.check()
+    if container.running:
+        diff = list(utils.compare_container(container, container.inspect()))
         if len(diff) > 0:
             color = Fore.YELLOW
         else:
@@ -329,9 +330,10 @@ def status(c, showdiff):
     else:
         color = Fore.RED
     click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
-               .format(c=c, color=color, id=c.id or '', reset=Fore.RESET))
-    if c.running and showdiff:
+               .format(c=container, color=color, id=container.id or '', reset=Fore.RESET))
+    if container.running and showdiff:
         print_diff(diff)
+    sys.exit(1 if diff else 0)
 
 
 def print_diff(difflist):

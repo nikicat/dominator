@@ -40,15 +40,17 @@ def validate_loglevel(ctx, param, value):
 @click.group()
 @click.option('-c', '--config', type=click.File('r'), help="file path to load config from")
 @click.option('-s', '--settings', type=click.File('r'), help="file path to load settings from")
-@click.option('-n', '--namespace', help="override docker namespace from settings")
 @click.option('-l', '--loglevel', callback=validate_loglevel, default='warn')
+@click.option('-o', '--override', multiple=True, help="overide setting from config")
 @click.version_option()
 @click.pass_context
-def cli(ctx, config, loglevel, settings, namespace):
+def cli(ctx, config, loglevel, settings, override):
     logging.basicConfig(level=loglevel)
     utils.settings.load(settings)
-    if namespace:
-        utils.settings.set('docker.namespace', namespace)
+    for option in override:
+        assert re.match('[a-z\.\-]+=.*', option), "Options should have format <key=value>, not <{}>".format(option)
+        key, value = option.split('=')
+        utils.settings[key] = value
     logging.config.dictConfig(utils.settings.get('logging', {'version': 1}))
     logging.disable(level=loglevel-1)
 

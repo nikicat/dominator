@@ -20,9 +20,9 @@ import socket
 import copy
 import itertools
 import logging
+import shlex
 
 import yaml
-import pkg_resources
 import docker
 import docker.errors
 import mako.template
@@ -34,8 +34,11 @@ from .. import utils
 
 class BaseShip:
     """
-    Base mixin class for Ships.
+    Base class for Ships.
     """
+    def __init__(self):
+        self.containers = {}
+
     def __lt__(self, other):
         return self.fqdn < other.fqdn
 
@@ -56,6 +59,21 @@ class BaseShip:
     def info(self):
         return self.docker.info()
 
+    def place(self, container):
+        """Place the container on the ship."""
+        assert container.name not in self.containers, "container {} already loaded on the ship".format(container.name)
+        self.containers[container.name] = container
+        self.make_backrefs()
+
+    def expose_all(self, port_range):
+        assert port_range.stop < 65536, "Port range end exceeds 65535"
+        ports = list(port_range)
+        for _, container in sorted(self.containers.items()):
+            for _, door in sorted(container.doors.items()):
+                if not door.exposed:
+                    port = ports.pop()
+                    door.expose(port)
+
 
 class Ship(BaseShip):
     """
@@ -63,6 +81,7 @@ class Ship(BaseShip):
     """
     def __init__(self, name, fqdn, username='root', datadir='/var/lib/dominator/data',
                  configdir='/var/lib/dominator/config', port=2375, **kwargs):
+        super().__init__()
         self.name = name
         self.fqdn = fqdn
         self.port = port
@@ -85,7 +104,7 @@ class Ship(BaseShip):
 
     @utils.cached
     def getssh(self):
-        self.logger.debug("ssh'ing to ship", fqdn=self.fqdn)
+        self.logger.debug("ssh'ing to ship", fqdn=self.fqdn, login=self.username)
         import openssh_wrapper
         conn = openssh_wrapper.SSHConnection(self.fqdn, login=self.username)
         return conn
@@ -96,8 +115,7 @@ class Ship(BaseShip):
         self.logger.debug("uploading from %s to %s", localpath, remotepath)
         ssh = self.getssh()
         ret = ssh.run('rm -rf {0} && mkdir -p {0}'.format(remotepath))
-        if ret.returncode != 0:
-            raise RuntimeError(ret.stderr)
+        assert ret.returncode == 0, "command execution failed (retcode={}): {}".format(ret.returncode, ret.stderr)
         ssh.scp([os.path.join(localpath, entry) for entry in os.listdir(localpath)], remotepath)
 
     def download(self, remotepath, localpath):
@@ -108,10 +126,12 @@ class Ship(BaseShip):
         tar = ssh.run('tar -cC {} .'.format(remotepath)).stdout
         subprocess.check_output('tar -x -C {}'.format(localpath), input=tar, shell=True)
 
-    def spawn(self, command):
+    def spawn(self, command, sudo=False):
         ssh = self.getssh()
-        sshcommand = ssh.ssh_command(command, forward_ssh_agent=False)
+        sudocmd = 'sudo ' if sudo else ''
+        sshcommand = ssh.ssh_command(sudocmd + command, forward_ssh_agent=False)
         sshcommand.insert(1, b'-t')
+        self.logger.debug("executing ssh command", command=sshcommand)
         i = utils.PtyInterceptor()
         i.spawn(sshcommand)
 
@@ -123,6 +143,7 @@ class Ship(BaseShip):
 
 class LocalShip(BaseShip):
     def __init__(self):
+        super().__init__()
         from OpenSSL import crypto
         k = crypto.PKey()
         k.generate_key(crypto.TYPE_RSA, 1024)
@@ -183,9 +204,15 @@ class LocalShip(BaseShip):
         shutil.rmtree(localpath, ignore_errors=True)
         shutil.copytree(remotepath, localpath)
 
-    def spawn(self, command):
+    def spawn(self, command, sudo=False):
         i = utils.PtyInterceptor()
-        i.spawn(['bash', '-c', command])
+        sudocmd = ['sudo'] if sudo else []
+        if isinstance(command, str):
+            command = command.split(' ')
+        i.spawn(sudocmd + command)
+
+    def restart(self):
+        pass
 
 
 DEFAULT_NAMESPACE = object()
@@ -277,12 +304,8 @@ class Image:
     def inspect(self):
         result = utils.getdocker().inspect_image(self.getid())
         # Workaround: Docker sometimes returns "config" key in different casing
-        if 'config' in result:
-            return result['config']
-        elif 'Config' in result:
-            return result['Config']
-        else:
-            raise RuntimeError("unexpected response from Docker: {}".format(result))
+        assert 'config' in result or 'Config' in result, "unexpected response from Docker"
+        return result['config'] if 'config' in result else result['Config']
 
     @utils.cached
     def getports(self):
@@ -363,10 +386,16 @@ class SourceImage(Image):
                 dockerfile.write('EXPOSE {}\n'.format(port).encode())
             if self.user:
                 dockerfile.write('USER {}\n'.format(self.user).encode())
-            if self.command:
-                dockerfile.write('CMD {}\n'.format(self.command).encode())
-            if self.entrypoint:
-                dockerfile.write('ENTRYPOINT {}\n'.format(self.entrypoint).encode())
+
+            def convert_command(command):
+                command = shlex.split(command) if isinstance(command, str) else command
+                command = ','.join(['"{}"'.format(param) for param in command])
+                return '[{}]\n'.format(command)
+
+            if self.command is not None:
+                dockerfile.write('CMD {}\n'.format(convert_command(self.command)).encode())
+            if self.entrypoint is not None:
+                dockerfile.write('ENTRYPOINT {}\n'.format(convert_command(self.entrypoint)).encode())
             for path, data in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
                 tinfo = tarfile.TarInfo(path)
@@ -390,7 +419,7 @@ class SourceImage(Image):
 
 
 class Container:
-    def __init__(self, name: str, image: Image, ship: Ship, command: str=None, hostname: str=None,
+    def __init__(self, name: str, image: Image, ship: Ship=None, command: str=None, hostname: str=None,
                  memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None, links: dict=None,
                  network_mode: str='', user: str='', privileged: bool=False):
         self.name = name
@@ -402,7 +431,7 @@ class Container:
         self.env = env or {}
         self.id = None
         self.status = 'not found'
-        self.hostname = hostname or '{}-{}'.format(self.name, self.ship.name)
+        self.hostname = hostname
         self.network_mode = network_mode
         self.user = user
         self.privileged = privileged
@@ -411,7 +440,7 @@ class Container:
         self.make_backrefs()
 
     def __repr__(self):
-        return 'Container({c.fullname}[{c.id!s:7.7}])'.format(c=self)
+        return '<Container {c.fullname} [{c.id!s:7.7}]>'.format(c=self)
 
     def __getstate__(self):
         state = vars(self)
@@ -422,12 +451,7 @@ class Container:
 
     def make_backrefs(self):
         make_backrefs(self, 'doors', 'container')
-        for door in self.doors.values():
-            door.make_backrefs()
-
         make_backrefs(self, 'volumes', 'container')
-        for volume in self.volumes.values():
-            volume.make_backrefs()
 
     @property
     def logger(self):
@@ -446,7 +470,7 @@ class Container:
 
     @property
     def fullname(self):
-        return '{}:{}'.format(self.ship.name, self.name)
+        return '{}:{}'.format(self.ship.name if self.ship else '', self.name)
 
     def check(self, cinfo=None):
         """This function tries to find container on the associated ship
@@ -555,7 +579,7 @@ class Container:
         self.logger.debug('creating container', image=self.image)
         return self.ship.docker.create_container(
             image='{}:{}'.format(self.image.getfullrepository(), self.image.getid()),
-            hostname=self.hostname,
+            hostname=self.hostname or '{}-{}'.format(self.name, self.ship.name),
             command=self.command,
             mem_limit=self.memory,
             environment=self.env,
@@ -592,9 +616,9 @@ class Container:
             self.ship.docker.start(
                 self.id,
                 port_bindings={
-                    door.portspec: ('::', door.externalport)
+                    door.portspec: ('::', door.port)
                     for door in self.doors.values()
-                    if door.exposed
+                    if door.port is not None
                 },
                 binds={v.fullpath: {'bind': v.dest, 'ro': v.ro} for v in self.volumes.values()},
                 network_mode=self.network_mode,
@@ -625,9 +649,18 @@ class Container:
     def wait(self):
         return self.ship.docker.wait(self.id)
 
-    def getport(self, name):
-        """DEPRECATED"""
-        return self.doors[name].externalport
+    def expose_all(self, offset=0):
+        """Expose all container doors' ports with offset."""
+        for door in self.doors.values():
+            door.expose(door.internalport + offset)
+
+    def enter(self, command):
+        """nsenter to container."""
+        assert self.running, "Container should run to enter"
+        pid = self.inspect()['State']['Pid']
+        self.ship.spawn('nsenter --target {pid} --mount --uts --ipc --net --pid'
+                        ' -- env --ignore-environment -- {command}'.format(pid=pid, command=command),
+                        sudo=True)
 
 
 class Task(Container):
@@ -640,28 +673,32 @@ class Door:
     """Door class represents an interface to a container - like Docker port, but with additional
     attributes
     """
-    def __init__(self, schema, port=None, protocol='tcp', exposed=True, externalport=None, urls=None):
+    def __init__(self, schema, port=None, protocol='tcp', urls=None, sameports=False):
         """
         schema - something like http, ftp, zookeeper, gopher
         port - port number, by default it's deducted from schema (80 for http, 2121 for zookeper)
         protocol - tcp or udp, by default tcp
-        exposed - expose or not interface for external access
-        externalport - if exposed==True, then map internal port to it
         urls - urls that are accessible via door
+        sameports - if door doesn't support port mapping (like JMX etc.) then set it to true
         """
         self.schema = schema
         self.protocol = protocol
-        self.port = port if port else socket.getservbyname(schema, protocol)
-        self.exposed = exposed
-        self.externalport = externalport if externalport else self.port
+        self.internalport = port if port else socket.getservbyname(schema, protocol)
+        self.exposedport = None
+        self.sameports = sameports
         self.urls = {'default': Url('')}
         self.urls.update(urls or {})
+
+    def __repr__(self):
+        return '<Door {}>'.format(self.fullname)
 
     def __format__(self, formatspec):
         if hasattr(self, formatspec):
             return str(getattr(self, formatspec))
         if formatspec == 'host':
             return self.container.ship.fqdn
+        if formatspec == '':
+            return str(self)
         raise RuntimeError('invalid format spec {}'.format(formatspec))
 
     def make_backrefs(self):
@@ -669,11 +706,40 @@ class Door:
 
     @property
     def portspec(self):
-        return '{port}/{protocol}'.format(port=self.port, protocol=self.protocol)
+        return '{port}/{protocol}'.format(port=self.internalport, protocol=self.protocol)
 
     @property
     def fullname(self):
         return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
+
+    @property
+    def host(self):
+        return self.container.ship.fqdn
+
+    @property
+    def port(self):
+        assert self.exposed, "door is not exposed"
+        return self.exposedport
+
+    @property
+    def exposed(self):
+        return self.exposedport is not None
+
+    @property
+    def hostport(self):
+        return '{host}:{port}'.format(host=self.host, port=self.exposedport)
+
+    def expose(self, port):
+        """Make door export (e.g. map port outside the container)."""
+        assert port < 65536, "Port should be less than 65536"
+        for container in self.container.ship.containers.values():
+            for door in container.doors.values():
+                assert door.exposedport != port, "Port {} is already exposed on {}".format(port, door)
+        self.exposedport = port
+        if self.sameports:
+            for door in self.container.doors.values():
+                assert door.internalport != port, "Port {} is already bound to {}".format(port, door)
+            self.internalport = port
 
 
 class Url:
@@ -684,13 +750,9 @@ class Url:
         return '{schema}://{fqdn}:{port}/{path}'.format(
             schema=self.door.schema,
             fqdn=self.door.container.ship.fqdn,
-            port=self.door.externalport,
+            port=self.door.exposedport,
             path=self.path
         )
-
-    @property
-    def hostport(self):
-        return '{host}:{port}'.format(host=self.door.container.ship.fqdn, port=self.door.externalport)
 
 
 class Volume:
@@ -710,7 +772,7 @@ class Volume:
         return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
 
     def erase(self):
-        self.container.ship.spawn('rm -rf {}'.format(self.fullpath))
+        self.container.ship.spawn('rm -rf {}'.format(self.fullpath), sudo=True)
 
 
 class DataVolume(Volume):
@@ -744,6 +806,15 @@ class ConfigVolume(Volume):
     def __init__(self, dest: str, files: dict=None):
         self.dest = dest
         self.files = files or {}
+        self.make_backrefs()
+
+    def __getstate__(self):
+        """Replace all "closure-files" with invokation result."""
+        for name, file in self.files.items():
+            if callable(file):
+                self.files[name] = file()
+        self.make_backrefs()
+        return vars(self)
 
     @property
     def fullpath(self):
@@ -810,21 +881,8 @@ class BaseFile:
 
 
 class TextFile(BaseFile):
-    def __init__(self, text: str=None, filename: str=None):
-        """
-        Constructs TextFile. If text provided, populate
-        file contents from it. If not - try to load resource
-        from calling module using filename.
-        """
-        assert(filename is not None or text is not None)
-        if text is not None:
-            self.content = text
-        else:
-            self.content = pkg_resources.resource_string(utils.getcallingmodule(1).__name__, filename).decode()
-
-    @property
-    def data(self):
-        return self.content
+    def __init__(self, text: str):
+        self.data = text
 
 
 class TemplateFile(BaseFile):
@@ -848,9 +906,6 @@ class YamlFile(BaseFile):
     def __init__(self, data: dict):
         self.content = data
 
-    def __getstate__(self):
-        return {'content': self.content() if callable(self.content) else self.content}
-
     @property
     def data(self):
         return yaml.dump(self.content, default_flow_style=False)
@@ -865,9 +920,23 @@ class JsonFile(BaseFile):
         return json.dumps(self.content, sort_keys=True, indent='  ')
 
 
+class IniFile(BaseFile):
+    def __init__(self, data: dict):
+        self.content = data
+
+    @property
+    def data(self):
+        return '\n'.join(sorted(['{}={}'.format(key, value) for key, value in self.content.items()]))
+
+
 def make_backrefs(obj, refname, backrefname):
+    """Make links from each "refname" child back to obj,
+    then repeat for each child
+    """
     ref = getattr(obj, refname)
     for name, child in ref.copy().items():
+        if callable(child) or child is None:
+            continue
         backref = getattr(child,  backrefname, None)
         if backref is obj:
             continue
@@ -889,14 +958,15 @@ def make_backrefs(obj, refname, backrefname):
         if getattr(child, 'name', None) is None:
             setattr(child, 'name', name)
 
+        if hasattr(child, 'make_backrefs'):
+            child.make_backrefs()
+
 
 class Shipment:
     def __init__(self, name, containers, tasks=None):
         self.name = name
         self.tasks = tasks or []
         ships = {container.ship for container in containers}.union({task.ship for task in self.tasks})
-        for ship in ships:
-            ship.containers = {container.name: container for container in containers if container.ship == ship}
         self.ships = {ship.name: ship for ship in ships}
         self.make_backrefs()
 
@@ -922,12 +992,6 @@ class Shipment:
 
     def make_backrefs(self):
         make_backrefs(self, 'ships', 'shipment')
-
-        for ship in self.ships.values():
-            ship.make_backrefs()
-
-        for container in itertools.chain(self.containers, self.tasks):
-            container.make_backrefs()
 
     @property
     def images(self):

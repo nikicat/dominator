@@ -38,31 +38,32 @@ def logs():
 
 
 @pytest.fixture
-def ships():
-    return [entities.LocalShip()]
+def ship():
+    return entities.LocalShip()
 
 
 @vcr.use_cassette('shipment.yaml')
 @pytest.fixture
-def shipment():
+def shipment(ship):
+    container = entities.Container(
+        name='testcont',
+        image=entities.Image('busybox', namespace=None),
+        command='sleep 10',
+        volumes={
+            'testconf': entities.ConfigVolume(
+                dest='/tmp',
+                files={
+                    'testfile': entities.TextFile(text='some content')
+                },
+            ),
+        },
+    )
+    ship.place(container)
+    ship.expose_all(range(10000, 10010))
+
     shipment = entities.Shipment(
         name='testshipment',
-        containers=[
-            entities.Container(
-                name='testcont',
-                ship=ship,
-                image=entities.Image('busybox', namespace=None),
-                command='sleep 10',
-                volumes={
-                    'testconf': entities.ConfigVolume(
-                        dest='/tmp',
-                        files={
-                            'testfile': entities.TextFile(text='some content')
-                        },
-                    ),
-                },
-            ) for ship in ships()
-        ],
+        containers=[container],
     )
     shipment.version = '1.2.3-alpha-123abcdef'
     shipment.author = 'John Doe'
@@ -71,12 +72,6 @@ def shipment():
     shipment.timestamp = datetime.datetime(2000, 1, 1)
     shipment.make_backrefs()
     return shipment
-
-
-@pytest.fixture
-def docker():
-    import docker
-    return docker.Client()
 
 
 @vcr.use_cassette('localstart.yaml')
@@ -95,7 +90,7 @@ def test_start(capsys, shipment):
     result = runner.invoke(actions.container, ['restart'], obj=shipment)
     assert result.exit_code == 0
 
-    next(shipment.containers).volumes['testconf'].files['testfile'].content = 'some other content'
+    next(shipment.containers).volumes['testconf'].files['testfile'].data = 'some other content'
     result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')

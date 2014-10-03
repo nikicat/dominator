@@ -56,14 +56,13 @@ class ThreadLocalInjector(logging.Filter):
 @contextlib.contextmanager
 def addcontext(**kwargs):
     try:
-        prevcontext = vars(tl)
+        prevcontext = vars(tl).copy()
         for key, value in kwargs.items():
             setattr(tl, key, value)
         yield
     finally:
         for key, value in kwargs.items():
-            with contextlib.suppress(AttributeError):
-                delattr(tl, key)
+            delattr(tl, key)
         for key, value in prevcontext.items():
             setattr(tl, key, value)
 
@@ -208,7 +207,7 @@ def compare_env(expected: dict, actual: dict):
 def compare_ports(cont, actual: dict):
     getlogger().debug('comparing ports')
     for name, door in cont.doors.items():
-        extport_expected = door.externalport
+        extport_expected = door.port
 
         matched_actual = [info for name, info in actual.items()
                           if name == door.portspec]

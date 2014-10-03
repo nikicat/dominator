@@ -141,7 +141,7 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
         assert shipment is not None, "shipment should not be empty"
     except Exception as e:
         getlogger().exception('failed to generate obedient')
-        ctx.exit("Failed to generate obedient: {}".format(e))
+        ctx.exit("Failed to generate obedient: {!r}".format(e))
 
     shipment.version = meta.version
     shipment.author = meta.author
@@ -168,7 +168,7 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
         output = yaml.dump(shipment, default_flow_style=False)
     except Exception as e:
         getlogger().exception("failed to serialize shipment")
-        ctx.fail("Failed to serialize shipment: {}".format(e))
+        ctx.fail("Failed to serialize shipment: {!r}".format(e))
 
     click.echo_via_pager(output)
 

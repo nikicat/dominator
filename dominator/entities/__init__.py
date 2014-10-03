@@ -230,9 +230,14 @@ class Image:
     def _init(self, namespace, repository, registry, id=None):
         self.id = id
         self.repository = repository
-        self.namespace = namespace if namespace is not DEFAULT_NAMESPACE else utils.settings.get('docker.namespace')
-        self.registry = registry if registry is not DEFAULT_REGISTRY else utils.settings.get('docker.registry.url',
-                                                                                             default=None)
+
+        if namespace is DEFAULT_NAMESPACE:
+            namespace = utils.settings.get('docker.namespace', default=None)
+        self.namespace = namespace
+
+        if registry is DEFAULT_REGISTRY:
+            registry = utils.settings.get('docker.registry.url', default=None)
+        self.registry = registry
 
     def __repr__(self):
         return '{classname}({namespace}/{repository}:{tag:.7} [{id:.7}] registry={registry})'.format(

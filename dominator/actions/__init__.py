@@ -129,9 +129,9 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
                 args.append(parse_value(arg))
         shipment = func(*args, **kwargs)
         assert shipment is not None, "shipment should not be empty"
-    except:
+    except Exception as e:
         getlogger().exception('failed to generate obedient')
-        ctx.exit()
+        ctx.exit("Failed to generate obedient: {}".format(e))
 
     shipment.version = meta.version
     shipment.author = meta.author
@@ -156,9 +156,10 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
 
     try:
         output = yaml.dump(shipment, default_flow_style=False)
-    except:
+    except Exception as e:
         getlogger().exception("failed to serialize shipment")
-        ctx.exit()
+        ctx.fail("Failed to serialize shipment: {}".format(e))
+
     click.echo_via_pager(output)
 
 

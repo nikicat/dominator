@@ -21,6 +21,7 @@ import copy
 import itertools
 import logging
 import shlex
+import sys
 
 import yaml
 import docker
@@ -511,8 +512,13 @@ class Container:
                 self.create()
 
             self.logger.debug('attaching to stdout/stderr')
+            if not os.isatty(sys.stdin.fileno()):
+                self.logger.debug('attaching stdin')
+                stdin = sys.stdin.buffer
+            else:
+                stdin = None
             logs = utils.docker_lines(self.ship.docker.attach(
-                self.id, stdout=True, stderr=True, logs=True, stream=True))
+                self.id, stdout=True, stderr=True, stdin=stdin, logs=True, stream=True))
             self.start()
             yield logs
         finally:

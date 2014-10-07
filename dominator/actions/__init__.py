@@ -239,9 +239,13 @@ def foreach(varname):
         @functools.wraps(func)
         def wrapper(objects, *args, **kwargs):
             with utils.addcontext(logger=logging.getLogger('dominator.'+varname)):
+                results = []
                 for obj in objects:
                     with utils.addcontext(**{varname: obj}):
-                        func(obj, *args, **kwargs)
+                        result = func(obj, *args, **kwargs)
+                        results.append(result)
+                if any(results):
+                    sys.exit(1)
         return wrapper
     return decorator
 
@@ -331,9 +335,13 @@ def status(container, showdiff):
         color = Fore.RED
     click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
                .format(c=container, color=color, id=container.id or '', reset=Fore.RESET))
-    if container.running and showdiff:
-        print_diff(diff)
-    sys.exit(1 if diff else 0)
+    if container.running:
+        if diff:
+            if showdiff:
+                print_diff(diff)
+            return True
+    else:
+        return True
 
 
 def print_diff(difflist):

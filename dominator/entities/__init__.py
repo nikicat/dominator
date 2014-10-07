@@ -596,7 +596,7 @@ class Container:
             mem_limit=self.memory,
             environment=self.env,
             name=self.dockername,
-            ports=[(door.port, door.protocol) for door in self.doors.values()],
+            ports=[(door.internalport, door.protocol) for door in self.doors.values()],
             stdin_open=True,
             detach=False,
             user=self.user,

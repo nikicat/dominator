@@ -14,7 +14,7 @@ import mako.template
 from colorama import Fore
 import click
 
-from ..entities import SourceImage, BaseShip, BaseFile, Volume, Container, Shipment
+from ..entities import SourceImage, BaseShip, BaseFile, Volume, Container, Shipment, LocalShip
 from .. import utils
 
 
@@ -404,7 +404,7 @@ def enter(cont, command):
 def task(ctx, pattern, regex):
     """Container management commands."""
     shipment = ctx.obj
-    ctx.obj = filterbyname(shipment.tasks, pattern, regex)
+    ctx.obj = filterbyname(shipment.tasks.values(), pattern, regex)
 
 
 @task.command('exec')
@@ -416,6 +416,10 @@ def task_exec(task, keep, command):
     """Execute task"""
     if command is not None:
         task.command = command
+    if task.ship is None:
+        ship = LocalShip()
+        ship.place(task)
+        ship.shipment = task.shipment
     common_exec(task, keep)
 
 

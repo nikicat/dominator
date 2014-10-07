@@ -677,9 +677,7 @@ class Container:
 
 
 class Task(Container):
-    def __init__(self, ship=None, *args, **kwargs):
-        ship = ship or LocalShip()
-        super().__init__(ship=ship, *args, **kwargs)
+    pass
 
 
 class Door:
@@ -978,9 +976,9 @@ def make_backrefs(obj, refname, backrefname):
 class Shipment:
     def __init__(self, name, containers, tasks=None):
         self.name = name
-        self.tasks = tasks or []
-        ships = {container.ship for container in containers}.union({task.ship for task in self.tasks})
-        self.ships = {ship.name: ship for ship in ships}
+        self.tasks = {task.name: task for task in (tasks or [])}
+        ships = {container.ship for container in containers}.union({task.ship for task in self.tasks.values()})
+        self.ships = {ship.name: ship for ship in ships if ship is not None}
         self.make_backrefs()
 
     @property
@@ -1005,6 +1003,7 @@ class Shipment:
 
     def make_backrefs(self):
         make_backrefs(self, 'ships', 'shipment')
+        make_backrefs(self, 'tasks', 'shipment')
 
     @property
     def images(self):
@@ -1018,7 +1017,7 @@ class Shipment:
             return 0
 
         def iterate_images():
-            for container in itertools.chain(self.containers, self.tasks):
+            for container in itertools.chain(self.containers, self.tasks.values()):
                 image = container.image
                 while True:
                     yield image

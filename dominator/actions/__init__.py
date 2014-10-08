@@ -48,12 +48,14 @@ def validate_loglevel(ctx, param, value):
 @click.pass_context
 def cli(ctx, config, loglevel, settings, vcr, override):
     logging.basicConfig(level=loglevel)
+    logging.debug("dominator {} started".format(getversion()))
     utils.settings.load(settings)
     for option in override:
         assert re.match('[a-z\.\-]+=.*', option), "Options should have format <key=value>, not <{}>".format(option)
         key, value = option.split('=')
         utils.settings[key] = value
-    logging.config.dictConfig(utils.settings.get('logging', {'version': 1}))
+    default_logging_config = yaml.load(utils.resource_string('../utils/logging.yaml'))['logging']
+    logging.config.dictConfig(utils.settings.get('logging', default_logging_config))
     logging.disable(level=loglevel-1)
 
     if config is not None:

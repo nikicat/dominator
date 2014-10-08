@@ -258,6 +258,8 @@ class Image:
         self.logger.debug('retrieving id')
         if self.id is None and self.tag is not None:
             self.id = self.gettags(dock).get(self.tag)
+            if self.id is None:
+                self.logger.debug("could not find tag for image", tag=self.tag)
         return self.id
 
     def _streamoperation(self, func, **kwargs):
@@ -561,31 +563,33 @@ class Container:
         self.check({'Id': None, 'Status': 'not found'})
 
     def create(self):
-        self.logger.debug('preparing to create container')
+        with utils.addcontext(image=self.image):
+            self.logger.debug('preparing to create container')
 
-        for volume in self.volumes.values():
-            volume.render(self)
+            for volume in self.volumes.values():
+                volume.render(self)
 
-        try:
-            cinfo = self._create()
-        except docker.errors.APIError as e:
-            if e.response.status_code != 404:
-                raise
-            # image not found - pull repo and try again
-            # Check if ship has needed image
-            self.logger.info('could not find requested image, pulling repo')
             try:
-                self.image.pull(self.ship.docker, tag=self.image.tag)
-            except docker.errors.DockerException as e:
-                if not re.search('HTTP code: 404', str(e)) and not re.search('Tag .* not found in repository', str(e)):
+                cinfo = self._create()
+            except docker.errors.APIError as e:
+                if e.response.status_code != 404:
                     raise
-                self.logger.info("could not find requested image in registry, pushing repo")
-                self.image.push()
-                self.image.pull(self.ship.docker)
-            cinfo = self._create()
+                # image not found - pull repo and try again
+                # Check if ship has needed image
+                self.logger.info('could not find requested image, pulling repo')
+                try:
+                    self.image.pull(self.ship.docker, tag=self.image.tag)
+                except docker.errors.DockerException as e:
+                    if not any([re.search(pattern, str(e))
+                                for pattern in ['HTTP code: 404', 'Tag .* not found in repository']]):
+                        raise
+                    self.logger.info("could not find requested image in registry, pushing repo")
+                    self.image.push()
+                    self.image.pull(self.ship.docker)
+                cinfo = self._create()
 
-        self.check(cinfo)
-        self.logger.debug('container created')
+            self.check(cinfo)
+            self.logger.debug('container created')
 
     def _create(self):
         self.logger.debug('creating container', image=self.image)

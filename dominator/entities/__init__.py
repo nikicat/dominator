@@ -21,6 +21,7 @@ import copy
 import itertools
 import logging
 import shlex
+import sys
 
 import yaml
 import docker
@@ -230,9 +231,14 @@ class Image:
     def _init(self, namespace, repository, registry, id=None):
         self.id = id
         self.repository = repository
-        self.namespace = namespace if namespace is not DEFAULT_NAMESPACE else utils.settings.get('docker.namespace')
-        self.registry = registry if registry is not DEFAULT_REGISTRY else utils.settings.get('docker.registry.url',
-                                                                                             default=None)
+
+        if namespace is DEFAULT_NAMESPACE:
+            namespace = utils.settings.get('docker.namespace', default=None)
+        self.namespace = namespace
+
+        if registry is DEFAULT_REGISTRY:
+            registry = utils.settings.get('docker.registry.url', default=None)
+        self.registry = registry
 
     def __repr__(self):
         return '{classname}({namespace}/{repository}:{tag:.7} [{id:.7}] registry={registry})'.format(
@@ -421,7 +427,7 @@ class SourceImage(Image):
 class Container:
     def __init__(self, name: str, image: Image, ship: Ship=None, command: str=None, hostname: str=None,
                  memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None, links: dict=None,
-                 network_mode: str='', user: str='', privileged: bool=False):
+                 network_mode: str='', user: str='', privileged: bool=False, entrypoint: str=None):
         self.name = name
         self.ship = ship
         self.image = image
@@ -435,6 +441,7 @@ class Container:
         self.network_mode = network_mode
         self.user = user
         self.privileged = privileged
+        self.entrypoint = entrypoint
         self.doors = doors or {}
         self.links = links or {}
         self.make_backrefs()
@@ -505,8 +512,13 @@ class Container:
                 self.create()
 
             self.logger.debug('attaching to stdout/stderr')
+            if not os.isatty(sys.stdin.fileno()):
+                self.logger.debug('attaching stdin')
+                stdin = sys.stdin.buffer
+            else:
+                stdin = None
             logs = utils.docker_lines(self.ship.docker.attach(
-                self.id, stdout=True, stderr=True, logs=True, stream=True))
+                self.id, stdout=True, stderr=True, stdin=stdin, logs=True, stream=True))
             self.start()
             yield logs
         finally:
@@ -584,10 +596,11 @@ class Container:
             mem_limit=self.memory,
             environment=self.env,
             name=self.dockername,
-            ports=[(door.port, door.protocol) for door in self.doors.values()],
+            ports=[(door.internalport, door.protocol) for door in self.doors.values()],
             stdin_open=True,
             detach=False,
             user=self.user,
+            entrypoint=self.entrypoint,
         )
 
     def run(self):
@@ -664,9 +677,7 @@ class Container:
 
 
 class Task(Container):
-    def __init__(self, ship=None, *args, **kwargs):
-        ship = ship or LocalShip()
-        super().__init__(ship=ship, *args, **kwargs)
+    pass
 
 
 class Door:
@@ -965,9 +976,9 @@ def make_backrefs(obj, refname, backrefname):
 class Shipment:
     def __init__(self, name, containers, tasks=None):
         self.name = name
-        self.tasks = tasks or []
-        ships = {container.ship for container in containers}.union({task.ship for task in self.tasks})
-        self.ships = {ship.name: ship for ship in ships}
+        self.tasks = {task.name: task for task in (tasks or [])}
+        ships = {container.ship for container in containers}.union({task.ship for task in self.tasks.values()})
+        self.ships = {ship.name: ship for ship in ships if ship is not None}
         self.make_backrefs()
 
     @property
@@ -992,6 +1003,7 @@ class Shipment:
 
     def make_backrefs(self):
         make_backrefs(self, 'ships', 'shipment')
+        make_backrefs(self, 'tasks', 'shipment')
 
     @property
     def images(self):
@@ -1005,7 +1017,7 @@ class Shipment:
             return 0
 
         def iterate_images():
-            for container in itertools.chain(self.containers, self.tasks):
+            for container in itertools.chain(self.containers, self.tasks.values()):
                 image = container.image
                 while True:
                     yield image

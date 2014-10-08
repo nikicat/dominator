@@ -7,13 +7,14 @@ import fnmatch
 import re
 import functools
 import json
+import sys
 
 import yaml
 import mako.template
 from colorama import Fore
 import click
 
-from ..entities import SourceImage, BaseShip, BaseFile, Volume, Container, Shipment
+from ..entities import SourceImage, BaseShip, BaseFile, Volume, Container, Shipment, LocalShip
 from .. import utils
 
 
@@ -40,15 +41,18 @@ def validate_loglevel(ctx, param, value):
 @click.group()
 @click.option('-c', '--config', type=click.File('r'), help="file path to load config from")
 @click.option('-s', '--settings', type=click.File('r'), help="file path to load settings from")
-@click.option('-n', '--namespace', help="override docker namespace from settings")
 @click.option('-l', '--loglevel', callback=validate_loglevel, default='warn')
+@click.option('--vcr', type=click.Path(), help="mock all http requests with vcrpy and save cassete")
+@click.option('-o', '--override', multiple=True, help="overide setting from config")
 @click.version_option()
 @click.pass_context
-def cli(ctx, config, loglevel, settings, namespace):
+def cli(ctx, config, loglevel, settings, vcr, override):
     logging.basicConfig(level=loglevel)
     utils.settings.load(settings)
-    if namespace:
-        utils.settings.set('docker.namespace', namespace)
+    for option in override:
+        assert re.match('[a-z\.\-]+=.*', option), "Options should have format <key=value>, not <{}>".format(option)
+        key, value = option.split('=')
+        utils.settings[key] = value
     logging.config.dictConfig(utils.settings.get('logging', {'version': 1}))
     logging.disable(level=loglevel-1)
 
@@ -56,6 +60,12 @@ def cli(ctx, config, loglevel, settings, namespace):
         shipment = yaml.load(config)
         shipment.make_backrefs()
         ctx.obj = shipment
+
+    if vcr:
+        import vcr as vcrpy
+        cassete = vcrpy.use_cassette(vcr)
+        cassete.__enter__()
+        ctx.call_on_close(lambda: cassete.__exit__(None, None, None))
 
 
 @cli.group(chain=True)
@@ -129,9 +139,9 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
                 args.append(parse_value(arg))
         shipment = func(*args, **kwargs)
         assert shipment is not None, "shipment should not be empty"
-    except:
+    except Exception as e:
         getlogger().exception('failed to generate obedient')
-        ctx.exit()
+        ctx.exit("Failed to generate obedient: {!r}".format(e))
 
     shipment.version = meta.version
     shipment.author = meta.author
@@ -156,9 +166,10 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
 
     try:
         output = yaml.dump(shipment, default_flow_style=False)
-    except:
+    except Exception as e:
         getlogger().exception("failed to serialize shipment")
-        ctx.exit()
+        ctx.fail("Failed to serialize shipment: {!r}".format(e))
+
     click.echo_via_pager(output)
 
 
@@ -228,9 +239,13 @@ def foreach(varname):
         @functools.wraps(func)
         def wrapper(objects, *args, **kwargs):
             with utils.addcontext(logger=logging.getLogger('dominator.'+varname)):
+                results = []
                 for obj in objects:
                     with utils.addcontext(**{varname: obj}):
-                        func(obj, *args, **kwargs)
+                        result = func(obj, *args, **kwargs)
+                        results.append(result)
+                if any(results):
+                    sys.exit(1)
         return wrapper
     return decorator
 
@@ -307,11 +322,11 @@ def container_list(container):
 @click.pass_obj
 @click.option('-d', '--showdiff', is_flag=True, default=False, help="show diff with running container")
 @foreach('container')
-def status(c, showdiff):
+def status(container, showdiff):
     """Show container status."""
-    c.check()
-    if c.running:
-        diff = list(utils.compare_container(c, c.inspect()))
+    container.check()
+    if container.running:
+        diff = list(utils.compare_container(container, container.inspect()))
         if len(diff) > 0:
             color = Fore.YELLOW
         else:
@@ -319,9 +334,14 @@ def status(c, showdiff):
     else:
         color = Fore.RED
     click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
-               .format(c=c, color=color, id=c.id or '', reset=Fore.RESET))
-    if c.running and showdiff:
-        print_diff(diff)
+               .format(c=container, color=color, id=container.id or '', reset=Fore.RESET))
+    if container.running:
+        if diff:
+            if showdiff:
+                print_diff(diff)
+            return True
+    else:
+        return True
 
 
 def print_diff(difflist):
@@ -384,7 +404,7 @@ def enter(cont, command):
 def task(ctx, pattern, regex):
     """Container management commands."""
     shipment = ctx.obj
-    ctx.obj = filterbyname(shipment.tasks, pattern, regex)
+    ctx.obj = filterbyname(shipment.tasks.values(), pattern, regex)
 
 
 @task.command('exec')
@@ -396,6 +416,10 @@ def task_exec(task, keep, command):
     """Execute task"""
     if command is not None:
         task.command = command
+    if task.ship is None:
+        ship = LocalShip()
+        ship.place(task)
+        ship.shipment = task.shipment
     common_exec(task, keep)
 
 

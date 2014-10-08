@@ -24,6 +24,10 @@ docker:
 # Default namespace to use for SourceImages
 #    namespace: yandex
 
+#localship:
 # FQDN for LocalShip's - used for developing. Put here some local ip
 # different from 127.0.0.1/::1 that local containers could reach
-#localship-fqdn: localhost
+#    fqdn: localhost
+#
+# Amount of memory to report for LocalShip
+#    memory: null

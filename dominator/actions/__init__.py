@@ -48,6 +48,7 @@ def validate_loglevel(ctx, param, value):
 @click.pass_context
 def cli(ctx, config, loglevel, settings, vcr, override):
     logging.basicConfig(level=loglevel)
+    logging.debug("dominator {} started".format(getversion()))
     utils.settings.load(settings)
     for option in override:
         assert re.match('[a-z\.\-]+=.*', option), "Options should have format <key=value>, not <{}>".format(option)

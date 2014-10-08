@@ -158,6 +158,9 @@ class LocalShip(BaseShip):
         keypem = crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode()
         self.certificate = certpem + keypem
 
+        import psutil
+        self.memory = psutil.virtual_memory().total
+
     @property
     def datacenter(self):
         return 'localdc'
@@ -173,12 +176,6 @@ class LocalShip(BaseShip):
     @property
     def islocal(self):
         return True
-
-    @property
-    @utils.cached
-    def memory(self):
-        import psutil
-        return psutil.virtual_memory().total
 
     @property
     @utils.cached

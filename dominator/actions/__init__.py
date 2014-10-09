@@ -639,7 +639,7 @@ def list_doors(containers):
                     container.fullname, doorname, urlname, url))
 
 
-@cli.group('config')
+@cli.group()
 def config():
     """Commands to manage local config files."""
     utils.setcontext(logger=logging.getLogger('dominator.config'))

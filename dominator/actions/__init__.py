@@ -8,6 +8,7 @@ import re
 import functools
 import json
 import sys
+import importlib
 
 import yaml
 import mako.template
@@ -38,6 +39,11 @@ def validate_loglevel(ctx, param, value):
         raise click.BadParameter('loglevel should be logging level name or number')
 
 
+def load_plugins():
+    for plugin in utils.settings.get('plugins', []):
+        importlib.import_module(plugin)
+
+
 @click.group()
 @click.option('-c', '--config', type=click.File('r'), help="file path to load config from")
 @click.option('-s', '--settings', type=click.File('r'), help="file path to load settings from")
@@ -57,6 +63,8 @@ def cli(ctx, config, loglevel, settings, vcr, override):
     default_logging_config = yaml.load(utils.resource_string('../utils/logging.yaml'))['logging']
     logging.config.dictConfig(utils.settings.get('logging', default_logging_config))
     logging.disable(level=loglevel-1)
+
+    load_plugins()
 
     if config is not None:
         shipment = yaml.load(config)

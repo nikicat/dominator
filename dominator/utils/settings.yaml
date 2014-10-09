@@ -31,3 +31,8 @@ docker:
 #
 # Amount of memory to report for LocalShip
 #    memory: null
+
+
+# This is a list of plugins to load on start
+#plugins:
+#    - some.python.module.name

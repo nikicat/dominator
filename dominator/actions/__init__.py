@@ -292,9 +292,12 @@ def restart(cont):
 @container.command('exec')
 @click.pass_obj
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
+@click.argument('command', required=False)
 @foreach('container')
-def container_exec(container, keep):
+def container_exec(container, command, keep):
     """Start, attach and wait a container."""
+    if command is not None:
+        container.command = command
     common_exec(container, keep)
 
 

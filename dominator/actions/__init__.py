@@ -665,6 +665,25 @@ def create_config():
             dst.write(src.read())
 
 
+@cli.group()
+def discover():
+    """Commands to discover ships."""
+    utils.setcontext(logger=logging.getLogger('dominator.discover'))
+
+
+@discover.command('local')
+def discover_local():
+    """Produce config with single local ship."""
+    click.echo(yaml.dump([LocalShip()]))
+
+
+@discover.command('ec2')
+@click.pass_context
+def discover_ec2(ctx):
+    """Discover ships in ec2."""
+    ctx.fail("Not implemented yet.")
+
+
 @utils.makesorted(lambda o: o.fullname)
 def filterbyname(objects, pattern, regex):
     if not regex:

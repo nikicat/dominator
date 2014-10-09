@@ -92,10 +92,11 @@ def getobedients():
 @click.pass_context
 @click.argument('distribution', required=False, type=click.Choice(getobedients()), metavar='<distribution>')
 @click.argument('entrypoint', required=False, metavar='<entrypoint>')
+@click.argument('ships', required=False, type=click.File('r'), metavar='<ships>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
 @click.option('--cache/--no-cache', default=True)
 @click.option('--clear-cache', is_flag=True, default=False, help="clear requests_cache before run (requires --cache)")
-def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
+def generate(ctx, distribution, entrypoint, ships, arguments, cache, clear_cache):
     """Generates yaml config file for shipment."""
     if distribution is None:
         click.echo('\n'.join(getobedients()))
@@ -108,6 +109,12 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
         for entrypoint in dist.get_entry_map('obedient').keys():
             click.echo(entrypoint)
         ctx.exit()
+
+    if ships is None:
+        getlogger().info("ships are not provided, using single LocalShip")
+        ships = [LocalShip()]
+    else:
+        ships = yaml.load(ships)
 
     getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
 
@@ -147,7 +154,7 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
                 kwargs[name] = parse_value(value)
             else:
                 args.append(parse_value(arg))
-        shipment = func(*args, **kwargs)
+        shipment = func(ships, *args, **kwargs)
         assert shipment is not None, "shipment should not be empty"
     except Exception as e:
         getlogger().exception('failed to generate obedient')

@@ -96,7 +96,8 @@ def getobedients():
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
 @click.option('--cache/--no-cache', default=True)
 @click.option('--clear-cache', is_flag=True, default=False, help="clear requests_cache before run (requires --cache)")
-def generate(ctx, distribution, entrypoint, ships, arguments, cache, clear_cache):
+@click.option('--name', help="override shipment name")
+def generate(ctx, distribution, entrypoint, ships, arguments, cache, clear_cache, name):
     """Generates yaml config file for shipment."""
     if distribution is None:
         click.echo('\n'.join(getobedients()))
@@ -168,6 +169,8 @@ def generate(ctx, distribution, entrypoint, ships, arguments, cache, clear_cache
     shipment.distribution = distribution
     shipment.entrypoint = entrypoint
     shipment.arguments = arguments
+    if name:
+        shipment.name = name
 
     import tzlocal
     shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())

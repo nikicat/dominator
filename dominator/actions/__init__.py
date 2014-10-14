@@ -168,7 +168,8 @@ def generate(ctx, distribution, entrypoint, ships, arguments, cache, clear_cache
     shipment.dominator_version = getversion()
     shipment.distribution = distribution
     shipment.entrypoint = entrypoint
-    shipment.arguments = arguments
+    shipment.args = args
+    shipment.kwargs = kwargs
     if name:
         shipment.name = name
 

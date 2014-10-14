@@ -345,6 +345,10 @@ def resource_string(name):
     return pkg_resources.resource_string(getcallingmodule(1).__name__, name).decode()
 
 
+def resource_stream(name):
+    return pkg_resources.resource_stream(getcallingmodule(1).__name__, name)
+
+
 def stoppable(cmd):
     return 'trap exit TERM; {} & wait'.format(cmd)
 

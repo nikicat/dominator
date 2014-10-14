@@ -343,10 +343,30 @@ class SourceImage(Image):
         self.workdir = workdir
         self.volumes = volumes or {}
         self.ports = ports or {}
-        self.files = files or {}
+        self.files = {}
         self.env = env or {}
         self.user = user
         self.entrypoint = entrypoint
+        for path, data in (files or {}).items():
+            tfile = tarfile.TarFile(fileobj=io.BytesIO(), mode='w')
+            if hasattr(data, 'fileno'):
+                tinfo = tfile.gettarinfo(arcname=path, fileobj=data)
+                orig = data
+                data = data.read()
+                orig.seek(0)
+            else:
+                tinfo = tarfile.TarInfo(path)
+                if isinstance(data, str):
+                    tinfo.size = len(data.encode())
+                elif isinstance(data, bytes):
+                    tinfo.size = len(data)
+                else:
+                    assert False, "data should be str, bytes or file-like object, not {}".format(type(data))
+            if isinstance(data, bytes):
+                with contextlib.suppress(UnicodeDecodeError):
+                    data = data.decode()
+            self.files[path] = (tinfo.get_info(), data)
+        # These lines should be at the end of __init__
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
 
@@ -360,23 +380,7 @@ class SourceImage(Image):
         """Used to calculate unique identifying tag for image
            If tag is not found in registry, than image must be rebuilt
         """
-        def serialize_bytes(data):
-            return base64.b64encode(data, altchars=b'+-').decode()
-
-        dump = json.dumps({
-            'repository': self.repository,
-            'namespace': self.namespace,
-            'parent': self.parent.gethash(),
-            'scripts': self.scripts,
-            'command': self.command,
-            'workdir': self.workdir,
-            'env': self.env,
-            'volumes': self.volumes,
-            'ports': self.ports,
-            'files': self.files,
-            'user': self.user,
-            'entryporint': self.entrypoint,
-        }, sort_keys=True, default=serialize_bytes)
+        dump = yaml.dump(self)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'+-').decode()
 
@@ -407,16 +411,18 @@ class SourceImage(Image):
                 dockerfile.write('CMD {}\n'.format(convert_command(self.command)).encode())
             if self.entrypoint is not None:
                 dockerfile.write('ENTRYPOINT {}\n'.format(convert_command(self.entrypoint)).encode())
-            for path, data in self.files.items():
+            for path, (tinfo, data) in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
-                tinfo = tarfile.TarInfo(path)
                 if isinstance(data, str):
                     data = data.encode()
                 if isinstance(data, bytes):
                     data = io.BytesIO(data)
-                tinfo.size = len(data.getvalue())
-                data.seek(0)
-                tfile.addfile(tinfo, data)
+                else:
+                    assert False, "could not add {} as file".format(type(data))
+                tarinfo = tarfile.TarInfo()
+                for k, v in tinfo.items():
+                    setattr(tarinfo, k, v)
+                tfile.addfile(tarinfo, data)
             dfinfo = tarfile.TarInfo('Dockerfile')
             dfinfo.size = len(dockerfile.getvalue())
             dockerfile.seek(0)

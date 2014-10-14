@@ -151,8 +151,8 @@ def generate(ctx, distribution, entrypoint, ships, arguments, cache, clear_cache
         kwargs = {}
         for arg in arguments:
             if '=' in arg:
-                name, value = arg.split('=')
-                kwargs[name] = parse_value(value)
+                key, value = arg.split('=')
+                kwargs[key] = parse_value(value)
             else:
                 args.append(parse_value(arg))
         shipment = func(ships, *args, **kwargs)

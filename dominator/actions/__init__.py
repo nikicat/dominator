@@ -63,13 +63,18 @@ def cli(ctx, config, loglevel, settings, vcr, override):
     default_logging_config = yaml.load(utils.resource_string('../utils/logging.yaml'))['logging']
     logging.config.dictConfig(utils.settings.get('logging', default_logging_config))
     logging.disable(level=loglevel-1)
+    utils.setcontext(logger=logging.getLogger('dominator'))
 
     load_plugins()
 
     if config is not None:
-        shipment = yaml.load(config)
-        shipment.make_backrefs()
-        ctx.obj = shipment
+        try:
+            shipment = yaml.load(config)
+            shipment.make_backrefs()
+            ctx.obj = shipment
+        except Exception:
+            getlogger().exception("failed to load shipment")
+            ctx.fail("Failed to load shipment")
 
     if vcr:
         import vcr as vcrpy
@@ -159,7 +164,7 @@ def generate(ctx, distribution, entrypoint, ships, arguments, cache, clear_cache
         assert shipment is not None, "shipment should not be empty"
     except Exception as e:
         getlogger().exception('failed to generate obedient')
-        ctx.exit("Failed to generate obedient: {!r}".format(e))
+        ctx.fail("Failed to generate obedient: {!r}".format(e))
 
     shipment.version = meta.version
     shipment.author = meta.author

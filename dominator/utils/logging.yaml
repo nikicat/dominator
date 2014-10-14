@@ -2,6 +2,9 @@ logging:
     version: 1
     disable_existing_loggers: false
     loggers:
+        root:
+            level: DEBUG
+            handlers: [dominator]
         requests.packages.urllib3.connectionpool:
             level: DEBUG
         urllib3.connectionpool:

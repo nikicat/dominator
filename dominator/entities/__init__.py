@@ -993,6 +993,30 @@ class Shipment:
         self.ships = ships or {}
         self.make_backrefs()
 
+    @staticmethod
+    def load(filename):
+        utils.getlogger().debug("loading shipment", shipment_filename=filename)
+        with open(filename, 'r') as file:
+            shipment = yaml.load(file)
+            shipment.filename = filename
+        if shipment.dominator_version != utils.getversion():
+            utils.getlogger().warning("current dominator version {} do not match shipment version {}".format(
+                utils.getversion(), shipment.dominator_version))
+        return shipment
+
+    def save(self):
+        utils.getlogger().debug("saving shipment", shipment_filename=self.filename)
+        self.dominator_version = utils.getversion()
+
+        import tzlocal
+        self.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
+
+        self.make_backrefs()
+
+        dump = yaml.dump(self, default_flow_style=False)
+        with open(self.filename, 'w+') as file:
+            file.write(dump)
+
     @property
     def containers(self):
         for ship in self.ships.values():

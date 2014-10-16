@@ -987,7 +987,7 @@ def make_backrefs(obj, refname, backrefname):
 
 
 class Shipment:
-    def __init__(self, name=None, ships=None, tasks=None):
+    def __init__(self, name='unnamed', ships=None, tasks=None):
         self.name = name
         self.tasks = tasks or {}
         self.ships = ships or {}

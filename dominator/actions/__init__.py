@@ -78,9 +78,9 @@ def cli(ctx, config, loglevel, settings, vcr, override):
 
     if vcr:
         import vcr as vcrpy
-        cassete = vcrpy.use_cassette(vcr)
-        cassete.__enter__()
-        ctx.call_on_close(lambda: cassete.__exit__(None, None, None))
+        cassette = vcrpy.use_cassette(vcr)
+        cassette.__enter__()
+        ctx.call_on_close(lambda: cassette.__exit__(None, None, None))
 
 
 @cli.group(chain=True)

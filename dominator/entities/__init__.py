@@ -993,6 +993,11 @@ class Shipment:
         self.ships = ships or {}
         self.make_backrefs()
 
+    def unload_ships(self):
+        """Unload all containers from all ships."""
+        for ship in self.ships.values():
+            ship.containers.clear()
+
     @staticmethod
     def load(filename):
         utils.getlogger().debug("loading shipment", shipment_filename=filename)

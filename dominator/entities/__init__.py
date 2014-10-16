@@ -987,11 +987,10 @@ def make_backrefs(obj, refname, backrefname):
 
 
 class Shipment:
-    def __init__(self, name, containers, tasks=None):
+    def __init__(self, name=None, ships=None, tasks=None):
         self.name = name
-        self.tasks = {task.name: task for task in (tasks or [])}
-        ships = {container.ship for container in containers}.union({task.ship for task in self.tasks.values()})
-        self.ships = {ship.name: ship for ship in ships if ship is not None}
+        self.tasks = tasks or {}
+        self.ships = ships or {}
         self.make_backrefs()
 
     @property

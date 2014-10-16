@@ -66,7 +66,7 @@ class BaseShip:
         self.containers[container.name] = container
         self.make_backrefs()
 
-    def expose_all(self, port_range):
+    def expose_ports(self, port_range):
         assert port_range.stop < 65536, "Port range end exceeds 65535"
         ports = list(port_range)
         for _, container in sorted(self.containers.items()):
@@ -1040,6 +1040,11 @@ class Shipment:
                         break
 
         return sorted(list(set(iterate_images())), key=functools.cmp_to_key(compare_source_images))
+
+    def expose_ports(self, portrange):
+        """Expose all ports on all ships."""
+        for ship in self.ships.values():
+            ship.expose_ports(portrange)
 
 
 class LogFile(BaseFile):

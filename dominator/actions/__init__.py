@@ -2,7 +2,6 @@ import logging
 import logging.config
 import os
 import pkg_resources
-import datetime
 import fnmatch
 import re
 import functools
@@ -45,17 +44,18 @@ def load_plugins():
 
 
 @click.group()
-@click.option('-c', '--config', type=click.File('r'), help="file path to load config from")
-@click.option('-s', '--settings', type=click.File('r'), help="file path to load settings from")
+@click.option('-s', '--shipment', type=click.Path(), default='./shipment.yaml', show_default=True,
+              help="file to load shipment from/save shipment to")
+@click.option('-c', '--config', type=click.File('r'), help="file path to load settings from")
 @click.option('-l', '--loglevel', callback=validate_loglevel, default='warn')
 @click.option('--vcr', type=click.Path(), help="mock all http requests with vcrpy and save cassete")
 @click.option('-o', '--override', multiple=True, help="overide setting from config")
 @click.version_option()
 @click.pass_context
-def cli(ctx, config, loglevel, settings, vcr, override):
+def cli(ctx, shipment, loglevel, config, vcr, override):
     logging.basicConfig(level=loglevel)
-    logging.debug("dominator {} started".format(getversion()))
-    utils.settings.load(settings)
+    logging.debug("dominator {} started".format(utils.getversion()))
+    utils.settings.load(config)
     for option in override:
         assert re.match('[a-z\.\-]+=.*', option), "Options should have format <key=value>, not <{}>".format(option)
         key, value = option.split('=')
@@ -67,14 +67,16 @@ def cli(ctx, config, loglevel, settings, vcr, override):
 
     load_plugins()
 
-    if config is not None:
+    filename = shipment
+    if os.path.exists(filename):
         try:
-            shipment = yaml.load(config)
-            shipment.make_backrefs()
-            ctx.obj = shipment
+            ctx.obj = Shipment.load(filename)
         except Exception:
             getlogger().exception("failed to load shipment")
             ctx.fail("Failed to load shipment")
+    else:
+        ctx.obj = Shipment()
+        ctx.obj.filename = filename
 
     if vcr:
         import vcr as vcrpy
@@ -83,30 +85,57 @@ def cli(ctx, config, loglevel, settings, vcr, override):
         ctx.call_on_close(lambda: cassette.__exit__(None, None, None))
 
 
-@cli.group(chain=True)
-def shipment():
-    """Shipment management commands."""
-    utils.setcontext(logger=logging.getLogger('dominator.shipment'))
-
-
-def getobedients():
-    return [pkgname for pkgname in pkg_resources.Environment() if pkgname.startswith('obedient.')]
-
-
-@shipment.command()
+@cli.group()
 @click.pass_context
-@click.argument('distribution', required=False, type=click.Choice(getobedients()), metavar='<distribution>')
-@click.argument('entrypoint', required=False, metavar='<entrypoint>')
-@click.argument('ships', required=False, type=click.File('r'), metavar='<ships>')
-@click.argument('arguments', nargs=-1, metavar='<arguments>')
 @click.option('--name', help="override shipment name")
-def generate(ctx, distribution, entrypoint, ships, arguments, name):
+def edit(ctx, name):
+    shipment = ctx.obj
+    if name:
+        shipment.name = name
+    wrap_subcommands(edit, save_shipment)
+
+
+def wrap_subcommands(group, wrapper):
+    for command in group.commands.values():
+        if isinstance(command, click.Group):
+            wrap_subcommands(command, wrapper)
+        else:
+            command.callback = wrapper(command.callback)
+
+
+def save_shipment(func):
+    @functools.wraps(func)
+    def wrapper(ctx, *args, **kwargs):
+        func(ctx, *args, **kwargs)
+        shipment = ctx.obj
+        try:
+            shipment.save()
+        except Exception as e:
+            getlogger().exception("failed to save shipment")
+            ctx.fail("Failed to save shipment: {!r}".format(e))
+    return wrapper
+
+
+@edit.command()
+@click.pass_obj
+def unload(shipment):
+    for ship in shipment.ships.values():
+        ship.containers = {}
+
+
+@edit.command()
+@click.pass_context
+@click.argument('distribution', required=False, metavar='<distribution>')
+@click.argument('entrypoint', required=False, metavar='<entrypoint>')
+@click.argument('arguments', nargs=-1, metavar='<arguments>')
+def generate(ctx, distribution, entrypoint, arguments):
     """Generates yaml config file for shipment."""
     if distribution is None:
-        click.echo('\n'.join(getobedients()))
+        click.echo('\n'.join([pkgname for pkgname in pkg_resources.Environment() if pkgname.startswith('obedient.')]))
         ctx.exit()
 
     dist = pkg_resources.get_distribution(distribution)
+    assert dist is not None, "Could not load distribution for {}".format(distribution)
 
     if entrypoint is None:
         # Show all "obedient" entrypoints for package
@@ -114,26 +143,31 @@ def generate(ctx, distribution, entrypoint, ships, arguments, name):
             click.echo(entrypoint)
         ctx.exit()
 
-    if ships is None:
-        getlogger().info("ships are not provided, using single LocalShip")
-        ships = [LocalShip()]
-    else:
-        ships = yaml.load(ships)
-
     getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
-
-    assert dist is not None, "Could not load distribution for {}".format(distribution)
 
     if entrypoint is None:
         entrypoint = list(dist.get_entry_map('obedient').keys())[0]
-        getlogger().debug("autodetected entrypoint is %s", entrypoint)
+        getlogger().info("autodetected entrypoint is %s", entrypoint)
 
     func = dist.load_entry_point('obedient', entrypoint)
     assert func is not None, "Could not load entrypoint {} from distribution {}".format(entrypoint, distribution)
+    execute_on_shipment(ctx, func, arguments)
 
-    import pkginfo
-    meta = pkginfo.get_metadata(distribution)
 
+@edit.command()
+@click.pass_context
+@click.argument('filename', type=click.Path(), metavar='<script.py>')
+@click.argument('function', metavar='<function>')
+@click.argument('arguments', nargs=-1, metavar='<arguments>')
+def execute(ctx, filename, function, arguments):
+    assert filename.endswith('.py'), "Filename should be .py file"
+    sys.path.append(os.path.dirname(filename))
+    module = importlib.import_module(os.path.basename(filename[:-3]))
+    function = getattr(module, function)
+    execute_on_shipment(ctx, function, arguments)
+
+
+def execute_on_shipment(ctx, func, arguments):
     try:
 
         def parse_value(value):
@@ -151,26 +185,12 @@ def generate(ctx, distribution, entrypoint, ships, arguments, name):
                 kwargs[key] = parse_value(value)
             else:
                 args.append(parse_value(arg))
-        shipment = func(ships, *args, **kwargs)
+        shipment = ctx.obj
+        func(shipment, *args, **kwargs)
         assert shipment is not None, "shipment should not be empty"
     except Exception as e:
         getlogger().exception('failed to generate obedient')
         ctx.fail("Failed to generate obedient: {!r}".format(e))
-
-    shipment.version = meta.version
-    shipment.author = meta.author
-    shipment.author_email = meta.author_email
-    shipment.home_page = meta.home_page
-    shipment.dominator_version = getversion()
-    shipment.distribution = distribution
-    shipment.entrypoint = entrypoint
-    shipment.args = args
-    shipment.kwargs = kwargs
-    if name:
-        shipment.name = name
-
-    import tzlocal
-    shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
 
     getlogger().debug("retrieving image ids")
     for image in shipment.images:
@@ -181,13 +201,11 @@ def generate(ctx, distribution, entrypoint, ships, arguments, name):
                     if image.getid() is None:
                         raise RuntimeError("Could not find id for image {}".format(image))
 
-    try:
-        output = yaml.dump(shipment, default_flow_style=False)
-    except Exception as e:
-        getlogger().exception("failed to serialize shipment")
-        ctx.fail("Failed to serialize shipment: {!r}".format(e))
 
-    click.echo_via_pager(output)
+@cli.group(chain=True)
+def shipment():
+    """Shipment management commands."""
+    utils.setcontext(logger=logging.getLogger('dominator.shipment'))
 
 
 @shipment.command()
@@ -687,16 +705,18 @@ def create_config():
             dst.write(src.read())
 
 
-@cli.group()
-def discover():
+@edit.group()
+@click.pass_context
+def discover(ctx):
     """Commands to discover ships."""
     utils.setcontext(logger=logging.getLogger('dominator.discover'))
 
 
 @discover.command('local')
-def discover_local():
+@click.pass_obj
+def discover_local(shipment):
     """Produce config with single local ship."""
-    click.echo(yaml.dump([LocalShip()]))
+    shipment.ships = {'local': LocalShip()}
 
 
 @discover.command('ec2')
@@ -713,10 +733,3 @@ def filterbyname(objects, pattern, regex):
     for obj in objects:
         if re.match(pattern, obj.fullname):
             yield obj
-
-
-def getversion():
-    try:
-        return pkg_resources.get_distribution('dominator').version
-    except pkg_resources.DistributionNotFound:
-        return '(local)'

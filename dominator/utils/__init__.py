@@ -353,6 +353,13 @@ def stoppable(cmd):
     return 'trap exit TERM; {} & wait'.format(cmd)
 
 
+def getversion():
+    try:
+        return pkg_resources.get_distribution('dominator').version
+    except pkg_resources.DistributionNotFound:
+        return '(local)'
+
+
 NONEXISTENT_KEY = object()
 
 

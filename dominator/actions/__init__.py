@@ -99,10 +99,8 @@ def getobedients():
 @click.argument('entrypoint', required=False, metavar='<entrypoint>')
 @click.argument('ships', required=False, type=click.File('r'), metavar='<ships>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
-@click.option('--cache/--no-cache', default=True)
-@click.option('--clear-cache', is_flag=True, default=False, help="clear requests_cache before run (requires --cache)")
 @click.option('--name', help="override shipment name")
-def generate(ctx, distribution, entrypoint, ships, arguments, cache, clear_cache, name):
+def generate(ctx, distribution, entrypoint, ships, arguments, name):
     """Generates yaml config file for shipment."""
     if distribution is None:
         click.echo('\n'.join(getobedients()))
@@ -137,13 +135,6 @@ def generate(ctx, distribution, entrypoint, ships, arguments, cache, clear_cache
     meta = pkginfo.get_metadata(distribution)
 
     try:
-        if cache:
-            import requests_cache
-            requests_cache.install_cache()
-            if clear_cache:
-                requests_cache.clear()
-        else:
-            getlogger().info('loading containers without cache')
 
         def parse_value(value):
             if value.isdigit():

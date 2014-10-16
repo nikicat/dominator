@@ -1020,6 +1020,7 @@ class Shipment:
 
     @property
     def images(self):
+        """Iterates over SourceImages in build order (parent then child etc.)."""
         def compare_source_images(x, y):
             if isinstance(x, SourceImage):
                 if x.parent is y:

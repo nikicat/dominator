@@ -59,11 +59,11 @@ def shipment(ship):
         },
     )
     ship.place(container)
-    ship.expose_all(range(10000, 10010))
+    ship.expose_ports(range(10000, 10010))
 
     shipment = entities.Shipment(
         name='testshipment',
-        containers=[container],
+        ships={ship.name: ship},
     )
     shipment.version = '1.2.3-alpha-123abcdef'
     shipment.author = 'John Doe'

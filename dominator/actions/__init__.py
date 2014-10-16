@@ -323,11 +323,15 @@ def stop(cont):
 
 @container.command()
 @click.pass_obj
+@click.option('-f', '--force', is_flag=True, default=False, help="Kill and remove container")
 @foreach('container')
-def remove(cont):
+def remove(cont, force):
     """Remove container(s) on ship(s)."""
     cont.check()
-    cont.remove()
+    if cont.id is None:
+        utils.getlogger().info("skipping container as it doesn't exist")
+    else:
+        cont.remove(force)
 
 
 @container.command('list')

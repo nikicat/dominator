@@ -157,7 +157,7 @@ def generate(ctx, distribution, entrypoint, arguments):
 @edit.command()
 @click.pass_context
 @click.argument('filename', type=click.Path(), metavar='<script.py>')
-@click.argument('function', metavar='<function>')
+@click.argument('function', default='build', metavar='<function>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
 def execute(ctx, filename, function, arguments):
     assert filename.endswith('.py'), "Filename should be .py file"

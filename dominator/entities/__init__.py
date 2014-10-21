@@ -503,6 +503,8 @@ class Container:
                 cinfo = matched[0]
 
         if cinfo:
+            # Custom cinfo could provide only one of (id, state), so
+            # we should preserve original value
             self.id = cinfo.get('Id', self.id)
             self.status = cinfo.get('Status', self.status)
         else:

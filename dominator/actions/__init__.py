@@ -620,7 +620,7 @@ def ship_container(ctx, pattern, regex):
         pattern = fnmatch.translate(pattern)
     cinfos = []
     for ship in ships:
-        for cinfo in ship.docker.containers():
+        for cinfo in ship.docker.containers(all=True):
             if re.match(pattern, cinfo['Names'][0][1:]):
                 cinfos.append(cinfo)
                 # Add Ship object ref to cinfo to use it in subcommands

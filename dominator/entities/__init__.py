@@ -382,7 +382,7 @@ class SourceImage(Image):
         """
         dump = yaml.dump(self)
         digest = hashlib.sha256(dump.encode()).digest()
-        return base64.b64encode(digest, altchars=b'+-').decode()
+        return base64.b64encode(digest, altchars=b'_-').decode().replace('=', '.')
 
     def gettarfile(self):
         f = tempfile.NamedTemporaryFile()

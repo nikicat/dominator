@@ -65,6 +65,8 @@ def cli(ctx, shipment, loglevel, config, vcr, override):
     logging.disable(level=loglevel-1)
     utils.setcontext(logger=logging.getLogger('dominator'))
 
+    sys.excepthook = lambda *exc_info: getlogger().error("Unhandled exception occurred", exc_info=exc_info)
+
     load_plugins()
 
     filename = shipment

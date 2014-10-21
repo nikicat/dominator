@@ -460,7 +460,8 @@ class Container:
         return '<Container {c.fullname} [{c.id!s:7.7}]>'.format(c=self)
 
     def __getstate__(self):
-        state = vars(self)
+        self.logger.debug("serializing state")
+        state = vars(self).copy()
         # id and status are temporary fields and should not be saved
         state['id'] = None
         state['status'] = None

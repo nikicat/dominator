@@ -404,8 +404,7 @@ class SourceImage(Image):
 
             def convert_command(command):
                 command = shlex.split(command) if isinstance(command, str) else command
-                command = ','.join(['"{}"'.format(param) for param in command])
-                return '[{}]\n'.format(command)
+                return json.dumps(command)
 
             if self.command is not None:
                 dockerfile.write('CMD {}\n'.format(convert_command(self.command)).encode())

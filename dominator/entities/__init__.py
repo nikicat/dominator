@@ -395,9 +395,9 @@ class SourceImage(Image):
                 dockerfile.write('WORKDIR {}\n'.format(self.workdir).encode())
             for script in self.scripts:
                 dockerfile.write('RUN {}\n'.format(script).encode())
-            for volume in self.volumes.values():
+            for _, volume in sorted(self.volumes.items()):
                 dockerfile.write('VOLUME {}\n'.format(volume).encode())
-            for port in self.ports.values():
+            for _, port in sorted(self.ports.items()):
                 dockerfile.write('EXPOSE {}\n'.format(port).encode())
             if self.user:
                 dockerfile.write('USER {}\n'.format(self.user).encode())
@@ -574,10 +574,11 @@ class Container:
         self.check({'Id': None, 'Status': 'not found'})
 
     def create(self):
+        """Try to create container. If image is not found, then try to pull or even push it first."""
         with utils.addcontext(image=self.image):
             self.logger.debug('preparing to create container')
 
-            for volume in self.volumes.values():
+            for _, volume in sorted(self.volumes.items()):
                 volume.render(self)
 
             try:
@@ -611,7 +612,7 @@ class Container:
             mem_limit=self.memory,
             environment=self.env,
             name=self.dockername,
-            ports=[(door.internalport, door.protocol) for door in self.doors.values()],
+            ports=[(door.internalport, door.protocol) for _, door in sorted(self.doors.items())],
             stdin_open=True,
             detach=False,
             user=self.user,
@@ -753,7 +754,7 @@ class Door:
 
     @property
     def hostport(self):
-        return '{host}:{port}'.format(host=self.host, port=self.exposedport)
+        return '{host}:{port}'.format(host=self.host, port=self.port)
 
     def expose(self, port):
         """Make door export (e.g. map port outside the container)."""
@@ -864,6 +865,7 @@ class ConfigVolume(Volume):
         with tempfile.TemporaryDirectory() as tempdir:
             self.container.ship.download(self.fullpath, tempdir)
             for name, file in self.files.items():
+                self.logger.debug("comparing file", file=file)
                 try:
                     actual = file.load(os.path.join(tempdir, name))
                     expected = file.data
@@ -1026,23 +1028,23 @@ class Shipment:
 
     @property
     def containers(self):
-        for ship in self.ships.values():
-            yield from ship.containers.values()
+        for _, ship in sorted(self.ships.items()):
+            yield from [cont for _, cont in sorted(ship.containers.items())]
 
     @property
     def volumes(self):
         for container in self.containers:
-            yield from container.volumes.values()
+            yield from [volume for _, volume in sorted(container.volumes.items())]
 
     @property
     def files(self):
         for volume in self.volumes:
-            yield from getattr(volume, 'files', {}).values()
+            yield from [file for _, file in sorted(getattr(volume, 'files', {}).items())]
 
     @property
     def doors(self):
         for container in self.containers:
-            yield from container.doors.values()
+            yield from [door for _, door in sorted(container.doors.items())]
 
     def make_backrefs(self):
         make_backrefs(self, 'ships', 'shipment')
@@ -1074,7 +1076,7 @@ class Shipment:
 
     def expose_ports(self, portrange):
         """Expose all ports on all ships."""
-        for ship in self.ships.values():
+        for _, ship in sorted(self.ships.items()):
             ship.expose_ports(portrange)
 
 

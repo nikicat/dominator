@@ -453,18 +453,17 @@ def task(ctx, pattern, regex):
 
 @task.command('exec')
 @click.pass_obj
-@click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
 @click.argument('command', required=False)
 @foreach('task')
-def task_exec(task, keep, command):
-    """Execute task"""
+def task_exec(task, command):
+    """Execute task. <command> could be used to override default command."""
     if command is not None:
         task.command = command
     if task.ship is None:
         ship = LocalShip()
         ship.place(task)
         ship.shipment = task.shipment
-    common_exec(task, keep)
+    task.exec_with_tty()
 
 
 @task.command('list')

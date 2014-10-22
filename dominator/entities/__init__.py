@@ -540,6 +540,25 @@ class Container:
             except:
                 self.logger.debug('could not stop container, ignoring')
 
+    def exec_with_tty(self):
+        self.logger.debug("executing with tty")
+        try:
+            try:
+                self.create()
+            except docker.errors.APIError as e:
+                if e.response.status_code != 409:
+                    raise
+                self.check()
+                self.remove(force=True)
+                self.create()
+
+            self.ship.spawn('docker start -ai {}'.format(self.id))
+        finally:
+            try:
+                self.stop()
+            except:
+                self.logger.debug('could not stop container, ignoring')
+
     def logs(self, follow):
         self.logger.debug('getting logs from container', follow=follow)
         try:
@@ -614,6 +633,7 @@ class Container:
             name=self.dockername,
             ports=[(door.internalport, door.protocol) for _, door in sorted(self.doors.items())],
             stdin_open=True,
+            tty=True,
             detach=False,
             user=self.user,
             entrypoint=self.entrypoint,

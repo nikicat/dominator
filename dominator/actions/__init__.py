@@ -88,16 +88,14 @@ def cli(ctx, shipment, loglevel, config, vcr, override):
 
 
 @cli.group()
-@click.pass_context
-@click.option('--name', help="override shipment name")
-def edit(ctx, name):
-    shipment = ctx.obj
-    if name:
-        shipment.name = name
+def edit():
     wrap_subcommands(edit, save_shipment)
 
 
 def wrap_subcommands(group, wrapper):
+    """This function wraps each Click group's subcommand
+    using decorator.
+    """
     for command in group.commands.values():
         if isinstance(command, click.Group):
             wrap_subcommands(command, wrapper)

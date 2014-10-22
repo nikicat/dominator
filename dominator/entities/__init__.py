@@ -520,9 +520,11 @@ class Container:
             except docker.errors.APIError as e:
                 if e.response.status_code != 409:
                     raise
-                self.check()
-                self.remove(force=True)
-                self.create()
+                else:
+                    # Container already exists
+                    self.check()
+                    self.remove(force=True)
+                    self.create()
 
             self.logger.debug('attaching to stdout/stderr')
             if not os.isatty(sys.stdin.fileno()):
@@ -548,9 +550,11 @@ class Container:
             except docker.errors.APIError as e:
                 if e.response.status_code != 409:
                     raise
-                self.check()
-                self.remove(force=True)
-                self.create()
+                else:
+                    # Container already exists
+                    self.check()
+                    self.remove(force=True)
+                    self.create()
 
             self.ship.spawn('docker start -ai {}'.format(self.id))
         finally:

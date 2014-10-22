@@ -127,8 +127,8 @@ def unload(shipment):
 
 @edit.command()
 @click.pass_context
-@click.argument('distribution', required=False, metavar='<distribution>')
-@click.argument('entrypoint', required=False, metavar='<entrypoint>')
+@click.argument('distribution', metavar='<distribution>')
+@click.argument('entrypoint', metavar='<entrypoint>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
 def generate(ctx, distribution, entrypoint, arguments):
     """Generates yaml config file for shipment."""
@@ -246,7 +246,7 @@ def makedeb(shipment, packagename, distribution, urgency, target):
 
 @shipment.command()
 @click.pass_obj
-@click.argument('filename', required=False, type=click.Path())
+@click.argument('filename', type=click.Path())
 def objgraph(shipment, filename):
     """Dump object graph using objgraph."""
     import objgraph
@@ -309,7 +309,7 @@ def restart(cont):
 @container.command('exec')
 @click.pass_obj
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
-@click.argument('command', required=False)
+@click.argument('command')
 @foreach('container')
 def container_exec(container, command, keep):
     """Start, attach and wait a container."""
@@ -453,7 +453,7 @@ def task(ctx, pattern, regex):
 
 @task.command('exec')
 @click.pass_obj
-@click.argument('command', required=False)
+@click.argument('command')
 @foreach('task')
 def task_exec(task, command):
     """Execute task. <command> could be used to override default command."""

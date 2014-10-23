@@ -1053,22 +1053,22 @@ class Shipment:
     @property
     def containers(self):
         for _, ship in sorted(self.ships.items()):
-            yield from [cont for _, cont in sorted(ship.containers.items())]
+            yield from (cont for _, cont in sorted(ship.containers.items()))
 
     @property
     def volumes(self):
         for container in self.containers:
-            yield from [volume for _, volume in sorted(container.volumes.items())]
+            yield from (volume for _, volume in sorted(container.volumes.items()))
 
     @property
     def files(self):
         for volume in self.volumes:
-            yield from [file for _, file in sorted(getattr(volume, 'files', {}).items())]
+            yield from (file for _, file in sorted(getattr(volume, 'files', {}).items()))
 
     @property
     def doors(self):
         for container in self.containers:
-            yield from [door for _, door in sorted(container.doors.items())]
+            yield from (door for _, door in sorted(container.doors.items()))
 
     def make_backrefs(self):
         make_backrefs(self, 'ships', 'shipment')

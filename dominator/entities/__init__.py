@@ -66,7 +66,7 @@ class BaseShip:
         self.containers[container.name] = container
         self.make_backrefs()
 
-    def expose_all(self, port_range):
+    def expose_ports(self, port_range):
         assert port_range.stop < 65536, "Port range end exceeds 65535"
         ports = list(port_range)
         for _, container in sorted(self.containers.items()):
@@ -168,7 +168,7 @@ class LocalShip(BaseShip):
 
     @property
     def fqdn(self):
-        return utils.settings.get('localship-fqdn', 'localhost')
+        return utils.settings.get('localship.fqdn', 'localhost')
 
     @property
     def islocal(self):
@@ -177,8 +177,11 @@ class LocalShip(BaseShip):
     @property
     @utils.cached
     def memory(self):
-        import psutil
-        return psutil.virtual_memory().total
+        try:
+            return utils.settings.get('localship.memory')
+        except utils.NoSuchSetting:
+            import psutil
+            return psutil.virtual_memory().total
 
     @property
     @utils.cached
@@ -330,6 +333,29 @@ class Image:
         return '{}:{}[{}]'.format(self.getfullrepository(), self.tag, self.getid())
 
 
+def convert_fileobj(path, fileobj_or_data):
+    """Converts <fileobj-or-data>} to a tuple (tarinfo, data)"""
+    tfile = tarfile.TarFile(fileobj=io.BytesIO(), mode='w')
+    if hasattr(fileobj_or_data, 'fileno'):
+        fileobj = fileobj_or_data
+        tinfo = tfile.gettarinfo(arcname=path, fileobj=fileobj)
+        data = fileobj.read()
+        fileobj.seek(0)
+    else:
+        data = fileobj_or_data
+        tinfo = tarfile.TarInfo(path)
+        if isinstance(data, str):
+            tinfo.size = len(data.encode())
+        elif isinstance(data, bytes):
+            tinfo.size = len(data)
+        else:
+            raise ValueError("Data should be str, bytes or file-like object, not {}".format(type(data)))
+    if isinstance(data, bytes):
+        with contextlib.suppress(UnicodeDecodeError):
+            data = data.decode()
+    return tinfo.get_info(), data
+
+
 class SourceImage(Image):
     def __init__(self, name: str, parent: Image, scripts: list=None, command: str=None, workdir: str=None,
                  env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None, user: str='',
@@ -340,10 +366,13 @@ class SourceImage(Image):
         self.workdir = workdir
         self.volumes = volumes or {}
         self.ports = ports or {}
-        self.files = files or {}
+        self.files = {}
         self.env = env or {}
         self.user = user
         self.entrypoint = entrypoint
+        self.files = {path: convert_fileobj(path, fileobj_or_data) for path, fileobj_or_data in (files or {}).items()}
+
+        # These lines should be at the end of __init__
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()
 
@@ -357,25 +386,9 @@ class SourceImage(Image):
         """Used to calculate unique identifying tag for image
            If tag is not found in registry, than image must be rebuilt
         """
-        def serialize_bytes(data):
-            return base64.b64encode(data, altchars=b'+-').decode()
-
-        dump = json.dumps({
-            'repository': self.repository,
-            'namespace': self.namespace,
-            'parent': self.parent.gethash(),
-            'scripts': self.scripts,
-            'command': self.command,
-            'workdir': self.workdir,
-            'env': self.env,
-            'volumes': self.volumes,
-            'ports': self.ports,
-            'files': self.files,
-            'user': self.user,
-            'entryporint': self.entrypoint,
-        }, sort_keys=True, default=serialize_bytes)
+        dump = yaml.dump(self)
         digest = hashlib.sha256(dump.encode()).digest()
-        return base64.b64encode(digest, altchars=b'+-').decode()
+        return base64.b64encode(digest, altchars=b'_-').decode().replace('=', '.')
 
     def gettarfile(self):
         f = tempfile.NamedTemporaryFile()
@@ -388,32 +401,33 @@ class SourceImage(Image):
                 dockerfile.write('WORKDIR {}\n'.format(self.workdir).encode())
             for script in self.scripts:
                 dockerfile.write('RUN {}\n'.format(script).encode())
-            for volume in self.volumes.values():
+            for _, volume in sorted(self.volumes.items()):
                 dockerfile.write('VOLUME {}\n'.format(volume).encode())
-            for port in self.ports.values():
+            for _, port in sorted(self.ports.items()):
                 dockerfile.write('EXPOSE {}\n'.format(port).encode())
             if self.user:
                 dockerfile.write('USER {}\n'.format(self.user).encode())
 
             def convert_command(command):
                 command = shlex.split(command) if isinstance(command, str) else command
-                command = ','.join(['"{}"'.format(param) for param in command])
-                return '[{}]\n'.format(command)
+                return json.dumps(command)
 
             if self.command is not None:
                 dockerfile.write('CMD {}\n'.format(convert_command(self.command)).encode())
             if self.entrypoint is not None:
                 dockerfile.write('ENTRYPOINT {}\n'.format(convert_command(self.entrypoint)).encode())
-            for path, data in self.files.items():
+            for path, (tinfo, data) in self.files.items():
                 dockerfile.write('ADD {} {}\n'.format(path, path).encode())
-                tinfo = tarfile.TarInfo(path)
                 if isinstance(data, str):
                     data = data.encode()
                 if isinstance(data, bytes):
                     data = io.BytesIO(data)
-                tinfo.size = len(data.getvalue())
-                data.seek(0)
-                tfile.addfile(tinfo, data)
+                else:
+                    raise RuntimeError("Could not add {} as file".format(type(data)))
+                tarinfo = tarfile.TarInfo()
+                for k, v in tinfo.items():
+                    setattr(tarinfo, k, v)
+                tfile.addfile(tarinfo, data)
             dfinfo = tarfile.TarInfo('Dockerfile')
             dfinfo.size = len(dockerfile.getvalue())
             dockerfile.seek(0)
@@ -452,7 +466,8 @@ class Container:
         return '<Container {c.fullname} [{c.id!s:7.7}]>'.format(c=self)
 
     def __getstate__(self):
-        state = vars(self)
+        self.logger.debug("serializing state")
+        state = vars(self).copy()
         # id and status are temporary fields and should not be saved
         state['id'] = None
         state['status'] = None
@@ -494,6 +509,8 @@ class Container:
                 cinfo = matched[0]
 
         if cinfo:
+            # Custom cinfo could provide only one of (id, state), so
+            # we should preserve original value
             self.id = cinfo.get('Id', self.id)
             self.status = cinfo.get('Status', self.status)
         else:
@@ -504,15 +521,16 @@ class Container:
     def execute(self):
         self.logger.debug('executing')
         try:
-            try:
-                self.create()
-            except docker.errors.APIError as e:
-                if e.response.status_code != 409:
-                    raise
+            self.create()
+        except docker.errors.APIError as e:
+            if e.response.status_code != 409:
+                raise
+            else:
+                # Container already exists
                 self.check()
                 self.remove(force=True)
                 self.create()
-
+        else:
             self.logger.debug('attaching to stdout/stderr')
             if not os.isatty(sys.stdin.fileno()):
                 self.logger.debug('attaching stdin')
@@ -524,10 +542,26 @@ class Container:
             self.start()
             yield logs
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 self.stop()
-            except:
-                self.logger.debug('could not stop container, ignoring')
+
+    def exec_with_tty(self):
+        self.logger.debug("executing with tty")
+        try:
+            self.create()
+        except docker.errors.APIError as e:
+            if e.response.status_code != 409:
+                raise
+            else:
+                # Container already exists
+                self.check()
+                self.remove(force=True)
+                self.create()
+        else:
+            self.ship.spawn('docker start -ai {}'.format(self.id))
+        finally:
+            with contextlib.suppress(Exception):
+                self.stop()
 
     def logs(self, follow):
         self.logger.debug('getting logs from container', follow=follow)
@@ -563,10 +597,11 @@ class Container:
         self.check({'Id': None, 'Status': 'not found'})
 
     def create(self):
+        """Try to create container. If image is not found, then try to pull or even push it first."""
         with utils.addcontext(image=self.image):
             self.logger.debug('preparing to create container')
 
-            for volume in self.volumes.values():
+            for _, volume in sorted(self.volumes.items()):
                 volume.render(self)
 
             try:
@@ -600,8 +635,9 @@ class Container:
             mem_limit=self.memory,
             environment=self.env,
             name=self.dockername,
-            ports=[(door.internalport, door.protocol) for door in self.doors.values()],
+            ports=[(door.internalport, door.protocol) for _, door in sorted(self.doors.items())],
             stdin_open=True,
+            tty=True,
             detach=False,
             user=self.user,
             entrypoint=self.entrypoint,
@@ -742,7 +778,7 @@ class Door:
 
     @property
     def hostport(self):
-        return '{host}:{port}'.format(host=self.host, port=self.exposedport)
+        return '{host}:{port}'.format(host=self.host, port=self.port)
 
     def expose(self, port):
         """Make door export (e.g. map port outside the container)."""
@@ -853,6 +889,7 @@ class ConfigVolume(Volume):
         with tempfile.TemporaryDirectory() as tempdir:
             self.container.ship.download(self.fullpath, tempdir)
             for name, file in self.files.items():
+                self.logger.debug("comparing file", file=file)
                 try:
                     actual = file.load(os.path.join(tempdir, name))
                     expected = file.data
@@ -977,33 +1014,67 @@ def make_backrefs(obj, refname, backrefname):
             child.make_backrefs()
 
 
+class InvalidShipmentFile(Exception):
+    pass
+
+
 class Shipment:
-    def __init__(self, name, containers, tasks=None):
+    def __init__(self, name='unnamed', ships=None, tasks=None):
         self.name = name
-        self.tasks = {task.name: task for task in (tasks or [])}
-        ships = {container.ship for container in containers}.union({task.ship for task in self.tasks.values()})
-        self.ships = {ship.name: ship for ship in ships if ship is not None}
+        self.tasks = tasks or {}
+        self.ships = ships or {}
         self.make_backrefs()
+
+    def unload_ships(self):
+        """Unload all containers from all ships."""
+        for ship in self.ships.values():
+            ship.containers.clear()
+
+    @staticmethod
+    def load(filename):
+        utils.getlogger().debug("loading shipment", shipment_filename=filename)
+        with open(filename, 'r') as file:
+            shipment = yaml.load(file)
+            if not isinstance(shipment, Shipment):
+                raise InvalidShipmentFile("Shipment file should consist serialized Shipment object only")
+            shipment.filename = filename
+        if shipment.dominator_version != utils.getversion():
+            utils.getlogger().warning("current dominator version {} do not match shipment version {}".format(
+                utils.getversion(), shipment.dominator_version))
+        return shipment
+
+    def save(self):
+        utils.getlogger().debug("saving shipment", shipment_filename=self.filename)
+        self.dominator_version = utils.getversion()
+
+        import tzlocal
+        self.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
+
+        self.make_backrefs()
+
+        dump = yaml.dump(self, default_flow_style=False)
+        with open(self.filename, 'w+') as file:
+            file.write(dump)
 
     @property
     def containers(self):
-        for ship in self.ships.values():
-            yield from ship.containers.values()
+        for _, ship in sorted(self.ships.items()):
+            yield from (cont for _, cont in sorted(ship.containers.items()))
 
     @property
     def volumes(self):
         for container in self.containers:
-            yield from container.volumes.values()
+            yield from (volume for _, volume in sorted(container.volumes.items()))
 
     @property
     def files(self):
         for volume in self.volumes:
-            yield from getattr(volume, 'files', {}).values()
+            yield from (file for _, file in sorted(getattr(volume, 'files', {}).items()))
 
     @property
     def doors(self):
         for container in self.containers:
-            yield from container.doors.values()
+            yield from (door for _, door in sorted(container.doors.items()))
 
     def make_backrefs(self):
         make_backrefs(self, 'ships', 'shipment')
@@ -1011,6 +1082,7 @@ class Shipment:
 
     @property
     def images(self):
+        """Iterates over SourceImages in build order (parent then child etc.)."""
         def compare_source_images(x, y):
             if isinstance(x, SourceImage):
                 if x.parent is y:
@@ -1031,6 +1103,11 @@ class Shipment:
                         break
 
         return sorted(list(set(iterate_images())), key=functools.cmp_to_key(compare_source_images))
+
+    def expose_ports(self, portrange):
+        """Expose all ports on all ships."""
+        for _, ship in sorted(self.ships.items()):
+            ship.expose_ports(portrange)
 
 
 class LogFile(BaseFile):

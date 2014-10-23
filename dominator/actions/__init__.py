@@ -2,12 +2,12 @@ import logging
 import logging.config
 import os
 import pkg_resources
-import datetime
 import fnmatch
 import re
 import functools
 import json
 import sys
+import importlib
 
 import yaml
 import mako.template
@@ -38,18 +38,24 @@ def validate_loglevel(ctx, param, value):
         raise click.BadParameter('loglevel should be logging level name or number')
 
 
+def load_plugins():
+    for plugin in utils.settings.get('plugins', []):
+        importlib.import_module(plugin)
+
+
 @click.group()
-@click.option('-c', '--config', type=click.File('r'), help="file path to load config from")
-@click.option('-s', '--settings', type=click.File('r'), help="file path to load settings from")
+@click.option('-s', '--shipment', type=click.Path(), default='./shipment.yaml', show_default=True,
+              help="file to load shipment from/save shipment to")
+@click.option('-c', '--config', type=click.File('r'), help="file path to load settings from")
 @click.option('-l', '--loglevel', callback=validate_loglevel, default='warn')
 @click.option('--vcr', type=click.Path(), help="mock all http requests with vcrpy and save cassete")
 @click.option('-o', '--override', multiple=True, help="overide setting from config")
 @click.version_option()
 @click.pass_context
-def cli(ctx, config, loglevel, settings, vcr, override):
+def cli(ctx, shipment, loglevel, config, vcr, override):
     logging.basicConfig(level=loglevel)
-    logging.debug("dominator {} started".format(getversion()))
-    utils.settings.load(settings)
+    logging.debug("dominator {} started".format(utils.getversion()))
+    utils.settings.load(config)
     for option in override:
         assert re.match('[a-z\.\-]+=.*', option), "Options should have format <key=value>, not <{}>".format(option)
         key, value = option.split('=')
@@ -57,43 +63,79 @@ def cli(ctx, config, loglevel, settings, vcr, override):
     default_logging_config = yaml.load(utils.resource_string('../utils/logging.yaml'))['logging']
     logging.config.dictConfig(utils.settings.get('logging', default_logging_config))
     logging.disable(level=loglevel-1)
+    utils.setcontext(logger=logging.getLogger('dominator'))
 
-    if config is not None:
-        shipment = yaml.load(config)
-        shipment.make_backrefs()
-        ctx.obj = shipment
+    sys.excepthook = lambda *exc_info: getlogger().error("Unhandled exception occurred", exc_info=exc_info)
+
+    load_plugins()
+
+    filename = shipment
+    if os.path.exists(filename):
+        try:
+            ctx.obj = Shipment.load(filename)
+        except Exception:
+            getlogger().exception("failed to load shipment")
+            ctx.fail("Failed to load shipment")
+    else:
+        ctx.obj = Shipment()
+        ctx.obj.filename = filename
 
     if vcr:
         import vcr as vcrpy
-        cassete = vcrpy.use_cassette(vcr)
-        cassete.__enter__()
-        ctx.call_on_close(lambda: cassete.__exit__(None, None, None))
+        cassette = vcrpy.use_cassette(vcr)
+        cassette.__enter__()
+        ctx.call_on_close(lambda: cassette.__exit__(None, None, None))
 
 
-@cli.group(chain=True)
-def shipment():
-    """Shipment management commands."""
-    utils.setcontext(logger=logging.getLogger('dominator.shipment'))
+@cli.group()
+def edit():
+    wrap_subcommands(edit, save_shipment)
 
 
-def getobedients():
-    return [pkgname for pkgname in pkg_resources.Environment() if pkgname.startswith('obedient.')]
+def wrap_subcommands(group, wrapper):
+    """This function wraps each Click group's subcommand
+    using decorator.
+    """
+    for command in group.commands.values():
+        if isinstance(command, click.Group):
+            wrap_subcommands(command, wrapper)
+        else:
+            command.callback = wrapper(command.callback)
 
 
-@shipment.command()
+def save_shipment(func):
+    @functools.wraps(func)
+    def wrapper(ctx, *args, **kwargs):
+        func(ctx, *args, **kwargs)
+        shipment = ctx.obj
+        try:
+            shipment.save()
+        except Exception as e:
+            getlogger().exception("failed to save shipment")
+            ctx.fail("Failed to save shipment: {!r}".format(e))
+    return wrapper
+
+
+@edit.command()
+@click.pass_obj
+def unload(shipment):
+    for ship in shipment.ships.values():
+        ship.containers = {}
+
+
+@edit.command()
 @click.pass_context
-@click.argument('distribution', required=False, type=click.Choice(getobedients()), metavar='<distribution>')
-@click.argument('entrypoint', required=False, metavar='<entrypoint>')
+@click.argument('distribution', metavar='<distribution>')
+@click.argument('entrypoint', metavar='<entrypoint>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
-@click.option('--cache/--no-cache', default=True)
-@click.option('--clear-cache', is_flag=True, default=False, help="clear requests_cache before run (requires --cache)")
-def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
+def generate(ctx, distribution, entrypoint, arguments):
     """Generates yaml config file for shipment."""
     if distribution is None:
-        click.echo('\n'.join(getobedients()))
+        click.echo('\n'.join([pkgname for pkgname in pkg_resources.Environment() if pkgname.startswith('obedient.')]))
         ctx.exit()
 
     dist = pkg_resources.get_distribution(distribution)
+    assert dist is not None, "Could not load distribution for {}".format(distribution)
 
     if entrypoint is None:
         # Show all "obedient" entrypoints for package
@@ -103,26 +145,30 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
 
     getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
 
-    assert dist is not None, "Could not load distribution for {}".format(distribution)
-
     if entrypoint is None:
         entrypoint = list(dist.get_entry_map('obedient').keys())[0]
-        getlogger().debug("autodetected entrypoint is %s", entrypoint)
+        getlogger().info("autodetected entrypoint is %s", entrypoint)
 
     func = dist.load_entry_point('obedient', entrypoint)
     assert func is not None, "Could not load entrypoint {} from distribution {}".format(entrypoint, distribution)
+    execute_on_shipment(ctx, func, arguments)
 
-    import pkginfo
-    meta = pkginfo.get_metadata(distribution)
 
+@edit.command()
+@click.pass_context
+@click.argument('filename', type=click.Path(), metavar='<script.py>')
+@click.argument('function', default='build', metavar='<function>')
+@click.argument('arguments', nargs=-1, metavar='<arguments>')
+def execute(ctx, filename, function, arguments):
+    assert filename.endswith('.py'), "Filename should be .py file"
+    sys.path.append(os.path.dirname(filename))
+    module = importlib.import_module(os.path.basename(filename[:-3]))
+    function = getattr(module, function)
+    execute_on_shipment(ctx, function, arguments)
+
+
+def execute_on_shipment(ctx, func, arguments):
     try:
-        if cache:
-            import requests_cache
-            requests_cache.install_cache()
-            if clear_cache:
-                requests_cache.clear()
-        else:
-            getlogger().info('loading containers without cache')
 
         def parse_value(value):
             if value.isdigit():
@@ -135,27 +181,16 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
         kwargs = {}
         for arg in arguments:
             if '=' in arg:
-                name, value = arg.split('=')
-                kwargs[name] = parse_value(value)
+                key, value = arg.split('=')
+                kwargs[key] = parse_value(value)
             else:
                 args.append(parse_value(arg))
-        shipment = func(*args, **kwargs)
+        shipment = ctx.obj
+        func(shipment, *args, **kwargs)
         assert shipment is not None, "shipment should not be empty"
     except Exception as e:
         getlogger().exception('failed to generate obedient')
-        ctx.exit("Failed to generate obedient: {!r}".format(e))
-
-    shipment.version = meta.version
-    shipment.author = meta.author
-    shipment.author_email = meta.author_email
-    shipment.home_page = meta.home_page
-    shipment.dominator_version = getversion()
-    shipment.distribution = distribution
-    shipment.entrypoint = entrypoint
-    shipment.arguments = arguments
-
-    import tzlocal
-    shipment.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
+        ctx.fail("Failed to generate obedient: {!r}".format(e))
 
     getlogger().debug("retrieving image ids")
     for image in shipment.images:
@@ -166,13 +201,11 @@ def generate(ctx, distribution, entrypoint, arguments, cache, clear_cache):
                     if image.getid() is None:
                         raise RuntimeError("Could not find id for image {}".format(image))
 
-    try:
-        output = yaml.dump(shipment, default_flow_style=False)
-    except Exception as e:
-        getlogger().exception("failed to serialize shipment")
-        ctx.fail("Failed to serialize shipment: {!r}".format(e))
 
-    click.echo_via_pager(output)
+@cli.group(chain=True)
+def shipment():
+    """Shipment management commands."""
+    utils.setcontext(logger=logging.getLogger('dominator.shipment'))
 
 
 @shipment.command()
@@ -211,7 +244,7 @@ def makedeb(shipment, packagename, distribution, urgency, target):
 
 @shipment.command()
 @click.pass_obj
-@click.argument('filename', required=False, type=click.Path())
+@click.argument('filename', type=click.Path())
 def objgraph(shipment, filename):
     """Dump object graph using objgraph."""
     import objgraph
@@ -274,9 +307,12 @@ def restart(cont):
 @container.command('exec')
 @click.pass_obj
 @click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
+@click.argument('command')
 @foreach('container')
-def container_exec(container, keep):
+def container_exec(container, command, keep):
     """Start, attach and wait a container."""
+    if command is not None:
+        container.command = command
     common_exec(container, keep)
 
 
@@ -305,11 +341,15 @@ def stop(cont):
 
 @container.command()
 @click.pass_obj
+@click.option('-f', '--force', is_flag=True, default=False, help="Kill and remove container")
 @foreach('container')
-def remove(cont):
+def remove(cont, force):
     """Remove container(s) on ship(s)."""
     cont.check()
-    cont.remove()
+    if cont.id is None:
+        utils.getlogger().info("skipping container as it doesn't exist")
+    else:
+        cont.remove(force)
 
 
 @container.command('list')
@@ -360,7 +400,7 @@ def print_diff(difflist):
             click.echo('  {keystr:60.60} {fore.RED}{actual!s:50.50}{fore.RESET} '
                        '{fore.GREEN}{expected!s:50.50}{fore.RESET}'.format(**locals()))
         else:
-            assert False, "invalid diff format for {key}: {diff}".format(**locals())
+            raise ValueError("Invalid diff format for {key}: {diff}".format(**locals()))
 
 
 @container.command()
@@ -411,18 +451,17 @@ def task(ctx, pattern, regex):
 
 @task.command('exec')
 @click.pass_obj
-@click.option('-k', '--keep', is_flag=True, default=False, help="keep container after stop")
-@click.argument('command', required=False)
+@click.argument('command')
 @foreach('task')
-def task_exec(task, keep, command):
-    """Execute task"""
+def task_exec(task, command):
+    """Execute task. <command> could be used to override default command."""
     if command is not None:
         task.command = command
     if task.ship is None:
         ship = LocalShip()
         ship.place(task)
         ship.shipment = task.shipment
-    common_exec(task, keep)
+    task.exec_with_tty()
 
 
 @task.command('list')
@@ -578,7 +617,7 @@ def ship_container(ctx, pattern, regex):
         pattern = fnmatch.translate(pattern)
     cinfos = []
     for ship in ships:
-        for cinfo in ship.docker.containers():
+        for cinfo in ship.docker.containers(all=True):
             if re.match(pattern, cinfo['Names'][0][1:]):
                 cinfos.append(cinfo)
                 # Add Ship object ref to cinfo to use it in subcommands
@@ -639,7 +678,7 @@ def list_doors(containers):
                     container.fullname, doorname, urlname, url))
 
 
-@cli.group('config')
+@cli.group()
 def config():
     """Commands to manage local config files."""
     utils.setcontext(logger=logging.getLogger('dominator.config'))
@@ -665,6 +704,27 @@ def create_config():
             dst.write(src.read())
 
 
+@edit.group()
+@click.pass_context
+def discover(ctx):
+    """Commands to discover ships."""
+    utils.setcontext(logger=logging.getLogger('dominator.discover'))
+
+
+@discover.command('local')
+@click.pass_obj
+def discover_local(shipment):
+    """Produce config with single local ship."""
+    shipment.ships = {'local': LocalShip()}
+
+
+@discover.command('ec2')
+@click.pass_context
+def discover_ec2(ctx):
+    """Discover ships in ec2."""
+    ctx.fail("Not implemented yet.")
+
+
 @utils.makesorted(lambda o: o.fullname)
 def filterbyname(objects, pattern, regex):
     if not regex:
@@ -672,10 +732,3 @@ def filterbyname(objects, pattern, regex):
     for obj in objects:
         if re.match(pattern, obj.fullname):
             yield obj
-
-
-def getversion():
-    try:
-        return pkg_resources.get_distribution('dominator').version
-    except pkg_resources.DistributionNotFound:
-        return '(local)'

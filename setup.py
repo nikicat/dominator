@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
-        version='11.4.0',
+        version='12.1.0',
         url='https://github.com/yandex-sysmon/dominator',
         license='LGPLv3',
         author='Nikolay Bryskin',
@@ -59,7 +59,7 @@ if __name__ == '__main__':
             'vcrpy',
         ],
         extras_require={
-            'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'requests_cache', 'tzlocal', 'pkginfo', 'openssh_wrapper',
+            'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'tzlocal', 'pkginfo', 'openssh_wrapper',
                      'objgraph', 'pyopenssl', 'psutil', 'vcrpy', 'requests>=2.4', 'urllib3>=1.9.1'],
             'tiny': ['PyYAML'],
         },

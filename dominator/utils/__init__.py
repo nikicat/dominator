@@ -345,11 +345,26 @@ def resource_string(name):
     return pkg_resources.resource_string(getcallingmodule(1).__name__, name).decode()
 
 
+def resource_stream(name):
+    return pkg_resources.resource_stream(getcallingmodule(1).__name__, name)
+
+
 def stoppable(cmd):
     return 'trap exit TERM; {} & wait'.format(cmd)
 
 
+def getversion():
+    try:
+        return pkg_resources.get_distribution('dominator').version
+    except pkg_resources.DistributionNotFound:
+        return '(local)'
+
+
 NONEXISTENT_KEY = object()
+
+
+class NoSuchSetting(Exception):
+    pass
 
 
 class Settings:
@@ -394,10 +409,10 @@ class Settings:
                         logger.warning("could not convert config value to required type", value=value, type=type_)
                         raise
                 return value
-            except KeyError:
+            except KeyError as exc:
                 if default is NONEXISTENT_KEY:
                     logger.error("key is not found in config and no default value provided")
-                    raise
+                    raise NoSuchSetting(path) from exc
                 else:
                     logger.debug("key is not found in config, using default value", default=default)
                     return default

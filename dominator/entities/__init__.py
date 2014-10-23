@@ -1014,6 +1014,10 @@ def make_backrefs(obj, refname, backrefname):
             child.make_backrefs()
 
 
+class InvalidShipmentFile(Exception):
+    pass
+
+
 class Shipment:
     def __init__(self, name='unnamed', ships=None, tasks=None):
         self.name = name
@@ -1031,6 +1035,8 @@ class Shipment:
         utils.getlogger().debug("loading shipment", shipment_filename=filename)
         with open(filename, 'r') as file:
             shipment = yaml.load(file)
+            if not isinstance(shipment, Shipment):
+                raise InvalidShipmentFile("Shipment file should consist serialized Shipment object only")
             shipment.filename = filename
         if shipment.dominator_version != utils.getversion():
             utils.getlogger().warning("current dominator version {} do not match shipment version {}".format(

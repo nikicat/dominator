@@ -349,7 +349,7 @@ def convert_fileobj(path, fileobj_or_data):
         elif isinstance(data, bytes):
             tinfo.size = len(data)
         else:
-            assert False, "data should be str, bytes or file-like object, not {}".format(type(data))
+            raise ValueError("Data should be str, bytes or file-like object, not {}".format(type(data)))
     if isinstance(data, bytes):
         with contextlib.suppress(UnicodeDecodeError):
             data = data.decode()
@@ -423,7 +423,7 @@ class SourceImage(Image):
                 if isinstance(data, bytes):
                     data = io.BytesIO(data)
                 else:
-                    assert False, "could not add {} as file".format(type(data))
+                    raise RuntimeError("Could not add {} as file".format(type(data)))
                 tarinfo = tarfile.TarInfo()
                 for k, v in tinfo.items():
                     setattr(tarinfo, k, v)

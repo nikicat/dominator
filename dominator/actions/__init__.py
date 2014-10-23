@@ -400,7 +400,7 @@ def print_diff(difflist):
             click.echo('  {keystr:60.60} {fore.RED}{actual!s:50.50}{fore.RESET} '
                        '{fore.GREEN}{expected!s:50.50}{fore.RESET}'.format(**locals()))
         else:
-            assert False, "invalid diff format for {key}: {diff}".format(**locals())
+            raise ValueError("Invalid diff format for {key}: {diff}".format(**locals()))
 
 
 @container.command()

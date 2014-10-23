@@ -333,6 +333,29 @@ class Image:
         return '{}:{}[{}]'.format(self.getfullrepository(), self.tag, self.getid())
 
 
+def convert_fileobj(path, fileobj_or_data):
+    """Converts <fileobj-or-data>} to a tuple (tarinfo, data)"""
+    tfile = tarfile.TarFile(fileobj=io.BytesIO(), mode='w')
+    if hasattr(fileobj_or_data, 'fileno'):
+        fileobj = fileobj_or_data
+        tinfo = tfile.gettarinfo(arcname=path, fileobj=fileobj)
+        data = fileobj.read()
+        fileobj.seek(0)
+    else:
+        data = fileobj_or_data
+        tinfo = tarfile.TarInfo(path)
+        if isinstance(data, str):
+            tinfo.size = len(data.encode())
+        elif isinstance(data, bytes):
+            tinfo.size = len(data)
+        else:
+            assert False, "data should be str, bytes or file-like object, not {}".format(type(data))
+    if isinstance(data, bytes):
+        with contextlib.suppress(UnicodeDecodeError):
+            data = data.decode()
+    return tinfo.get_info(), data
+
+
 class SourceImage(Image):
     def __init__(self, name: str, parent: Image, scripts: list=None, command: str=None, workdir: str=None,
                  env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None, user: str='',
@@ -347,25 +370,8 @@ class SourceImage(Image):
         self.env = env or {}
         self.user = user
         self.entrypoint = entrypoint
-        for path, data in (files or {}).items():
-            tfile = tarfile.TarFile(fileobj=io.BytesIO(), mode='w')
-            if hasattr(data, 'fileno'):
-                tinfo = tfile.gettarinfo(arcname=path, fileobj=data)
-                orig = data
-                data = data.read()
-                orig.seek(0)
-            else:
-                tinfo = tarfile.TarInfo(path)
-                if isinstance(data, str):
-                    tinfo.size = len(data.encode())
-                elif isinstance(data, bytes):
-                    tinfo.size = len(data)
-                else:
-                    assert False, "data should be str, bytes or file-like object, not {}".format(type(data))
-            if isinstance(data, bytes):
-                with contextlib.suppress(UnicodeDecodeError):
-                    data = data.decode()
-            self.files[path] = (tinfo.get_info(), data)
+        self.files = {path: convert_fileobj(path, fileobj_or_data) for path, fileobj_or_data in (files or {}).items()}
+
         # These lines should be at the end of __init__
         self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
         self.tag = self.gethash()

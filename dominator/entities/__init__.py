@@ -179,7 +179,7 @@ class LocalShip(BaseShip):
     def memory(self):
         try:
             return utils.settings.get('localship.memory')
-        except:
+        except utils.NoSuchSetting:
             import psutil
             return psutil.virtual_memory().total
 

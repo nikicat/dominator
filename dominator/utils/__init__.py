@@ -363,6 +363,10 @@ def getversion():
 NONEXISTENT_KEY = object()
 
 
+class NoSuchSetting(Exception):
+    pass
+
+
 class Settings:
     def __init__(self):
         self._dict = mergedict.ConfigDict()
@@ -405,10 +409,10 @@ class Settings:
                         logger.warning("could not convert config value to required type", value=value, type=type_)
                         raise
                 return value
-            except KeyError:
+            except KeyError as exc:
                 if default is NONEXISTENT_KEY:
                     logger.error("key is not found in config and no default value provided")
-                    raise
+                    raise NoSuchSetting(path) from exc
                 else:
                     logger.debug("key is not found in config, using default value", default=default)
                     return default

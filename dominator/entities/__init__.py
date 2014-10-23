@@ -515,17 +515,16 @@ class Container:
     def execute(self):
         self.logger.debug('executing')
         try:
-            try:
+            self.create()
+        except docker.errors.APIError as e:
+            if e.response.status_code != 409:
+                raise
+            else:
+                # Container already exists
+                self.check()
+                self.remove(force=True)
                 self.create()
-            except docker.errors.APIError as e:
-                if e.response.status_code != 409:
-                    raise
-                else:
-                    # Container already exists
-                    self.check()
-                    self.remove(force=True)
-                    self.create()
-
+        else:
             self.logger.debug('attaching to stdout/stderr')
             if not os.isatty(sys.stdin.fileno()):
                 self.logger.debug('attaching stdin')
@@ -537,31 +536,26 @@ class Container:
             self.start()
             yield logs
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 self.stop()
-            except:
-                self.logger.debug('could not stop container, ignoring')
 
     def exec_with_tty(self):
         self.logger.debug("executing with tty")
         try:
-            try:
+            self.create()
+        except docker.errors.APIError as e:
+            if e.response.status_code != 409:
+                raise
+            else:
+                # Container already exists
+                self.check()
+                self.remove(force=True)
                 self.create()
-            except docker.errors.APIError as e:
-                if e.response.status_code != 409:
-                    raise
-                else:
-                    # Container already exists
-                    self.check()
-                    self.remove(force=True)
-                    self.create()
-
+        else:
             self.ship.spawn('docker start -ai {}'.format(self.id))
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 self.stop()
-            except:
-                self.logger.debug('could not stop container, ignoring')
 
     def logs(self, follow):
         self.logger.debug('getting logs from container', follow=follow)

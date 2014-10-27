@@ -89,21 +89,12 @@ def cli(ctx, shipment, loglevel, config, vcr, override):
 
 @cli.group()
 def edit():
-    wrap_subcommands(edit, save_shipment)
+    pass
 
 
-def wrap_subcommands(group, wrapper):
-    """This function wraps each Click group's subcommand
-    using decorator.
-    """
-    for command in group.commands.values():
-        if isinstance(command, click.Group):
-            wrap_subcommands(command, wrapper)
-        else:
-            command.callback = wrapper(command.callback)
-
-
-def save_shipment(func):
+def edit_subcommand(func):
+    @edit.command()
+    @click.pass_context
     @functools.wraps(func)
     def wrapper(ctx, *args, **kwargs):
         func(ctx, *args, **kwargs)
@@ -116,15 +107,19 @@ def save_shipment(func):
     return wrapper
 
 
-@edit.command()
-@click.pass_obj
-def unload(shipment):
-    for ship in shipment.ships.values():
+@edit_subcommand
+def noop(_ctx):
+    """Do nothing and just save the shipment."""
+    pass
+
+
+@edit_subcommand
+def unload(ctx):
+    for ship in ctx.obj.ships.values():
         ship.containers = {}
 
 
-@edit.command()
-@click.pass_context
+@edit_subcommand
 @click.argument('distribution', metavar='<distribution>')
 @click.argument('entrypoint', metavar='<entrypoint>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
@@ -154,8 +149,7 @@ def generate(ctx, distribution, entrypoint, arguments):
     execute_on_shipment(ctx, func, arguments)
 
 
-@edit.command()
-@click.pass_context
+@edit_subcommand
 @click.argument('filename', type=click.Path(), metavar='<script.py>')
 @click.argument('function', default='build', metavar='<function>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')

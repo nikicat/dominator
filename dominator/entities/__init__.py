@@ -223,16 +223,8 @@ DEFAULT_NAMESPACE = object()
 DEFAULT_REGISTRY = object()
 
 
-class Image:
-    def __init__(self, repository: str, tag: str='latest', id: str=None,
-                 namespace=DEFAULT_NAMESPACE, registry=DEFAULT_REGISTRY):
-        self.tag = tag
-        self._init(namespace, repository, registry, id)
-        if self.id is None:
-            self.getid()
-
-    def _init(self, namespace, repository, registry, id=None):
-        self.id = id
+class BaseImage:
+    def __init__(self, namespace, repository, registry):
         self.repository = repository
 
         if namespace is DEFAULT_NAMESPACE:
@@ -244,9 +236,9 @@ class Image:
         self.registry = registry
 
     def __repr__(self):
-        return '{classname}({namespace}/{repository}:{tag:.7} [{id:.7}] registry={registry})'.format(
+        return '{classname}({namespace}/{repository}:{tag:.7} registry={registry})'.format(
             classname=type(self).__name__, namespace=self.namespace, repository=self.repository, tag=self.tag,
-            id=self.id or '-', registry=self.registry)
+            registry=self.registry)
 
     def getfullrepository(self):
         registry = (self.registry + '/') if self.registry else ''
@@ -257,13 +249,13 @@ class Image:
     def logger(self):
         return utils.getlogger()
 
-    def getid(self, dock=None):
+    @utils.cached
+    def getid(self):
         self.logger.debug('retrieving id')
-        if self.id is None and self.tag is not None:
-            self.id = self.gettags(dock).get(self.tag)
-            if self.id is None:
-                self.logger.debug("could not find tag for image", tag=self.tag)
-        return self.id
+        imageid = self.gettags(None).get(self.tag)
+        if imageid is None:
+            self.logger.warning("could not find tag for image", tag=self.tag)
+        return imageid
 
     def _streamoperation(self, func, **kwargs):
         with utils.addcontext(image=self, docker=func.__self__, operation=func.__name__):
@@ -292,15 +284,14 @@ class Image:
         self._streamoperation(dock.pull, repository=self.getfullrepository(), tag=tag,
                               insecure_registry=utils.settings.get('docker.registry.insecure', False))
         Image.gettags.cache_clear()
-        self.getid()
+        Image.getid.cache_clear()
 
     def build(self, dock=None, **kwargs):
         self.logger.info("building image")
         dock = dock or utils.getdocker()
         self._streamoperation(dock.build, tag='{}:{}'.format(self.getfullrepository(), self.tag), **kwargs)
         Image.gettags.cache_clear()
-        self.id = None
-        self.getid()
+        Image.getid.cache_clear()
 
     @utils.cached
     @utils.asdict
@@ -328,9 +319,12 @@ class Image:
     def getenv(self):
         return dict(var.split('=', 1) for var in self.inspect()['Env'])
 
-    def gethash(self):
-        self.logger.debug("generating hashtag")
-        return '{}:{}[{}]'.format(self.getfullrepository(), self.tag, self.getid())
+
+class Image(BaseImage):
+    def __init__(self, repository: str, tag: str='latest',
+                 namespace=DEFAULT_NAMESPACE, registry=DEFAULT_REGISTRY):
+        super().__init__(namespace, repository, registry)
+        self.tag = tag
 
 
 def convert_fileobj(path, fileobj_or_data):
@@ -363,7 +357,7 @@ def convert_fileobj(path, fileobj_or_data):
     return tinfo.get_info(), data
 
 
-class SourceImage(Image):
+class SourceImage(BaseImage):
     def __init__(self, name: str, parent: Image, scripts: list=None, command: str=None, workdir: str=None,
                  env: dict=None, volumes: dict=None, ports: dict=None, files: dict=None, user: str='',
                  entrypoint=None):
@@ -378,10 +372,7 @@ class SourceImage(Image):
         self.user = user
         self.entrypoint = entrypoint
         self.files = {path: convert_fileobj(path, fileobj_or_data) for path, fileobj_or_data in (files or {}).items()}
-
-        # These lines should be at the end of __init__
-        self._init(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
-        self.tag = self.gethash()
+        super().__init__(namespace=DEFAULT_NAMESPACE, repository=name, registry=DEFAULT_REGISTRY)
 
     def build(self, dock=None, **kwargs):
         self.logger.info("building source image")
@@ -389,10 +380,9 @@ class SourceImage(Image):
             self.parent.build(dock, **kwargs)
         return Image.build(self, dock, fileobj=self.gettarfile(), custom_context=True, **kwargs)
 
-    def gethash(self):
-        """Used to calculate unique identifying tag for image
-           If tag is not found in registry, than image must be rebuilt
-        """
+    @property
+    def tag(self):
+        """Calculate tag for image from it's attributes"""
         dump = yaml.dump(self)
         digest = hashlib.sha256(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'_-').decode().replace('=', '.')

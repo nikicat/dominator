@@ -277,7 +277,7 @@ def compare_container(cont, cinfo):
     ]:
         yield from compare_values((key,), expected, actual)
 
-    if cont.image.id == imageid:
+    if cont.image.getid() == imageid:
         # get command and env from image only if images are same because expected image could not even exist
         yield from compare_values(
             ('command',),

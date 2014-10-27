@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
-        version='12.1.1',
+        version='12.1.2',
         url='https://github.com/yandex-sysmon/dominator',
         license='LGPLv3',
         author='Nikolay Bryskin',

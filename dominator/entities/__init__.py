@@ -517,9 +517,7 @@ class Container:
             self.id = None
             self.status = 'not found'
 
-    @contextlib.contextmanager
-    def execute(self):
-        self.logger.debug('executing')
+    def create_or_recreate(self):
         try:
             self.create()
         except docker.errors.APIError as e:
@@ -530,7 +528,12 @@ class Container:
                 self.check()
                 self.remove(force=True)
                 self.create()
-        else:
+
+    @contextlib.contextmanager
+    def execute(self):
+        self.logger.debug('executing')
+        try:
+            self.create_or_recreate()
             self.logger.debug('attaching to stdout/stderr')
             if not os.isatty(sys.stdin.fileno()):
                 self.logger.debug('attaching stdin')
@@ -548,16 +551,7 @@ class Container:
     def exec_with_tty(self):
         self.logger.debug("executing with tty")
         try:
-            self.create()
-        except docker.errors.APIError as e:
-            if e.response.status_code != 409:
-                raise
-            else:
-                # Container already exists
-                self.check()
-                self.remove(force=True)
-                self.create()
-        else:
+            self.create_or_recreate()
             self.ship.spawn('docker start -ai {}'.format(self.id))
         finally:
             with contextlib.suppress(Exception):

@@ -353,6 +353,13 @@ def convert_fileobj(path, fileobj_or_data):
     if isinstance(data, bytes):
         with contextlib.suppress(UnicodeDecodeError):
             data = data.decode()
+    # Zero some fields to make info independend from host
+    tinfo.gid = 0
+    tinfo.gname = 'root'
+    tinfo.uid = 0
+    tinfo.uname = 'root'
+    tinfo.mtime = 0.0
+
     return tinfo.get_info(), data
 
 

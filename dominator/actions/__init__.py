@@ -89,42 +89,39 @@ def cli(ctx, shipment, loglevel, config, vcr, override):
 
 @cli.group()
 def edit():
-    wrap_subcommands(edit, save_shipment)
+    """Commands to edit shipment."""
 
 
-def wrap_subcommands(group, wrapper):
-    """This function wraps each Click group's subcommand
-    using decorator.
-    """
-    for command in group.commands.values():
-        if isinstance(command, click.Group):
-            wrap_subcommands(command, wrapper)
-        else:
-            command.callback = wrapper(command.callback)
+def edit_subcommand(name=None):
+    def decorator(func):
+        @edit.command(name=name)
+        @click.pass_context
+        @functools.wraps(func)
+        def wrapper(ctx, *args, **kwargs):
+            func(ctx, *args, **kwargs)
+            shipment = ctx.obj
+            try:
+                shipment.save()
+            except Exception as e:
+                getlogger().exception("failed to save shipment")
+                ctx.fail("Failed to save shipment: {!r}".format(e))
+        return wrapper
+    return decorator
 
 
-def save_shipment(func):
-    @functools.wraps(func)
-    def wrapper(ctx, *args, **kwargs):
-        func(ctx, *args, **kwargs)
-        shipment = ctx.obj
-        try:
-            shipment.save()
-        except Exception as e:
-            getlogger().exception("failed to save shipment")
-            ctx.fail("Failed to save shipment: {!r}".format(e))
-    return wrapper
+@edit_subcommand()
+def noop(_ctx):
+    """Do nothing and just save the shipment."""
 
 
-@edit.command()
-@click.pass_obj
-def unload(shipment):
-    for ship in shipment.ships.values():
+@edit_subcommand()
+def unload(ctx):
+    """Unload all containers from ships."""
+    for ship in ctx.obj.ships.values():
         ship.containers = {}
 
 
-@edit.command()
-@click.pass_context
+@edit_subcommand()
 @click.argument('distribution', metavar='<distribution>')
 @click.argument('entrypoint', metavar='<entrypoint>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
@@ -154,12 +151,12 @@ def generate(ctx, distribution, entrypoint, arguments):
     execute_on_shipment(ctx, func, arguments)
 
 
-@edit.command()
-@click.pass_context
+@edit_subcommand()
 @click.argument('filename', type=click.Path(), metavar='<script.py>')
 @click.argument('function', default='build', metavar='<function>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
 def execute(ctx, filename, function, arguments):
+    """Execute function from Python script."""
     assert filename.endswith('.py'), "Filename should be .py file"
     sys.path.append(os.path.dirname(filename))
     module = importlib.import_module(os.path.basename(filename[:-3]))
@@ -659,23 +656,72 @@ def view_ship_container_log(cinfos, follow):
 
 @cli.group()
 @click.pass_context
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter doors")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 def door(ctx, pattern, regex):
     """Commands to view doors."""
     shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.containers, pattern, regex))
+    ctx.obj = list(filterbyname(shipment.doors, pattern, regex))
 
 
 @door.command('list')
 @click.pass_obj
-def list_doors(containers):
+def list_doors(doors):
     """List all containers' doors with urls"""
-    for container in containers:
-        for doorname, door in container.doors.items():
-            for urlname, url in door.urls.items():
-                click.echo('{:30.30} {:20.20} {:10.10} {}'.format(
-                    container.fullname, doorname, urlname, url))
+    for door in doors:
+        click.echo('{door.fullname:40.40} {door.port:5}'.format(door=door))
+
+
+@door.command('test')
+@click.pass_obj
+def test_doors(doors):
+    for door in doors:
+        try:
+            door.test()
+        except Exception as e:
+            result = e
+            color = Fore.RED
+        else:
+            result = 'ok'
+            color = Fore.GREEN
+        click.echo('{door.fullname:40.40} {door.port:5} {color}{result}{reset}'.format(
+            door=door, color=color, result=result, reset=Fore.RESET))
+
+
+@cli.group()
+@click.pass_context
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter urls")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def url(ctx, pattern, regex):
+    """Commands to view urls."""
+    shipment = ctx.obj
+    ctx.obj = list(filterbyname(shipment.urls, pattern, regex))
+
+
+@url.command('list')
+@click.pass_obj
+def list_urls(urls):
+    for url in urls:
+        click.echo('{url.fullname:50.50} {url}'.format(url=url))
+
+
+@url.command('test')
+@click.pass_obj
+def test_urls(urls):
+    for url in urls:
+        try:
+            url.test()
+        except NotImplementedError:
+            result = 'not implemented'
+            color = Fore.YELLOW
+        except Exception as e:
+            result = e
+            color = Fore.RED
+        else:
+            result = 'ok'
+            color = Fore.GREEN
+        click.echo('{url.fullname:50.50} {url!s:50.50} {color}{result}{reset}'.format(
+            url=url, color=color, result=result, reset=Fore.RESET))
 
 
 @cli.group()

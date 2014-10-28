@@ -115,6 +115,7 @@ def noop(_ctx):
 
 @edit_subcommand
 def unload(ctx):
+    """Unload all containers from ships."""
     for ship in ctx.obj.ships.values():
         ship.containers = {}
 
@@ -154,6 +155,7 @@ def generate(ctx, distribution, entrypoint, arguments):
 @click.argument('function', default='build', metavar='<function>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
 def execute(ctx, filename, function, arguments):
+    """Execute function from Python script."""
     assert filename.endswith('.py'), "Filename should be .py file"
     sys.path.append(os.path.dirname(filename))
     module = importlib.import_module(os.path.basename(filename[:-3]))

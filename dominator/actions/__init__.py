@@ -89,7 +89,7 @@ def cli(ctx, shipment, loglevel, config, vcr, override):
 
 @cli.group()
 def edit():
-    pass
+    """Commands to edit shipment."""
 
 
 def edit_subcommand(name=None):
@@ -112,7 +112,6 @@ def edit_subcommand(name=None):
 @edit_subcommand()
 def noop(_ctx):
     """Do nothing and just save the shipment."""
-    pass
 
 
 @edit_subcommand()

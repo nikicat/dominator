@@ -92,35 +92,37 @@ def edit():
     pass
 
 
-def edit_subcommand(func):
-    @edit.command()
-    @click.pass_context
-    @functools.wraps(func)
-    def wrapper(ctx, *args, **kwargs):
-        func(ctx, *args, **kwargs)
-        shipment = ctx.obj
-        try:
-            shipment.save()
-        except Exception as e:
-            getlogger().exception("failed to save shipment")
-            ctx.fail("Failed to save shipment: {!r}".format(e))
-    return wrapper
+def edit_subcommand(name=None):
+    def decorator(func):
+        @edit.command(name=name)
+        @click.pass_context
+        @functools.wraps(func)
+        def wrapper(ctx, *args, **kwargs):
+            func(ctx, *args, **kwargs)
+            shipment = ctx.obj
+            try:
+                shipment.save()
+            except Exception as e:
+                getlogger().exception("failed to save shipment")
+                ctx.fail("Failed to save shipment: {!r}".format(e))
+        return wrapper
+    return decorator
 
 
-@edit_subcommand
+@edit_subcommand()
 def noop(_ctx):
     """Do nothing and just save the shipment."""
     pass
 
 
-@edit_subcommand
+@edit_subcommand()
 def unload(ctx):
     """Unload all containers from ships."""
     for ship in ctx.obj.ships.values():
         ship.containers = {}
 
 
-@edit_subcommand
+@edit_subcommand()
 @click.argument('distribution', metavar='<distribution>')
 @click.argument('entrypoint', metavar='<entrypoint>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
@@ -150,7 +152,7 @@ def generate(ctx, distribution, entrypoint, arguments):
     execute_on_shipment(ctx, func, arguments)
 
 
-@edit_subcommand
+@edit_subcommand()
 @click.argument('filename', type=click.Path(), metavar='<script.py>')
 @click.argument('function', default='build', metavar='<function>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')

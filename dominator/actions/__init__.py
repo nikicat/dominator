@@ -657,23 +657,72 @@ def view_ship_container_log(cinfos, follow):
 
 @cli.group()
 @click.pass_context
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter doors")
 @click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
 def door(ctx, pattern, regex):
     """Commands to view doors."""
     shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.containers, pattern, regex))
+    ctx.obj = list(filterbyname(shipment.doors, pattern, regex))
 
 
 @door.command('list')
 @click.pass_obj
-def list_doors(containers):
+def list_doors(doors):
     """List all containers' doors with urls"""
-    for container in containers:
-        for doorname, door in container.doors.items():
-            for urlname, url in door.urls.items():
-                click.echo('{:30.30} {:20.20} {:10.10} {}'.format(
-                    container.fullname, doorname, urlname, url))
+    for door in doors:
+        click.echo('{door.fullname:40.40} {door.port:5}'.format(door=door))
+
+
+@door.command('test')
+@click.pass_obj
+def test_doors(doors):
+    for door in doors:
+        try:
+            door.test()
+        except Exception as e:
+            result = e
+            color = Fore.RED
+        else:
+            result = 'ok'
+            color = Fore.GREEN
+        click.echo('{door.fullname:40.40} {door.port:5} {color}{result}{reset}'.format(
+            door=door, color=color, result=result, reset=Fore.RESET))
+
+
+@cli.group()
+@click.pass_context
+@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter urls")
+@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+def url(ctx, pattern, regex):
+    """Commands to view urls."""
+    shipment = ctx.obj
+    ctx.obj = list(filterbyname(shipment.urls, pattern, regex))
+
+
+@url.command('list')
+@click.pass_obj
+def list_urls(urls):
+    for url in urls:
+        click.echo('{url.fullname:50.50} {url}'.format(url=url))
+
+
+@url.command('test')
+@click.pass_obj
+def test_urls(urls):
+    for url in urls:
+        try:
+            url.test()
+        except NotImplementedError:
+            result = 'not implemented'
+            color = Fore.YELLOW
+        except Exception as e:
+            result = e
+            color = Fore.RED
+        else:
+            result = 'ok'
+            color = Fore.GREEN
+        click.echo('{url.fullname:50.50} {url!s:50.50} {color}{result}{reset}'.format(
+            url=url, color=color, result=result, reset=Fore.RESET))
 
 
 @cli.group()

@@ -29,6 +29,7 @@ import docker.errors
 import mako.template
 import subprocess
 import difflib
+import requests
 
 from .. import utils
 
@@ -752,7 +753,7 @@ class Door:
 
     @property
     def fullname(self):
-        return '{}:{}:{}'.format(self.container.ship.name, self.container.name, self.name)
+        return '{}:{}'.format(self.container.fullname, self.name)
 
     @property
     def host(self):
@@ -783,6 +784,10 @@ class Door:
                 assert door.internalport != port, "Port {} is already bound to {}".format(port, door)
             self.internalport = port
 
+    def test(self):
+        """Test door availability (try to connect)."""
+        socket.create_connection((self.host, self.port)).close()
+
 
 class Url:
     def __init__(self, path):
@@ -795,6 +800,16 @@ class Url:
             port=self.door.exposedport,
             path=self.path
         )
+
+    @property
+    def fullname(self):
+        return '{}:{}'.format(self.door.fullname, self.name)
+
+    def test(self):
+        if self.door.schema.startswith('http'):
+            requests.get(str(self)).raise_for_status()
+        else:
+            raise NotImplementedError()
 
 
 class Volume:
@@ -1066,6 +1081,11 @@ class Shipment:
     def doors(self):
         for container in self.containers:
             yield from (door for _, door in sorted(container.doors.items()))
+
+    @property
+    def urls(self):
+        for door in self.doors:
+            yield from (url for _, url in sorted(door.urls.items()))
 
     def make_backrefs(self):
         make_backrefs(self, 'ships', 'shipment')

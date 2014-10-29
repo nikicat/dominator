@@ -750,25 +750,11 @@ def create_config():
             dst.write(src.read())
 
 
-@edit.group()
-@click.pass_context
-def discover(ctx):
-    """Commands to discover ships."""
-    utils.setcontext(logger=logging.getLogger('dominator.discover'))
-
-
-@discover.command('local')
+@edit_subcommand('local-ship')
 @click.pass_obj
-def discover_local(shipment):
-    """Produce config with single local ship."""
+def add_local_ship(shipment):
+    """Populate shipment with one local ship."""
     shipment.ships = {'local': LocalShip()}
-
-
-@discover.command('ec2')
-@click.pass_context
-def discover_ec2(ctx):
-    """Discover ships in ec2."""
-    ctx.fail("Not implemented yet.")
 
 
 @utils.makesorted(lambda o: o.fullname)

@@ -115,6 +115,13 @@ def noop(_ctx):
 
 
 @edit_subcommand()
+@click.argument('name')
+def rename(ctx, name):
+    """Rename shipment."""
+    ctx.obj.name = name
+
+
+@edit_subcommand()
 def unload(ctx):
     """Unload all containers from ships."""
     for ship in ctx.obj.ships.values():

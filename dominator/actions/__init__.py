@@ -129,8 +129,8 @@ def unload(ctx):
 
 
 @edit_subcommand()
-@click.argument('distribution', metavar='<distribution>')
-@click.argument('entrypoint', metavar='<entrypoint>')
+@click.argument('distribution', required=False, metavar='<distribution>')
+@click.argument('entrypoint', required=False, metavar='<entrypoint>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
 def generate(ctx, distribution, entrypoint, arguments):
     """Generates yaml config file for shipment."""
@@ -142,10 +142,16 @@ def generate(ctx, distribution, entrypoint, arguments):
     assert dist is not None, "Could not load distribution for {}".format(distribution)
 
     if entrypoint is None:
-        # Show all "obedient" entrypoints for package
-        for entrypoint in dist.get_entry_map('obedient').keys():
-            click.echo(entrypoint)
-        ctx.exit()
+        entrypoints = list(dist.get_entry_map('obedient').keys())
+        if len(entrypoints) == 0:
+            ctx.fail("Invalid obedient: no entrypoints")
+        elif len(entrypoints) == 1:
+            entrypoint = entrypoints[0]
+        else:
+            # Show all "obedient" entrypoints for package
+            for entrypoint in entrypoints:
+                click.echo(entrypoint)
+            ctx.exit()
 
     getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
 

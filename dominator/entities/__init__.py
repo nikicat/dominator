@@ -612,7 +612,7 @@ class Container:
                         raise
                     self.logger.info("could not find requested image in registry, pushing repo")
                     self.image.push()
-                    self.image.pull(self.ship.docker)
+                    self.image.pull(self.ship.docker, tag=self.image.tag)
                 cinfo = self._create()
 
             self.check(cinfo)

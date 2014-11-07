@@ -1042,9 +1042,6 @@ class Shipment:
         utils.getlogger().debug("saving shipment", shipment_filename=self.filename)
         self.dominator_version = utils.getversion()
 
-        import tzlocal
-        self.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
-
         self.make_backrefs()
 
         dump = yaml.dump(self, default_flow_style=False)

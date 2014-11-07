@@ -385,7 +385,7 @@ class SourceImage(BaseImage):
     def tag(self):
         """Calculate tag for image from it's attributes"""
         dump = yaml.dump(self)
-        digest = hashlib.sha256(dump.encode()).digest()
+        digest = hashlib.sha1(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'_-').decode().replace('=', '.')
 
     def gettarfile(self):

@@ -37,7 +37,8 @@ if __name__ == '__main__':
         entry_points={'console_scripts': ['dominator = dominator.actions:cli']},
         package_data={
             'dominator.utils': ['*.yaml'],
-            'dominator.actions': ['debian/*', 'debian/source/*']
+            'dominator.actions': ['debian/*', 'debian/source/*'],
+            'dominator.entities': ['localship.pem'],
         },
         exclude_package_data={'dominator.actions': ['debian/source']},
         classifiers=[
@@ -60,7 +61,7 @@ if __name__ == '__main__':
         ],
         extras_require={
             'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'tzlocal', 'pkginfo', 'openssh_wrapper',
-                     'objgraph', 'pyopenssl', 'psutil', 'vcrpy', 'requests>=2.4', 'urllib3>=1.9.1'],
+                     'objgraph', 'psutil', 'vcrpy', 'requests>=2.4', 'urllib3>=1.9.1'],
             'tiny': ['PyYAML'],
         },
         cmdclass={'test': PyTest},

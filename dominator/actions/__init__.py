@@ -269,14 +269,49 @@ def objgraph(shipment, filename):
     objgraph.show_refs(shipment, filename=filename, max_depth=14, filter=filter_entities, highlight=highlight)
 
 
+def add_filtering(func):
+    @functools.wraps(func)
+    @click.option('-p', '--pattern', default='*', help="pattern to filter objects by name")
+    @click.option('-r', '--regex', is_flag=True, default=False, help="use regexp instead of wildcard")
+    @click.option('-i', '--interactive', is_flag=True, default=False, help="interactive filtering")
+    def wrapper(*args, pattern, regex, interactive, **kwargs):
+
+        @utils.makesorted(lambda o: o.fullname)
+        def filterbyname(objects, pattern, regex):
+            if not regex:
+                pattern = fnmatch.translate(pattern)
+            for obj in objects:
+                if re.match(pattern, obj.fullname):
+                    yield obj
+
+        def filterobjects(objects, pattern, regex, interactive):
+            objects = filterbyname(objects, pattern, regex)
+            if interactive:
+                choices = sorted([' {:2}: {}'.format(i, obj.fullname) for i, obj in enumerate(objects, 1)])
+                resp = click.prompt('Select objects:\n' + '\n'.join(choices) + '\nEnter choice (1,2 or all): ')
+                if resp == 'all':
+                    yield from objects
+                else:
+                    try:
+                        indexes = [int(index) for index in resp.split(',')]
+                    except:
+                        raise RuntimeError("Invalid input (should be a number)")
+                    for i, obj in enumerate(objects, 1):
+                        if i in indexes:
+                            yield obj
+            else:
+                yield from objects
+
+        return func(*args, filter=lambda objects: filterobjects(objects, pattern, regex, interactive), **kwargs)
+    return wrapper
+
+
 @cli.group(chain=True)
 @click.pass_context
-@click.option('-p', '--pattern', default='*', help="pattern to filter ship:container")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def container(ctx, pattern, regex):
+@add_filtering
+def container(ctx, filter):
     """Container management commands."""
-    shipment = ctx.obj
-    ctx.obj = filterbyname(shipment.containers, pattern, regex)
+    ctx.obj = filter(ctx.obj.containers)
 
 
 def foreach(varname):
@@ -451,12 +486,10 @@ def enter(cont, command):
 
 @cli.group(chain=True)
 @click.pass_context
-@click.option('-p', '--pattern', default='*', help="pattern to filter ship:task")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def task(ctx, pattern, regex):
+@add_filtering
+def task(ctx, filter):
     """Container management commands."""
-    shipment = ctx.obj
-    ctx.obj = filterbyname(shipment.tasks.values(), pattern, regex)
+    ctx.obj = filter(ctx.obj.tasks.values())
 
 
 @task.command('exec')
@@ -483,13 +516,11 @@ def task_list(task):
 
 
 @cli.group()
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter volumes (ship:container:volume)")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+@add_filtering
 @click.pass_context
-def volume(ctx, pattern, regex):
+def volume(ctx, filter):
     """Commands to manage volumes."""
-    shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.volumes, pattern, regex))
+    ctx.obj = filter(ctx.obj.volumes)
 
 
 @volume.command('list')
@@ -514,13 +545,11 @@ def erase_volume(volume, yes):
 
 
 @cli.group()
-@click.option('-p', '--pattern', default='*', help="pattern to filter files (ship:container:volume:file)")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+@add_filtering
 @click.pass_context
-def file(ctx, pattern, regex):
+def file(ctx, filter):
     """File management commands."""
-    shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.files, pattern, regex))
+    ctx.obj = filter(ctx.obj.files)
 
 
 @file.command('list')
@@ -541,17 +570,10 @@ def view_files(file):
 
 @cli.group(chain=True)
 @click.pass_context
-@click.option('-p', '--pattern', default='*', help="pattern to filter images")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def image(ctx, pattern, regex):
+@add_filtering
+def image(ctx, filter):
     """Image management commands."""
-    shipment = ctx.obj
-    images = []
-    if not regex:
-        pattern = fnmatch.translate(pattern)
-    images = [image for image in shipment.images
-              if isinstance(image, SourceImage) and re.match(pattern, image.repository)]
-    ctx.obj = images
+    ctx.obj = filter([image for image in ctx.obj.images if isinstance(image, SourceImage)])
 
 
 @image.command()
@@ -584,12 +606,10 @@ def list_images(image):
 
 @cli.group()
 @click.pass_context
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def ship(ctx, pattern, regex):
+@add_filtering
+def ship(ctx, filter):
     """Ship management commands."""
-    shipment = ctx.obj
-    ctx.obj = filterbyname(shipment.ships.values(), pattern, regex)
+    ctx.obj = filter(ctx.obj.ships.values())
 
 
 @ship.command('list')
@@ -669,12 +689,10 @@ def view_ship_container_log(cinfos, follow):
 
 @cli.group()
 @click.pass_context
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter doors")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def door(ctx, pattern, regex):
+@add_filtering
+def door(ctx, filter):
     """Commands to view doors."""
-    shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.doors, pattern, regex))
+    ctx.obj = filter(ctx.obj.doors)
 
 
 @door.command('list')
@@ -703,12 +721,11 @@ def test_doors(doors):
 
 @cli.group()
 @click.pass_context
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter urls")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def url(ctx, pattern, regex):
+@add_filtering
+def url(ctx, filter):
     """Commands to view urls."""
     shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.urls, pattern, regex))
+    ctx.obj = filter(shipment.urls)
 
 
 @url.command('list')
@@ -768,12 +785,3 @@ def create_config():
 def add_local_ship(shipment):
     """Populate shipment with one local ship."""
     shipment.ships = {'local': LocalShip()}
-
-
-@utils.makesorted(lambda o: o.fullname)
-def filterbyname(objects, pattern, regex):
-    if not regex:
-        pattern = fnmatch.translate(pattern)
-    for obj in objects:
-        if re.match(pattern, obj.fullname):
-            yield obj

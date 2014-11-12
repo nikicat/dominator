@@ -13,6 +13,7 @@ import yaml
 import mako.template
 from colorama import Fore
 import click
+import tabloid
 
 from ..entities import SourceImage, BaseShip, BaseFile, Volume, Container, Shipment, LocalShip
 from .. import utils
@@ -313,6 +314,20 @@ def add_filtering(func):
     return wrapper
 
 
+def print_table(columns):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            table = tabloid.FormattedTable()
+            for column in columns:
+                table.add_column(column)
+            for row in func(*args, **kwargs):
+                table.add_row(row)
+            click.echo('\n'.join(table.get_table()))
+        return wrapper
+    return decorator
+
+
 @cli.group(chain=True)
 @click.pass_context
 @add_filtering
@@ -415,30 +430,38 @@ def status(containers, showdiff):
     """Show container status."""
     with utils.addcontext(logger=logging.getLogger('dominator.container')):
         status = 0
-        for container in containers:
+        table = tabloid.FormattedTable()
+        for column in ['name', 'id', 'status']:
+            table.add_column(column)
+        diffs = {}
+        for i, container in enumerate(containers):
             with utils.addcontext(container=container):
                 container.check()
                 if container.running:
                     diff = list(utils.compare_container(container, container.inspect()))
                     if len(diff) > 0:
                         color = Fore.YELLOW
+                        if showdiff:
+                            diffs[i] = '\n'.join(format_diff(diff))
+                        status = 2
                     else:
                         color = Fore.GREEN
                 else:
                     color = Fore.RED
-                click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
-                           .format(c=container, color=color, id=container.id or '', reset=Fore.RESET))
-                if container.running:
-                    if diff:
-                        if showdiff:
-                            print_diff(diff)
-                        status = 2
-                else:
                     status = 1
+                table.add_row([container.fullname, color+(container.id or '')[:7], container.status+Fore.RESET])
+
+        header, rows = table.get_table()
+        click.echo(header)
+        for i, row in enumerate(rows.split('\n')):
+            click.echo(row)
+            if i in diffs:
+                click.echo(diffs[i])
+
         sys.exit(status)
 
 
-def print_diff(difflist):
+def format_diff(difflist):
     fore = Fore
     for key, diff in difflist:
         keystr = ' '.join(key)
@@ -446,11 +469,11 @@ def print_diff(difflist):
             # files diff
             for line in diff:
                 color = {'- ': Fore.RED, '+ ': Fore.GREEN, '? ': Fore.BLUE}.get(line[:2], '')
-                click.echo('  {keystr:60.60} {color}{line}{fore.RESET}'.format(**locals()))
+                yield '  {keystr:60.60} {color}{line}{fore.RESET}'.format(**locals())
         elif len(diff) == 2:
             expected, actual = diff
-            click.echo('  {keystr:60.60} {fore.RED}{actual!s:50.50}{fore.RESET} '
-                       '{fore.GREEN}{expected!s:50.50}{fore.RESET}'.format(**locals()))
+            yield ('  {keystr:60.60} {fore.RED}{actual!s:50.50}{fore.RESET} '
+                   '{fore.GREEN}{expected!s:50.50}{fore.RESET}').format(**locals())
         else:
             raise ValueError("Invalid diff format for {key}: {diff}".format(**locals()))
 
@@ -712,18 +735,18 @@ def list_doors(doors):
 
 @door.command('test')
 @click.pass_obj
+@print_table(['name', 'port', 'status'])
 def test_doors(doors):
     for door in doors:
         try:
             door.test()
         except Exception as e:
-            result = e
+            result = str(e)
             color = Fore.RED
         else:
             result = 'ok'
             color = Fore.GREEN
-        click.echo('{door.fullname:40.40} {door.port:5} {color}{result}{reset}'.format(
-            door=door, color=color, result=result, reset=Fore.RESET))
+        yield door.fullname, door.port, color+result+Fore.RESET
 
 
 @cli.group()
@@ -744,6 +767,7 @@ def list_urls(urls):
 
 @url.command('test')
 @click.pass_obj
+@print_table(['name', 'url', 'status'])
 def test_urls(urls):
     for url in urls:
         try:
@@ -752,13 +776,12 @@ def test_urls(urls):
             result = 'not implemented'
             color = Fore.YELLOW
         except Exception as e:
-            result = e
+            result = str(e)
             color = Fore.RED
         else:
             result = 'ok'
             color = Fore.GREEN
-        click.echo('{url.fullname:50.50} {url!s:50.50} {color}{result}{reset}'.format(
-            url=url, color=color, result=result, reset=Fore.RESET))
+        yield url.fullname, str(url), color+result+Fore.RESET
 
 
 @cli.group()

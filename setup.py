@@ -54,6 +54,7 @@ if __name__ == '__main__':
             'colorama',
             'click',
             'mergedict',
+            'tabloid',
         ],
         tests_require=[
             'pytest',

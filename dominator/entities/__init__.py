@@ -234,6 +234,10 @@ class BaseImage:
             classname=type(self).__name__, namespace=self.namespace, repository=self.repository, tag=self.tag,
             registry=self.registry)
 
+    @property
+    def fullname(self):
+        return self.repository
+
     def getfullrepository(self):
         registry = (self.registry + '/') if self.registry else ''
         namespace = (self.namespace + '/') if self.namespace else ''

@@ -326,13 +326,9 @@ def foreach(varname):
         @functools.wraps(func)
         def wrapper(objects, *args, **kwargs):
             with utils.addcontext(logger=logging.getLogger('dominator.'+varname)):
-                results = []
                 for obj in objects:
                     with utils.addcontext(**{varname: obj}):
-                        result = func(obj, *args, **kwargs)
-                        results.append(result)
-                if any(results):
-                    sys.exit(1)
+                        func(obj, *args, **kwargs)
         return wrapper
     return decorator
 
@@ -415,27 +411,31 @@ def container_list(container):
 @container.command()
 @click.pass_obj
 @click.option('-d', '--showdiff', is_flag=True, default=False, help="show diff with running container")
-@foreach('container')
-def status(container, showdiff):
+def status(containers, showdiff):
     """Show container status."""
-    container.check()
-    if container.running:
-        diff = list(utils.compare_container(container, container.inspect()))
-        if len(diff) > 0:
-            color = Fore.YELLOW
-        else:
-            color = Fore.GREEN
-    else:
-        color = Fore.RED
-    click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
-               .format(c=container, color=color, id=container.id or '', reset=Fore.RESET))
-    if container.running:
-        if diff:
-            if showdiff:
-                print_diff(diff)
-            return True
-    else:
-        return True
+    with utils.addcontext(logger=logging.getLogger('dominator.container')):
+        status = 0
+        for container in containers:
+            with utils.addcontext(container=container):
+                container.check()
+                if container.running:
+                    diff = list(utils.compare_container(container, container.inspect()))
+                    if len(diff) > 0:
+                        color = Fore.YELLOW
+                    else:
+                        color = Fore.GREEN
+                else:
+                    color = Fore.RED
+                click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
+                           .format(c=container, color=color, id=container.id or '', reset=Fore.RESET))
+                if container.running:
+                    if diff:
+                        if showdiff:
+                            print_diff(diff)
+                        status = 2
+                else:
+                    status = 1
+        sys.exit(status)
 
 
 def print_diff(difflist):

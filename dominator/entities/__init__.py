@@ -99,10 +99,14 @@ class Ship(BaseShip):
         return self.name == os.uname()[1]
 
     @property
+    def url(self):
+        return 'http://{}:{}'.format(self.fqdn, self.port)
+
+    @property
     @utils.cached
     def docker(self):
         self.logger.debug('connecting to docker api on ship', fqdn=self.fqdn)
-        return docker.Client('http://{}:{}'.format(self.fqdn, self.port))
+        return docker.Client(self.url)
 
     @utils.cached
     def getssh(self):

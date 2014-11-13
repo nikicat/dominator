@@ -8,6 +8,7 @@ import functools
 import json
 import sys
 import importlib
+import pickle
 
 import yaml
 import mako.template
@@ -44,8 +45,13 @@ def load_plugins():
         importlib.import_module(plugin)
 
 
+def ensure_shipment(shipment):
+    if not isinstance(shipment, Shipment):
+        raise InvalidShipmentFile("Shipment file should consist serialized Shipment object only")
+
+
 @click.group()
-@click.option('-s', '--shipment', type=click.Path(), default='./shipment.yaml', show_default=True,
+@click.option('-s', '--shipment', type=click.Path(), default='./shipment.pickle', show_default=True,
               help="file to load shipment from/save shipment to")
 @click.option('-c', '--config', type=click.File('r'), help="file path to load settings from")
 @click.option('-l', '--loglevel', callback=validate_loglevel, default='warn')
@@ -70,16 +76,20 @@ def cli(ctx, shipment, loglevel, config, vcr, override):
 
     load_plugins()
 
-    filename = shipment
-    if os.path.exists(filename):
+    if os.path.exists(shipment):
         try:
-            ctx.obj = Shipment.load(filename)
+            utils.getlogger().debug("loading shipment", shipment_filename=shipment)
+            with click.open_file(shipment, 'rb') as file:
+                ctx.obj = pickle.load(file)
+            ensure_shipment(ctx.obj)
+            if ctx.obj.dominator_version != getshortversion():
+                utils.getlogger().warning("current dominator version {} do not match shipment version {}".format(
+                    getshortversion(), ctx.obj.dominator_version))
         except Exception:
             getlogger().exception("failed to load shipment")
             ctx.fail("Failed to load shipment")
     else:
         ctx.obj = Shipment()
-        ctx.obj.filename = filename
 
     if vcr:
         import vcr as vcrpy
@@ -93,6 +103,15 @@ def edit():
     """Commands to edit shipment."""
 
 
+class InvalidShipmentFile(Exception):
+    pass
+
+
+def getshortversion():
+    """This function returns short version independend on prerelease suffixes."""
+    return '.'.join(utils.getversion().split('-')[0].split('.')[:3])
+
+
 def edit_subcommand(name=None):
     def decorator(func):
         @edit.command(name=name)
@@ -100,9 +119,15 @@ def edit_subcommand(name=None):
         @functools.wraps(func)
         def wrapper(ctx, *args, **kwargs):
             func(ctx, *args, **kwargs)
-            shipment = ctx.obj
             try:
-                shipment.save()
+                filename = ctx.parent.parent.params['shipment']
+                shipment = ctx.obj
+                utils.getlogger().debug("saving shipment", shipment_filename=filename)
+                shipment.dominator_version = getshortversion()
+                shipment.make_backrefs()
+
+                with click.open_file(filename, 'bw+') as file:
+                    pickle.dump(shipment, file)
             except Exception as e:
                 getlogger().exception("failed to save shipment")
                 ctx.fail("Failed to save shipment: {!r}".format(e))
@@ -161,7 +186,7 @@ def generate(ctx, distribution, entrypoint, arguments):
 
     func = dist.load_entry_point('obedient', entrypoint)
     assert func is not None, "Could not load entrypoint {} from distribution {}".format(entrypoint, distribution)
-    execute_on_shipment(ctx, func, arguments)
+    execute_on_shipment(ctx.obj, func, arguments)
 
 
 @edit_subcommand()
@@ -174,10 +199,10 @@ def execute(ctx, filename, function, arguments):
     sys.path.append(os.path.dirname(filename))
     module = importlib.import_module(os.path.basename(filename[:-3]))
     function = getattr(module, function)
-    execute_on_shipment(ctx, function, arguments)
+    execute_on_shipment(ctx.obj, function, arguments)
 
 
-def execute_on_shipment(ctx, func, arguments):
+def execute_on_shipment(shipment, func, arguments):
     try:
 
         def parse_value(value):
@@ -195,12 +220,10 @@ def execute_on_shipment(ctx, func, arguments):
                 kwargs[key] = parse_value(value)
             else:
                 args.append(parse_value(arg))
-        shipment = ctx.obj
         func(shipment, *args, **kwargs)
-        assert shipment is not None, "shipment should not be empty"
-    except Exception as e:
+    except Exception:
         getlogger().exception('failed to generate obedient')
-        ctx.fail("Failed to generate obedient: {!r}".format(e))
+        raise
 
     getlogger().debug("retrieving image ids")
     for image in shipment.images:
@@ -793,8 +816,7 @@ def test_doors(doors):
 @add_filtering
 def url(ctx, filter):
     """Commands to view urls."""
-    shipment = ctx.obj
-    ctx.obj = filter(shipment.urls)
+    ctx.obj = filter(ctx.obj.urls)
 
 
 @url.command('list')
@@ -846,7 +868,22 @@ def create_config():
 
 
 @edit_subcommand('local-ship')
-@click.pass_obj
-def add_local_ship(shipment):
+def add_local_ship(ctx):
     """Populate shipment with one local ship."""
-    shipment.ships = {'local': LocalShip()}
+    ctx.obj.ships = {'local': LocalShip()}
+
+
+@cli.command()
+@click.pass_obj
+def export(shipment):
+    """Export shipment in YAML format."""
+    click.echo(yaml.dump(shipment, default_flow_style=False))
+
+
+@edit_subcommand('import')
+@click.pass_context
+def import_shipment(ctx):
+    """Import shipment from YAML format."""
+    shipment = yaml.load(sys.stdin)
+    ensure_shipment(shipment)
+    ctx.obj = shipment

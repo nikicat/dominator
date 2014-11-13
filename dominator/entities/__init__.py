@@ -1031,15 +1031,6 @@ def make_backrefs(obj, refname, backrefname):
             child.make_backrefs()
 
 
-class InvalidShipmentFile(Exception):
-    pass
-
-
-def getshortversion():
-    """This function returns short version independend on prerelease suffixes."""
-    return '.'.join(utils.getversion().split('-')[0].split('.')[:3])
-
-
 class Shipment:
     def __init__(self, name='unnamed', ships=None, tasks=None):
         self.name = name
@@ -1051,29 +1042,6 @@ class Shipment:
         """Unload all containers from all ships."""
         for ship in self.ships.values():
             ship.containers.clear()
-
-    @staticmethod
-    def load(filename):
-        utils.getlogger().debug("loading shipment", shipment_filename=filename)
-        with open(filename, 'r') as file:
-            shipment = yaml.load(file)
-            if not isinstance(shipment, Shipment):
-                raise InvalidShipmentFile("Shipment file should consist serialized Shipment object only")
-            shipment.filename = filename
-        if shipment.dominator_version != getshortversion():
-            utils.getlogger().warning("current dominator version {} do not match shipment version {}".format(
-                getshortversion(), shipment.dominator_version))
-        return shipment
-
-    def save(self):
-        utils.getlogger().debug("saving shipment", shipment_filename=self.filename)
-        self.dominator_version = getshortversion()
-
-        self.make_backrefs()
-
-        dump = yaml.dump(self, default_flow_style=False)
-        with open(self.filename, 'w+') as file:
-            file.write(dump)
 
     @property
     def containers(self):

@@ -355,7 +355,11 @@ def foreach(varname):
             with utils.addcontext(logger=logging.getLogger('dominator.'+varname)):
                 for obj in objects:
                     with utils.addcontext(**{varname: obj}):
-                        func(obj, *args, **kwargs)
+                        try:
+                            func(obj, *args, **kwargs)
+                        except Exception:
+                            getlogger().exception('error while executing {} on {}'.format(func.__name__, obj))
+                            sys.exit(1)
         return wrapper
     return decorator
 

@@ -658,6 +658,15 @@ def restart_ship(ship):
     ship.restart()
 
 
+@ship.command('exec')
+@click.pass_obj
+@click.argument('command')
+@foreach('ship')
+def execute_command_on_ship(ship, command):
+    """Execute command on ship(s)."""
+    ship.spawn(command)
+
+
 @ship.command('info')
 @click.pass_obj
 @foreach('ship')

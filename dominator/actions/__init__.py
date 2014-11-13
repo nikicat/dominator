@@ -811,13 +811,11 @@ def list_urls(urls):
 def test_urls(urls, timeout):
     for url in urls:
         try:
-            url.test(timeout)
+            result = green(url.test(timeout) or 'ok')
         except NotImplementedError:
             result = yellow('not implemented')
         except Exception as e:
             result = red(str(e))
-        else:
-            result = green('ok')
         yield url.fullname, str(url), result
 
 

@@ -804,6 +804,21 @@ class Url:
     def test(self, timeout):
         if self.door.schema.startswith('http'):
             requests.get(str(self), timeout=timeout).raise_for_status()
+        elif self.door.schema == 'zookeeper':
+            sock = socket.create_connection((self.door.host, self.door.port))
+            with contextlib.closing(sock):
+                file = sock.makefile('rw')
+                file.write('stat\n')
+                file.flush()
+                response = file.read()
+                for line in response.split('\n'):
+                    if line == 'This ZooKeeper instance is not currently serving requests':
+                        raise RuntimeError('out of service')
+                    if line.startswith('Mode: '):
+                        mode = line.split(': ')[1]
+                        return mode
+                else:
+                    raise RuntimeError("Unexpected Zookeeper response: {}".format(response))
         else:
             raise NotImplementedError()
 

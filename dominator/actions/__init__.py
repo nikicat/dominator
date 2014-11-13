@@ -328,6 +328,18 @@ def print_table(columns):
     return decorator
 
 
+def green(text):
+    return Fore.GREEN + text + Fore.RESET
+
+
+def red(text):
+    return Fore.RED + text + Fore.RESET
+
+
+def yellow(text):
+    return Fore.YELLOW + text + Fore.RESET
+
+
 @cli.group(chain=True)
 @click.pass_context
 @add_filtering
@@ -750,12 +762,10 @@ def test_doors(doors):
         try:
             door.test()
         except Exception as e:
-            result = str(e)
-            color = Fore.RED
+            result = red(str(e))
         else:
-            result = 'ok'
-            color = Fore.GREEN
-        yield door.fullname, door.port, color+result+Fore.RESET
+            result = green('ok')
+        yield door.fullname, door.port, result
 
 
 @cli.group()
@@ -782,15 +792,12 @@ def test_urls(urls):
         try:
             url.test()
         except NotImplementedError:
-            result = 'not implemented'
-            color = Fore.YELLOW
+            result = yellow('not implemented')
         except Exception as e:
-            result = str(e)
-            color = Fore.RED
+            result = red(str(e))
         else:
-            result = 'ok'
-            color = Fore.GREEN
-        yield url.fullname, str(url), color+result+Fore.RESET
+            result = green('ok')
+        yield url.fullname, str(url), result
 
 
 @cli.group()

@@ -807,11 +807,12 @@ def list_urls(urls):
 
 @url.command('test')
 @click.pass_obj
+@click.option('-t', '--timeout', default=2, help="Timeout in seconds")
 @print_table(['name', 'url', 'status'])
-def test_urls(urls):
+def test_urls(urls, timeout):
     for url in urls:
         try:
-            url.test()
+            url.test(timeout)
         except NotImplementedError:
             result = yellow('not implemented')
         except Exception as e:

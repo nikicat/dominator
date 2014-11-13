@@ -801,9 +801,9 @@ class Url:
     def fullname(self):
         return '{}:{}'.format(self.door.fullname, self.name)
 
-    def test(self):
+    def test(self, timeout):
         if self.door.schema.startswith('http'):
-            requests.get(str(self)).raise_for_status()
+            requests.get(str(self), timeout=timeout).raise_for_status()
         else:
             raise NotImplementedError()
 

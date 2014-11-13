@@ -666,6 +666,23 @@ def list_ships(ship):
     click.echo('{:15.15}{}'.format(ship.name, ship.fqdn))
 
 
+@ship.command('status')
+@click.pass_obj
+@print_table(['name', 'url', 'version', 'api', 'status'])
+def status_ships(ships):
+    """Output ship status."""
+    for ship in ships:
+        try:
+            ship.docker.ping()
+        except Exception as e:
+            status = red(str(e))
+            version = {'Version': yellow('unknown'), 'ApiVersion': yellow('unknown')}
+        else:
+            status = green('ok')
+            version = ship.docker.version()
+        yield ship.fullname, ship.url, version['Version'], version['ApiVersion'], status
+
+
 @ship.command('restart')
 @click.pass_obj
 @foreach('ship')

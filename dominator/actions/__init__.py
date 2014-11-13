@@ -125,8 +125,7 @@ def rename(ctx, name):
 @edit_subcommand()
 def unload(ctx):
     """Unload all containers from ships."""
-    for ship in ctx.obj.ships.values():
-        ship.containers = {}
+    ctx.obj.unload_ships()
 
 
 @edit_subcommand()

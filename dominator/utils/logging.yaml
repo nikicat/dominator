@@ -37,6 +37,8 @@ logging:
             level: DEBUG
             handlers: [dominator.docker.logs]
             propagate: false
+        vcr.matchers:
+            level: INFO
     formatters:
         default:
             (): dominator.utils.MixedFormatter

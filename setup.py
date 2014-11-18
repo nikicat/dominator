@@ -25,7 +25,7 @@ class PyTest(TestCommand):
 if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
-        version='13.0.1',
+        version='14.0.0',
         url='https://github.com/yandex-sysmon/dominator',
         license='LGPLv3',
         author='Nikolay Bryskin',
@@ -37,7 +37,8 @@ if __name__ == '__main__':
         entry_points={'console_scripts': ['dominator = dominator.actions:cli']},
         package_data={
             'dominator.utils': ['*.yaml'],
-            'dominator.actions': ['debian/*', 'debian/source/*']
+            'dominator.actions': ['debian/*', 'debian/source/*'],
+            'dominator.entities': ['localship.pem'],
         },
         exclude_package_data={'dominator.actions': ['debian/source']},
         classifiers=[
@@ -53,14 +54,15 @@ if __name__ == '__main__':
             'colorama',
             'click',
             'mergedict',
+            'tabloid',
         ],
         tests_require=[
             'pytest',
             'vcrpy',
         ],
         extras_require={
-            'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'tzlocal', 'pkginfo', 'openssh_wrapper',
-                     'objgraph', 'pyopenssl', 'psutil', 'vcrpy', 'requests>=2.4', 'urllib3>=1.9.1'],
+            'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'pkginfo', 'openssh_wrapper',
+                     'objgraph', 'psutil', 'vcrpy', 'requests>=2.4', 'urllib3>=1.9.1'],
             'tiny': ['PyYAML'],
         },
         cmdclass={'test': PyTest},

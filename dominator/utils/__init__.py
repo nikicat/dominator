@@ -72,6 +72,10 @@ def getcontext(attrname, default=None):
     return getattr(tl, attrname, default)
 
 
+def getcontextdict():
+    return vars(tl)
+
+
 def setcontext(**kwargs):
     for k, v in kwargs.items():
         setattr(tl, k, v)
@@ -120,10 +124,9 @@ class ExceptionLocalsFormatter(BaseFormatter):
             if len(line) > self._max_line_len:
                 vars_lines[count] = line[:self._max_line_len - 3] + "..."
 
-        output = "\n".join([
-            super().formatException(exc_info),
-            "\nLocals at innermost frame:\n",
-        ] + vars_lines)
+        output = "\n".join([super().formatException(exc_info), "\nLocals at innermost frame:\n"] +
+                           vars_lines + ['\nContext:\n'] +
+                           ['{}: {}'.format(key, value) for key, value in getcontextdict().items()])
         return output
 
     def _get_locals(self, exc_info):

@@ -83,8 +83,8 @@ def test_start(capsys, shipment):
     result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')
-    assert len(lines) == 2
-    assert re.match(r'localship:testcont[ \t]+[a-f0-9]{7}[ \t]+Up Less than a second[ \t]+',
+    assert len(lines) == 3
+    assert re.match(r'[ \t]*localship:testcont[ \t]+[a-f0-9]{7}[ \t]+Up Less than a second[ \t]*',
                     lines[-2])
 
     result = runner.invoke(actions.container, ['restart'], obj=shipment)
@@ -92,9 +92,9 @@ def test_start(capsys, shipment):
 
     next(shipment.containers).volumes['testconf'].files['testfile'].data = 'some other content'
     result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     lines = result.output.split('\n')
-    assert len(lines) == 6
+    assert len(lines) == 7
     assert '++++++' in lines[-3]
 
     result = runner.invoke(actions.container, ['start'], obj=shipment)
@@ -102,7 +102,7 @@ def test_start(capsys, shipment):
     result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')
-    assert len(lines) == 2
+    assert len(lines) == 3
 
     result = runner.invoke(actions.container, ['stop'], obj=shipment)
     assert result.exit_code == 0

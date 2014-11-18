@@ -8,11 +8,13 @@ import functools
 import json
 import sys
 import importlib
+import pickle
 
 import yaml
 import mako.template
 from colorama import Fore
 import click
+import tabloid
 
 from ..entities import SourceImage, BaseShip, BaseFile, Volume, Container, Shipment, LocalShip
 from .. import utils
@@ -43,8 +45,13 @@ def load_plugins():
         importlib.import_module(plugin)
 
 
+def ensure_shipment(shipment):
+    if not isinstance(shipment, Shipment):
+        raise InvalidShipmentFile("Shipment file should consist serialized Shipment object only")
+
+
 @click.group()
-@click.option('-s', '--shipment', type=click.Path(), default='./shipment.yaml', show_default=True,
+@click.option('-s', '--shipment', type=click.Path(), default='./shipment.pickle', show_default=True,
               help="file to load shipment from/save shipment to")
 @click.option('-c', '--config', type=click.File('r'), help="file path to load settings from")
 @click.option('-l', '--loglevel', callback=validate_loglevel, default='warn')
@@ -69,16 +76,20 @@ def cli(ctx, shipment, loglevel, config, vcr, override):
 
     load_plugins()
 
-    filename = shipment
-    if os.path.exists(filename):
+    if os.path.exists(shipment):
         try:
-            ctx.obj = Shipment.load(filename)
+            utils.getlogger().debug("loading shipment", shipment_filename=shipment)
+            with click.open_file(shipment, 'rb') as file:
+                ctx.obj = pickle.load(file)
+            ensure_shipment(ctx.obj)
+            if ctx.obj.dominator_version != getshortversion():
+                utils.getlogger().warning("current dominator version {} do not match shipment version {}".format(
+                    getshortversion(), ctx.obj.dominator_version))
         except Exception:
             getlogger().exception("failed to load shipment")
             ctx.fail("Failed to load shipment")
     else:
         ctx.obj = Shipment()
-        ctx.obj.filename = filename
 
     if vcr:
         import vcr as vcrpy
@@ -92,6 +103,15 @@ def edit():
     """Commands to edit shipment."""
 
 
+class InvalidShipmentFile(Exception):
+    pass
+
+
+def getshortversion():
+    """This function returns short version independend on prerelease suffixes."""
+    return '.'.join(utils.getversion().split('-')[0].split('.')[:3])
+
+
 def edit_subcommand(name=None):
     def decorator(func):
         @edit.command(name=name)
@@ -99,9 +119,15 @@ def edit_subcommand(name=None):
         @functools.wraps(func)
         def wrapper(ctx, *args, **kwargs):
             func(ctx, *args, **kwargs)
-            shipment = ctx.obj
             try:
-                shipment.save()
+                filename = ctx.parent.parent.params['shipment']
+                shipment = ctx.obj
+                utils.getlogger().debug("saving shipment", shipment_filename=filename)
+                shipment.dominator_version = getshortversion()
+                shipment.make_backrefs()
+
+                with click.open_file(filename, 'bw+') as file:
+                    pickle.dump(shipment, file)
             except Exception as e:
                 getlogger().exception("failed to save shipment")
                 ctx.fail("Failed to save shipment: {!r}".format(e))
@@ -115,15 +141,21 @@ def noop(_ctx):
 
 
 @edit_subcommand()
-def unload(ctx):
-    """Unload all containers from ships."""
-    for ship in ctx.obj.ships.values():
-        ship.containers = {}
+@click.argument('name')
+def rename(ctx, name):
+    """Rename shipment."""
+    ctx.obj.name = name
 
 
 @edit_subcommand()
-@click.argument('distribution', metavar='<distribution>')
-@click.argument('entrypoint', metavar='<entrypoint>')
+def unload(ctx):
+    """Unload all containers from ships."""
+    ctx.obj.unload_ships()
+
+
+@edit_subcommand()
+@click.argument('distribution', required=False, metavar='<distribution>')
+@click.argument('entrypoint', required=False, metavar='<entrypoint>')
 @click.argument('arguments', nargs=-1, metavar='<arguments>')
 def generate(ctx, distribution, entrypoint, arguments):
     """Generates yaml config file for shipment."""
@@ -135,10 +167,16 @@ def generate(ctx, distribution, entrypoint, arguments):
     assert dist is not None, "Could not load distribution for {}".format(distribution)
 
     if entrypoint is None:
-        # Show all "obedient" entrypoints for package
-        for entrypoint in dist.get_entry_map('obedient').keys():
-            click.echo(entrypoint)
-        ctx.exit()
+        entrypoints = list(dist.get_entry_map('obedient').keys())
+        if len(entrypoints) == 0:
+            ctx.fail("Invalid obedient: no entrypoints")
+        elif len(entrypoints) == 1:
+            entrypoint = entrypoints[0]
+        else:
+            # Show all "obedient" entrypoints for package
+            for entrypoint in entrypoints:
+                click.echo(entrypoint)
+            ctx.exit()
 
     getlogger().info("generating config", distribution=distribution, entrypoint=entrypoint)
 
@@ -148,7 +186,7 @@ def generate(ctx, distribution, entrypoint, arguments):
 
     func = dist.load_entry_point('obedient', entrypoint)
     assert func is not None, "Could not load entrypoint {} from distribution {}".format(entrypoint, distribution)
-    execute_on_shipment(ctx, func, arguments)
+    execute_on_shipment(ctx.obj, func, arguments)
 
 
 @edit_subcommand()
@@ -161,10 +199,10 @@ def execute(ctx, filename, function, arguments):
     sys.path.append(os.path.dirname(filename))
     module = importlib.import_module(os.path.basename(filename[:-3]))
     function = getattr(module, function)
-    execute_on_shipment(ctx, function, arguments)
+    execute_on_shipment(ctx.obj, function, arguments)
 
 
-def execute_on_shipment(ctx, func, arguments):
+def execute_on_shipment(shipment, func, arguments):
     try:
 
         def parse_value(value):
@@ -182,12 +220,10 @@ def execute_on_shipment(ctx, func, arguments):
                 kwargs[key] = parse_value(value)
             else:
                 args.append(parse_value(arg))
-        shipment = ctx.obj
         func(shipment, *args, **kwargs)
-        assert shipment is not None, "shipment should not be empty"
-    except Exception as e:
+    except Exception:
         getlogger().exception('failed to generate obedient')
-        ctx.fail("Failed to generate obedient: {!r}".format(e))
+        raise
 
     getlogger().debug("retrieving image ids")
     for image in shipment.images:
@@ -256,14 +292,82 @@ def objgraph(shipment, filename):
     objgraph.show_refs(shipment, filename=filename, max_depth=14, filter=filter_entities, highlight=highlight)
 
 
+def add_filtering(func):
+    @functools.wraps(func)
+    @click.option('-p', '--pattern', default='*', help="pattern to filter objects by name")
+    @click.option('-r', '--regex', is_flag=True, default=False, help="use regexp instead of wildcard")
+    @click.option('-i', '--interactive', is_flag=True, default=False, help="interactive filtering")
+    def wrapper(*args, pattern, regex, interactive, **kwargs):
+
+        @utils.makesorted(lambda o: o.fullname)
+        def filterbyname(objects, pattern, regex):
+            if not regex:
+                pattern = fnmatch.translate(pattern)
+            for obj in objects:
+                if re.match(pattern, obj.fullname):
+                    yield obj
+
+        def filterobjects(objects, pattern, regex, interactive):
+            objects = filterbyname(objects, pattern, regex)
+            if interactive:
+                choices = sorted([' {:2}: {}'.format(i, obj.fullname) for i, obj in enumerate(objects, 1)])
+                resp = click.prompt('Select objects:\n' + '\n'.join(choices) + '\nEnter choice (1,2-5 or all): ')
+                if resp == 'all':
+                    yield from objects
+                else:
+                    try:
+                        def parse_indexes(resp):
+                            for index in resp.split(','):
+                                if '-' in index:
+                                    start, end = index.split('-')
+                                    yield from range(int(start), int(end)+1)
+                                else:
+                                    yield int(index)
+                        indexes = list(parse_indexes(resp))
+                    except:
+                        raise RuntimeError("Invalid input (should be a number)")
+                    for i, obj in enumerate(objects, 1):
+                        if i in indexes:
+                            yield obj
+            else:
+                yield from objects
+
+        return func(*args, filter=lambda objects: filterobjects(objects, pattern, regex, interactive), **kwargs)
+    return wrapper
+
+
+def print_table(columns):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            table = tabloid.FormattedTable()
+            for column in columns:
+                table.add_column(column)
+            for row in func(*args, **kwargs):
+                table.add_row(row)
+            click.echo('\n'.join(table.get_table()))
+        return wrapper
+    return decorator
+
+
+def green(text):
+    return Fore.GREEN + text + Fore.RESET
+
+
+def red(text):
+    return Fore.RED + text + Fore.RESET
+
+
+def yellow(text):
+    return Fore.YELLOW + text + Fore.RESET
+
+
 @cli.group(chain=True)
 @click.pass_context
-@click.option('-p', '--pattern', default='*', help="pattern to filter ship:container")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def container(ctx, pattern, regex):
+@add_filtering
+def container(ctx, filter):
     """Container management commands."""
-    shipment = ctx.obj
-    ctx.obj = filterbyname(shipment.containers, pattern, regex)
+    ctx.obj = filter(ctx.obj.containers)
 
 
 def foreach(varname):
@@ -271,13 +375,13 @@ def foreach(varname):
         @functools.wraps(func)
         def wrapper(objects, *args, **kwargs):
             with utils.addcontext(logger=logging.getLogger('dominator.'+varname)):
-                results = []
                 for obj in objects:
                     with utils.addcontext(**{varname: obj}):
-                        result = func(obj, *args, **kwargs)
-                        results.append(result)
-                if any(results):
-                    sys.exit(1)
+                        try:
+                            func(obj, *args, **kwargs)
+                        except Exception:
+                            getlogger().exception('error while executing {} on {}'.format(func.__name__, obj))
+                            sys.exit(1)
         return wrapper
     return decorator
 
@@ -360,30 +464,42 @@ def container_list(container):
 @container.command()
 @click.pass_obj
 @click.option('-d', '--showdiff', is_flag=True, default=False, help="show diff with running container")
-@foreach('container')
-def status(container, showdiff):
+def status(containers, showdiff):
     """Show container status."""
-    container.check()
-    if container.running:
-        diff = list(utils.compare_container(container, container.inspect()))
-        if len(diff) > 0:
-            color = Fore.YELLOW
-        else:
-            color = Fore.GREEN
-    else:
-        color = Fore.RED
-    click.echo('{c.fullname:60.60} {color}{id:10.7} {c.status:30.30}{reset}'
-               .format(c=container, color=color, id=container.id or '', reset=Fore.RESET))
-    if container.running:
-        if diff:
-            if showdiff:
-                print_diff(diff)
-            return True
-    else:
-        return True
+    with utils.addcontext(logger=logging.getLogger('dominator.container')):
+        status = 0
+        table = tabloid.FormattedTable()
+        for column in ['name', 'id', 'status']:
+            table.add_column(column)
+        diffs = {}
+        for i, container in enumerate(containers):
+            with utils.addcontext(container=container):
+                container.check()
+                if container.running:
+                    diff = list(utils.compare_container(container, container.inspect()))
+                    if len(diff) > 0:
+                        color = Fore.YELLOW
+                        if showdiff:
+                            diffs[i] = '\n'.join(format_diff(diff))
+                        status = 2
+                    else:
+                        color = Fore.GREEN
+                else:
+                    color = Fore.RED
+                    status = 1
+                table.add_row([container.fullname, color+(container.id or '')[:7], container.status+Fore.RESET])
+
+        header, rows = table.get_table()
+        click.echo(header)
+        for i, row in enumerate(rows.split('\n')):
+            click.echo(row)
+            if i in diffs:
+                click.echo(diffs[i])
+
+        sys.exit(status)
 
 
-def print_diff(difflist):
+def format_diff(difflist):
     fore = Fore
     for key, diff in difflist:
         keystr = ' '.join(key)
@@ -391,11 +507,11 @@ def print_diff(difflist):
             # files diff
             for line in diff:
                 color = {'- ': Fore.RED, '+ ': Fore.GREEN, '? ': Fore.BLUE}.get(line[:2], '')
-                click.echo('  {keystr:60.60} {color}{line}{fore.RESET}'.format(**locals()))
+                yield '  {keystr:60.60} {color}{line}{fore.RESET}'.format(**locals())
         elif len(diff) == 2:
             expected, actual = diff
-            click.echo('  {keystr:60.60} {fore.RED}{actual!s:50.50}{fore.RESET} '
-                       '{fore.GREEN}{expected!s:50.50}{fore.RESET}'.format(**locals()))
+            yield ('  {keystr:60.60} {fore.RED}{actual!s:50.50}{fore.RESET} '
+                   '{fore.GREEN}{expected!s:50.50}{fore.RESET}').format(**locals())
         else:
             raise ValueError("Invalid diff format for {key}: {diff}".format(**locals()))
 
@@ -438,12 +554,10 @@ def enter(cont, command):
 
 @cli.group(chain=True)
 @click.pass_context
-@click.option('-p', '--pattern', default='*', help="pattern to filter ship:task")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def task(ctx, pattern, regex):
+@add_filtering
+def task(ctx, filter):
     """Container management commands."""
-    shipment = ctx.obj
-    ctx.obj = filterbyname(shipment.tasks.values(), pattern, regex)
+    ctx.obj = filter(ctx.obj.tasks.values())
 
 
 @task.command('exec')
@@ -470,13 +584,11 @@ def task_list(task):
 
 
 @cli.group()
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter volumes (ship:container:volume)")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+@add_filtering
 @click.pass_context
-def volume(ctx, pattern, regex):
+def volume(ctx, filter):
     """Commands to manage volumes."""
-    shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.volumes, pattern, regex))
+    ctx.obj = filter(ctx.obj.volumes)
 
 
 @volume.command('list')
@@ -501,13 +613,11 @@ def erase_volume(volume, yes):
 
 
 @cli.group()
-@click.option('-p', '--pattern', default='*', help="pattern to filter files (ship:container:volume:file)")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
+@add_filtering
 @click.pass_context
-def file(ctx, pattern, regex):
+def file(ctx, filter):
     """File management commands."""
-    shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.files, pattern, regex))
+    ctx.obj = filter(ctx.obj.files)
 
 
 @file.command('list')
@@ -528,17 +638,10 @@ def view_files(file):
 
 @cli.group(chain=True)
 @click.pass_context
-@click.option('-p', '--pattern', default='*', help="pattern to filter images")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def image(ctx, pattern, regex):
+@add_filtering
+def image(ctx, filter):
     """Image management commands."""
-    shipment = ctx.obj
-    images = []
-    if not regex:
-        pattern = fnmatch.translate(pattern)
-    images = [image for image in shipment.images
-              if isinstance(image, SourceImage) and re.match(pattern, image.repository)]
-    ctx.obj = images
+    ctx.obj = filter([image for image in ctx.obj.images if isinstance(image, SourceImage)])
 
 
 @image.command()
@@ -571,12 +674,10 @@ def list_images(image):
 
 @cli.group()
 @click.pass_context
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter ships")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def ship(ctx, pattern, regex):
+@add_filtering
+def ship(ctx, filter):
     """Ship management commands."""
-    shipment = ctx.obj
-    ctx.obj = filterbyname(shipment.ships.values(), pattern, regex)
+    ctx.obj = filter(ctx.obj.ships.values())
 
 
 @ship.command('list')
@@ -587,12 +688,38 @@ def list_ships(ship):
     click.echo('{:15.15}{}'.format(ship.name, ship.fqdn))
 
 
+@ship.command('status')
+@click.pass_obj
+@print_table(['name', 'url', 'version', 'api', 'status'])
+def status_ships(ships):
+    """Output ship status."""
+    for ship in ships:
+        try:
+            ship.docker.ping()
+        except Exception as e:
+            status = red(str(e))
+            version = {'Version': yellow('unknown'), 'ApiVersion': yellow('unknown')}
+        else:
+            status = green('ok')
+            version = ship.docker.version()
+        yield ship.fullname, ship.url, version['Version'], version['ApiVersion'], status
+
+
 @ship.command('restart')
 @click.pass_obj
 @foreach('ship')
 def restart_ship(ship):
     """Restart ship(s)."""
     ship.restart()
+
+
+@ship.command('exec')
+@click.pass_obj
+@click.argument('command')
+@foreach('ship')
+def execute_command_on_ship(ship, command):
+    """Execute command on ship(s)."""
+    ship.spawn(command)
 
 
 @ship.command('info')
@@ -656,12 +783,10 @@ def view_ship_container_log(cinfos, follow):
 
 @cli.group()
 @click.pass_context
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter doors")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def door(ctx, pattern, regex):
+@add_filtering
+def door(ctx, filter):
     """Commands to view doors."""
-    shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.doors, pattern, regex))
+    ctx.obj = filter(ctx.obj.doors)
 
 
 @door.command('list')
@@ -674,28 +799,24 @@ def list_doors(doors):
 
 @door.command('test')
 @click.pass_obj
+@print_table(['name', 'port', 'status'])
 def test_doors(doors):
     for door in doors:
         try:
             door.test()
         except Exception as e:
-            result = e
-            color = Fore.RED
+            result = red(str(e))
         else:
-            result = 'ok'
-            color = Fore.GREEN
-        click.echo('{door.fullname:40.40} {door.port:5} {color}{result}{reset}'.format(
-            door=door, color=color, result=result, reset=Fore.RESET))
+            result = green('ok')
+        yield door.fullname, door.port, result
 
 
 @cli.group()
 @click.pass_context
-@click.option('-p', '--pattern', 'pattern', default='*', help="pattern to filter urls")
-@click.option('-r', '--regex', is_flag=True, default=False, help="use regex instead of wildcard")
-def url(ctx, pattern, regex):
+@add_filtering
+def url(ctx, filter):
     """Commands to view urls."""
-    shipment = ctx.obj
-    ctx.obj = list(filterbyname(shipment.urls, pattern, regex))
+    ctx.obj = filter(ctx.obj.urls)
 
 
 @url.command('list')
@@ -707,21 +828,17 @@ def list_urls(urls):
 
 @url.command('test')
 @click.pass_obj
-def test_urls(urls):
+@click.option('-t', '--timeout', default=2, help="Timeout in seconds")
+@print_table(['name', 'url', 'status'])
+def test_urls(urls, timeout):
     for url in urls:
         try:
-            url.test()
+            result = green(url.test(timeout) or 'ok')
         except NotImplementedError:
-            result = 'not implemented'
-            color = Fore.YELLOW
+            result = yellow('not implemented')
         except Exception as e:
-            result = e
-            color = Fore.RED
-        else:
-            result = 'ok'
-            color = Fore.GREEN
-        click.echo('{url.fullname:50.50} {url!s:50.50} {color}{result}{reset}'.format(
-            url=url, color=color, result=result, reset=Fore.RESET))
+            result = red(str(e))
+        yield url.fullname, str(url), result
 
 
 @cli.group()
@@ -751,16 +868,22 @@ def create_config():
 
 
 @edit_subcommand('local-ship')
-@click.pass_obj
-def add_local_ship(shipment):
+def add_local_ship(ctx):
     """Populate shipment with one local ship."""
-    shipment.ships = {'local': LocalShip()}
+    ctx.obj.ships = {'local': LocalShip()}
 
 
-@utils.makesorted(lambda o: o.fullname)
-def filterbyname(objects, pattern, regex):
-    if not regex:
-        pattern = fnmatch.translate(pattern)
-    for obj in objects:
-        if re.match(pattern, obj.fullname):
-            yield obj
+@cli.command()
+@click.pass_obj
+def export(shipment):
+    """Export shipment in YAML format."""
+    click.echo(yaml.dump(shipment, default_flow_style=False))
+
+
+@edit_subcommand('import')
+@click.pass_context
+def import_shipment(ctx):
+    """Import shipment from YAML format."""
+    shipment = yaml.load(sys.stdin)
+    ensure_shipment(shipment)
+    ctx.obj = shipment

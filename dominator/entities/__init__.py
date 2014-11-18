@@ -99,10 +99,14 @@ class Ship(BaseShip):
         return self.name == os.uname()[1]
 
     @property
+    def url(self):
+        return 'http://{}:{}'.format(self.fqdn, self.port)
+
+    @property
     @utils.cached
     def docker(self):
         self.logger.debug('connecting to docker api on ship', fqdn=self.fqdn)
-        return docker.Client('http://{}:{}'.format(self.fqdn, self.port))
+        return docker.Client(self.url)
 
     @utils.cached
     def getssh(self):
@@ -146,18 +150,7 @@ class Ship(BaseShip):
 class LocalShip(BaseShip):
     def __init__(self):
         super().__init__()
-        from OpenSSL import crypto
-        k = crypto.PKey()
-        k.generate_key(crypto.TYPE_RSA, 1024)
-        cert = crypto.X509()
-        cert.set_serial_number(1000)
-        cert.gmtime_adj_notBefore(0)
-        cert.gmtime_adj_notAfter(315360000)
-        cert.set_pubkey(k)
-        cert.sign(k, 'sha1')
-        certpem = crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode()
-        keypem = crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode()
-        self.certificate = certpem + keypem
+        self.certificate = utils.resource_string('localship.pem')
 
     @property
     def datacenter(self):
@@ -240,6 +233,10 @@ class BaseImage:
         return '{classname}({namespace}/{repository}:{tag:.7} registry={registry})'.format(
             classname=type(self).__name__, namespace=self.namespace, repository=self.repository, tag=self.tag,
             registry=self.registry)
+
+    @property
+    def fullname(self):
+        return self.repository
 
     def getfullrepository(self):
         registry = (self.registry + '/') if self.registry else ''
@@ -385,7 +382,7 @@ class SourceImage(BaseImage):
     def tag(self):
         """Calculate tag for image from it's attributes"""
         dump = yaml.dump(self)
-        digest = hashlib.sha256(dump.encode()).digest()
+        digest = hashlib.sha1(dump.encode()).digest()
         return base64.b64encode(digest, altchars=b'_-').decode().replace('=', '.')
 
     def gettarfile(self):
@@ -464,7 +461,6 @@ class Container:
         return '<Container {c.fullname} [{c.id!s:7.7}]>'.format(c=self)
 
     def __getstate__(self):
-        self.logger.debug("serializing state")
         state = vars(self).copy()
         # id and status are temporary fields and should not be saved
         state['id'] = None
@@ -612,7 +608,7 @@ class Container:
                         raise
                     self.logger.info("could not find requested image in registry, pushing repo")
                     self.image.push()
-                    self.image.pull(self.ship.docker)
+                    self.image.pull(self.ship.docker, tag=self.image.tag)
                 cinfo = self._create()
 
             self.check(cinfo)
@@ -805,9 +801,24 @@ class Url:
     def fullname(self):
         return '{}:{}'.format(self.door.fullname, self.name)
 
-    def test(self):
+    def test(self, timeout):
         if self.door.schema.startswith('http'):
-            requests.get(str(self)).raise_for_status()
+            requests.get(str(self), timeout=timeout).raise_for_status()
+        elif self.door.schema == 'zookeeper':
+            sock = socket.create_connection((self.door.host, self.door.port))
+            with contextlib.closing(sock):
+                file = sock.makefile('rw')
+                file.write('stat\n')
+                file.flush()
+                response = file.read()
+                for line in response.split('\n'):
+                    if line == 'This ZooKeeper instance is not currently serving requests':
+                        raise RuntimeError('out of service')
+                    if line.startswith('Mode: '):
+                        mode = line.split(': ')[1]
+                        return mode
+                else:
+                    raise RuntimeError("Unexpected Zookeeper response: {}".format(response))
         else:
             raise NotImplementedError()
 
@@ -1020,10 +1031,6 @@ def make_backrefs(obj, refname, backrefname):
             child.make_backrefs()
 
 
-class InvalidShipmentFile(Exception):
-    pass
-
-
 class Shipment:
     def __init__(self, name='unnamed', ships=None, tasks=None):
         self.name = name
@@ -1035,32 +1042,6 @@ class Shipment:
         """Unload all containers from all ships."""
         for ship in self.ships.values():
             ship.containers.clear()
-
-    @staticmethod
-    def load(filename):
-        utils.getlogger().debug("loading shipment", shipment_filename=filename)
-        with open(filename, 'r') as file:
-            shipment = yaml.load(file)
-            if not isinstance(shipment, Shipment):
-                raise InvalidShipmentFile("Shipment file should consist serialized Shipment object only")
-            shipment.filename = filename
-        if shipment.dominator_version != utils.getversion():
-            utils.getlogger().warning("current dominator version {} do not match shipment version {}".format(
-                utils.getversion(), shipment.dominator_version))
-        return shipment
-
-    def save(self):
-        utils.getlogger().debug("saving shipment", shipment_filename=self.filename)
-        self.dominator_version = utils.getversion()
-
-        import tzlocal
-        self.timestamp = datetime.datetime.now(tz=tzlocal.get_localzone())
-
-        self.make_backrefs()
-
-        dump = yaml.dump(self, default_flow_style=False)
-        with open(self.filename, 'w+') as file:
-            file.write(dump)
 
     @property
     def containers(self):

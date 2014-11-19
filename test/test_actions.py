@@ -48,7 +48,7 @@ def shipment(ship):
     container = entities.Container(
         name='testcont',
         image=entities.Image('busybox', namespace=None),
-        command='sleep 10',
+        command=['sleep', '10'],
         volumes={
             'testconf': entities.ConfigVolume(
                 dest='/tmp',
@@ -81,14 +81,14 @@ def test_start(capsys, shipment):
     assert result.exit_code == 0
 
     result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     lines = result.output.split('\n')
     assert len(lines) == 3
     assert re.match(r'[ \t]*localship:testcont[ \t]+[a-f0-9]{7}[ \t]+Up Less than a second[ \t]*',
                     lines[-2])
 
     result = runner.invoke(actions.container, ['restart'], obj=shipment)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
 
     next(shipment.containers).volumes['testconf'].files['testfile'].data = 'some other content'
     result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
@@ -98,7 +98,7 @@ def test_start(capsys, shipment):
     assert '++++++' in lines[-3]
 
     result = runner.invoke(actions.container, ['start'], obj=shipment)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     result = runner.invoke(actions.container, ['status', '-d'], obj=shipment)
     assert result.exit_code == 0
     lines = result.output.split('\n')

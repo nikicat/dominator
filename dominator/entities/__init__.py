@@ -702,7 +702,7 @@ class Container:
         assert self.running, "Container should run to enter"
         pid = self.inspect()['State']['Pid']
         self.ship.spawn('nsenter --target {pid} --mount --uts --ipc --net --pid'
-                        ' -- env --ignore-environment -- {command}'.format(pid=pid, command=command),
+                        ' -- env -- {command}'.format(pid=pid, command=command),
                         sudo=True)
 
 

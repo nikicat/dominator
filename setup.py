@@ -1,26 +1,4 @@
-import sys
 import setuptools
-from setuptools.command.test import test as TestCommand
-
-
-class PyTest(TestCommand):
-    user_options = [('pytest-args=', 'a', "Arguments to pass to py.test")]
-
-    def initialize_options(self):
-        TestCommand.initialize_options(self)
-        self.pytest_args = None
-
-    def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = []
-        self.test_suite = True
-
-    def run_tests(self):
-        # import here, cause outside the eggs aren't loaded
-        import pytest
-        errno = pytest.main(self.pytest_args)
-        sys.exit(errno)
-
 
 if __name__ == '__main__':
     setuptools.setup(
@@ -56,14 +34,9 @@ if __name__ == '__main__':
             'mergedict',
             'tabloid',
         ],
-        tests_require=[
-            'pytest',
-            'vcrpy',
-        ],
         extras_require={
             'full': ['PyYAML.Yandex >= 3.11.1', 'colorlog', 'pkginfo', 'openssh_wrapper',
                      'objgraph', 'psutil', 'vcrpy', 'requests>=2.4', 'urllib3>=1.9.1'],
             'tiny': ['PyYAML'],
         },
-        cmdclass={'test': PyTest},
     )

@@ -809,7 +809,7 @@ def test_doors(doors):
             result = red(str(e))
         else:
             result = green('ok')
-        yield door.fullname, door.port, result
+        yield door.fullname, door.hostport, result
 
 
 @cli.group()

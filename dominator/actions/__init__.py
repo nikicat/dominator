@@ -126,8 +126,9 @@ def edit_subcommand(name=None):
                 shipment.dominator_version = getshortversion()
                 shipment.make_backrefs()
 
+                data = pickle.dumps(shipment)
                 with click.open_file(filename, 'bw+') as file:
-                    pickle.dump(shipment, file)
+                    file.write(data)
             except Exception as e:
                 getlogger().exception("failed to save shipment")
                 ctx.fail("Failed to save shipment: {!r}".format(e))

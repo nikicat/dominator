@@ -603,8 +603,10 @@ class Container:
                 try:
                     self.image.pull(self.ship.docker, tag=self.image.tag)
                 except docker.errors.DockerException as e:
-                    if not any([re.search(pattern, str(e))
-                                for pattern in ['HTTP code: 404', 'Tag .* not found in repository']]):
+                    if not any([re.search(pattern, str(e)) for pattern in [
+                            'HTTP code: 404',
+                            'Tag .* not found in repository',
+                            'Error: image .* not found']]):
                         raise
                     self.logger.info("could not find requested image in registry, pushing repo")
                     self.image.push()

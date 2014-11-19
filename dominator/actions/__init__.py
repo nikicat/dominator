@@ -312,7 +312,7 @@ def add_filtering(func):
             objects = filterbyname(objects, pattern, regex)
             if interactive:
                 choices = sorted([' {:2}: {}'.format(i, obj.fullname) for i, obj in enumerate(objects, 1)])
-                resp = click.prompt('Select objects:\n' + '\n'.join(choices) + '\nEnter choice (1,2-5 or all): ')
+                resp = click.prompt('Select objects:\n' + '\n'.join(choices) + '\nEnter choice (1,2-5 or all)')
                 if resp == 'all':
                     yield from objects
                 else:

@@ -126,8 +126,9 @@ def edit_subcommand(name=None):
                 shipment.dominator_version = getshortversion()
                 shipment.make_backrefs()
 
+                data = pickle.dumps(shipment)
                 with click.open_file(filename, 'bw+') as file:
-                    pickle.dump(shipment, file)
+                    file.write(data)
             except Exception as e:
                 getlogger().exception("failed to save shipment")
                 ctx.fail("Failed to save shipment: {!r}".format(e))
@@ -311,7 +312,7 @@ def add_filtering(func):
             objects = filterbyname(objects, pattern, regex)
             if interactive:
                 choices = sorted([' {:2}: {}'.format(i, obj.fullname) for i, obj in enumerate(objects, 1)])
-                resp = click.prompt('Select objects:\n' + '\n'.join(choices) + '\nEnter choice (1,2-5 or all): ')
+                resp = click.prompt('Select objects:\n' + '\n'.join(choices) + '\nEnter choice (1,2-5 or all)')
                 if resp == 'all':
                     yield from objects
                 else:
@@ -808,7 +809,7 @@ def test_doors(doors):
             result = red(str(e))
         else:
             result = green('ok')
-        yield door.fullname, door.port, result
+        yield door.fullname, door.hostport, result
 
 
 @cli.group()

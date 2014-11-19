@@ -67,9 +67,7 @@ class BaseShip:
         self.containers[container.name] = container
         self.make_backrefs()
 
-    def expose_ports(self, port_range):
-        assert port_range.stop < 65536, "Port range end exceeds 65535"
-        ports = list(port_range)
+    def expose_ports(self, ports):
         for _, container in sorted(self.containers.items()):
             for _, door in sorted(container.doors.items()):
                 if not door.exposed:
@@ -603,8 +601,10 @@ class Container:
                 try:
                     self.image.pull(self.ship.docker, tag=self.image.tag)
                 except docker.errors.DockerException as e:
-                    if not any([re.search(pattern, str(e))
-                                for pattern in ['HTTP code: 404', 'Tag .* not found in repository']]):
+                    if not any([re.search(pattern, str(e)) for pattern in [
+                            'HTTP code: 404',
+                            'Tag .* not found in repository',
+                            'Error: image .* not found']]):
                         raise
                     self.logger.info("could not find requested image in registry, pushing repo")
                     self.image.push()
@@ -700,7 +700,7 @@ class Container:
         assert self.running, "Container should run to enter"
         pid = self.inspect()['State']['Pid']
         self.ship.spawn('nsenter --target {pid} --mount --uts --ipc --net --pid'
-                        ' -- env --ignore-environment -- {command}'.format(pid=pid, command=command),
+                        ' -- env -- {command}'.format(pid=pid, command=command),
                         sudo=True)
 
 

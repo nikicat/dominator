@@ -67,9 +67,7 @@ class BaseShip:
         self.containers[container.name] = container
         self.make_backrefs()
 
-    def expose_ports(self, port_range):
-        assert port_range.stop < 65536, "Port range end exceeds 65535"
-        ports = list(port_range)
+    def expose_ports(self, ports):
         for _, container in sorted(self.containers.items()):
             for _, door in sorted(container.doors.items()):
                 if not door.exposed:

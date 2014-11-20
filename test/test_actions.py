@@ -70,7 +70,6 @@ def shipment(ship):
     shipment.author_email = 'nobody@nonexistent.com'
     shipment.home_page = 'https://nonexistent.com/~nobody'
     shipment.timestamp = datetime.datetime(2000, 1, 1)
-    shipment.make_backrefs()
     return shipment
 
 

@@ -9,6 +9,7 @@ import threading
 import contextlib
 import pprint
 import socket
+import collections.abc
 
 import pkg_resources
 import yaml
@@ -361,6 +362,41 @@ def getversion():
         return pkg_resources.get_distribution('dominator').version
     except pkg_resources.DistributionNotFound:
         return '(local)'
+
+
+class BackrefDict(collections.abc.MutableMapping):
+    """This dict automagically adds references to parent
+    object to all it's items. As a bonus it sorts items
+    by key."""
+    def __init__(self, parent, initialdict=None):
+        self.parent = parent
+        self.children = {}
+        if initialdict is not None:
+            self.update(initialdict)
+
+    def __setitem__(self, key, value):
+        currentparent = getattr(value, self.parent.tag, None)
+        if currentparent not in (None, self.parent):
+            raise RuntimeError("Object already has a different parent {}({})".format(
+                currentparent, getattr(value, self.parent.tag)))
+
+        if value is not None:
+            setattr(value, self.parent.tag, self.parent)
+            if not hasattr(value, 'name'):
+                setattr(value, 'name', key)
+        self.children[key] = value
+
+    def __iter__(self):
+        return iter(sorted(self.children))
+
+    def __len__(self):
+        return len(self.children)
+
+    def __getitem__(self, key):
+        return self.children[key]
+
+    def __delitem__(self, key):
+        del self.children[key]
 
 
 NONEXISTENT_KEY = object()

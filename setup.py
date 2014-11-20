@@ -3,7 +3,7 @@ import setuptools
 if __name__ == '__main__':
     setuptools.setup(
         name='dominator',
-        version='14.1.0',
+        version='15.0.0',
         url='https://github.com/yandex-sysmon/dominator',
         license='LGPLv3',
         author='Nikolay Bryskin',

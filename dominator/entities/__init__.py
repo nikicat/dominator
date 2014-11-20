@@ -17,7 +17,6 @@ import re
 import shutil
 import datetime
 import socket
-import copy
 import itertools
 import logging
 import shlex
@@ -32,23 +31,24 @@ import difflib
 import requests
 
 from .. import utils
+from ..utils import BackrefDict
 
 
 class BaseShip:
     """
     Base class for Ships.
     """
+
+    tag = 'ship'
+
     def __init__(self):
-        self.containers = {}
+        self.containers = BackrefDict(self)
 
     def __lt__(self, other):
         return self.fqdn < other.fqdn
 
     def __repr__(self):
         return '{}(name={})'.format(type(self).__name__, self.name)
-
-    def make_backrefs(self):
-        make_backrefs(self, 'containers', 'ship')
 
     @property
     def logger(self):
@@ -65,7 +65,6 @@ class BaseShip:
         """Place the container on the ship."""
         assert container.name not in self.containers, "container {} already loaded on the ship".format(container.name)
         self.containers[container.name] = container
-        self.make_backrefs()
 
     def expose_ports(self, ports):
         for _, container in sorted(self.containers.items()):
@@ -434,6 +433,8 @@ class SourceImage(BaseImage):
 
 
 class Container:
+    tag = 'container'
+
     def __init__(self, name: str, image: Image, ship: Ship=None, command: str=None, hostname: str=None,
                  memory: int=0, volumes: dict=None, env: dict=None, doors: dict=None, links: dict=None,
                  network_mode: str='', user: str='', privileged: bool=False, entrypoint: str=None):
@@ -441,9 +442,9 @@ class Container:
         self.ship = ship
         self.image = image
         self.command = command
-        self.volumes = volumes or {}
         self.memory = memory
         self.env = env or {}
+        self.links = links or {}
         self.id = None
         self.status = 'not found'
         self.hostname = hostname
@@ -451,9 +452,8 @@ class Container:
         self.user = user
         self.privileged = privileged
         self.entrypoint = entrypoint
-        self.doors = doors or {}
-        self.links = links or {}
-        self.make_backrefs()
+        self.volumes = BackrefDict(self, volumes)
+        self.doors = BackrefDict(self, doors)
 
     def __repr__(self):
         return '<Container {c.fullname} [{c.id!s:7.7}]>'.format(c=self)
@@ -464,10 +464,6 @@ class Container:
         state['id'] = None
         state['status'] = None
         return state
-
-    def make_backrefs(self):
-        make_backrefs(self, 'doors', 'container')
-        make_backrefs(self, 'volumes', 'container')
 
     @property
     def logger(self):
@@ -712,6 +708,9 @@ class Door:
     """Door class represents an interface to a container - like Docker port, but with additional
     attributes
     """
+
+    tag = 'door'
+
     def __init__(self, schema, port=None, protocol='tcp', urls=None, sameports=False):
         """
         schema - something like http, ftp, zookeeper, gopher
@@ -725,7 +724,7 @@ class Door:
         self.internalport = port if port else socket.getservbyname(schema, protocol)
         self.exposedport = None
         self.sameports = sameports
-        self.urls = {'default': Url('')}
+        self.urls = BackrefDict(self, {'default': Url('')})
         self.urls.update(urls or {})
 
     def __repr__(self):
@@ -739,9 +738,6 @@ class Door:
         if formatspec == '':
             return str(self)
         raise RuntimeError('invalid format spec {}'.format(formatspec))
-
-    def make_backrefs(self):
-        make_backrefs(self, 'urls', 'door')
 
     @property
     def portspec(self):
@@ -824,12 +820,10 @@ class Url:
 
 
 class Volume:
+    tag = 'volume'
+
     def __repr__(self):
         return '{}(dest={self.dest})'.format(type(self).__name__, self=self)
-
-    def make_backrefs(self):
-        if hasattr(self, 'files'):
-            make_backrefs(self, 'files', 'volume')
 
     @property
     def logger(self):
@@ -867,21 +861,19 @@ class DataVolume(Volume):
 class LogVolume(DataVolume):
     def __init__(self, dest: str=None, path: str=None, files=None):
         DataVolume.__init__(self, dest, path)
-        self.files = files or {}
+        self.files = BackrefDict(self, files)
 
 
 class ConfigVolume(Volume):
     def __init__(self, dest: str, files: dict=None):
         self.dest = dest
-        self.files = files or {}
-        self.make_backrefs()
+        self.files = BackrefDict(self, files)
 
     def __getstate__(self):
         """Replace all "closure-files" with invokation result."""
         for name, file in self.files.items():
             if callable(file):
                 self.files[name] = file()
-        self.make_backrefs()
         return vars(self)
 
     @property
@@ -918,6 +910,8 @@ class ConfigVolume(Volume):
 
 
 class BaseFile:
+    tag = 'file'
+
     def __str__(self):
         return '{}({:40.40})'.format(type(self).__name__, self.fullname)
 
@@ -998,45 +992,13 @@ class IniFile(BaseFile):
         return '\n'.join(sorted(['{}={}'.format(key, value) for key, value in self.content.items()]))
 
 
-def make_backrefs(obj, refname, backrefname):
-    """Make links from each "refname" child back to obj,
-    then repeat for each child
-    """
-    ref = getattr(obj, refname)
-    for name, child in ref.copy().items():
-        if callable(child) or child is None:
-            continue
-        backref = getattr(child,  backrefname, None)
-        if backref is obj:
-            continue
-        if backref is not None:
-            # If single child object is shared between parents, then
-            # we should create copy of it to not override backref attr
-            # in the shared child object
-            ref[name] = child = copy.copy(child)
-            # Additionally, copy all list/dict/set attributes to ensure
-            # that they will not be shared between objects.
-            # We do not use copy.deepcopy here because it's too slow
-            # for even medium-sized (hundreds of objects) graphs if there are
-            # cyclic references (as in this case).
-            for attrname in vars(child):
-                attr = getattr(child, attrname)
-                if isinstance(attr, (list, dict, set)):
-                    setattr(child, attrname, copy.copy(attr))
-        setattr(child, backrefname, obj)
-        if getattr(child, 'name', None) is None:
-            setattr(child, 'name', name)
-
-        if hasattr(child, 'make_backrefs'):
-            child.make_backrefs()
-
-
 class Shipment:
+    tag = 'shipment'
+
     def __init__(self, name='unnamed', ships=None, tasks=None):
         self.name = name
-        self.tasks = tasks or {}
-        self.ships = ships or {}
-        self.make_backrefs()
+        self.tasks = BackrefDict(self, tasks)
+        self.ships = BackrefDict(self, ships)
 
     def unload_ships(self):
         """Unload all containers from all ships."""
@@ -1067,10 +1029,6 @@ class Shipment:
     def urls(self):
         for door in self.doors:
             yield from (url for _, url in sorted(door.urls.items()))
-
-    def make_backrefs(self):
-        make_backrefs(self, 'ships', 'shipment')
-        make_backrefs(self, 'tasks', 'shipment')
 
     @property
     def images(self):

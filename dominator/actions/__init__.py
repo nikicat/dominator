@@ -124,7 +124,6 @@ def edit_subcommand(name=None):
                 shipment = ctx.obj
                 utils.getlogger().debug("saving shipment", shipment_filename=filename)
                 shipment.dominator_version = getshortversion()
-                shipment.make_backrefs()
 
                 data = pickle.dumps(shipment)
                 with click.open_file(filename, 'bw+') as file:
@@ -871,7 +870,7 @@ def create_config():
 @edit_subcommand('local-ship')
 def add_local_ship(ctx):
     """Populate shipment with one local ship."""
-    ctx.obj.ships = {'local': LocalShip()}
+    ctx.obj.ships['local'] = LocalShip()
 
 
 @cli.command()

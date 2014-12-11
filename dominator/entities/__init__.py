@@ -380,7 +380,11 @@ class SourceImage(BaseImage):
         """Calculate tag for image from it's attributes"""
         dump = yaml.dump(self)
         digest = hashlib.sha1(dump.encode()).digest()
-        return base64.b64encode(digest, altchars=b'_-').decode().replace('=', '.')
+        tag = base64.b64encode(digest, altchars=b'_-').decode().replace('=', '.')
+        # AHCK: Docker doesn't allow tags beginning with -, so we just rotate characters several times
+        while tag[0] == '-':
+            tag = tag[1:] + tag[0]
+        return tag
 
     def gettarfile(self):
         f = tempfile.NamedTemporaryFile()

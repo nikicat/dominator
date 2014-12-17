@@ -68,10 +68,7 @@ class BaseShip:
 
     def expose_ports(self, ports):
         for _, container in sorted(self.containers.items()):
-            for _, door in sorted(container.doors.items()):
-                if not door.exposed:
-                    port = ports.pop()
-                    door.expose(port)
+            container.expose_ports(ports)
 
 
 class Ship(BaseShip):
@@ -702,6 +699,13 @@ class Container:
         self.ship.spawn('nsenter --target {pid} --mount --uts --ipc --net --pid'
                         ' -- env -- {command}'.format(pid=pid, command=command),
                         sudo=True)
+
+    def expose_ports(self, ports):
+        """Expose all doors' ports using range."""
+        for _, door in sorted(self.doors.items()):
+            if not door.exposed:
+                port = ports.pop()
+                door.expose(port)
 
 
 class Task(Container):
